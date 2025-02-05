@@ -17,9 +17,9 @@ class Screenshot:
         self.date_taken = date
         self.category_submitted = category
         self.image = ''  # call function to extract image from file/URL
-        
 
-    def to_string(self):
+
+    def __str__(self):
         return f"My URL is {self.url if self.url is not None else 'None'}"
 
     # def extract_filename(url):
@@ -27,6 +27,3 @@ class Screenshot:
     #    thus the filename cannot be extracted.
     #
     #    filename =  # the last portion of the string after the final forward-slash (/) character
-
-screenshot1 = Screenshot()
-print(screenshot1.to_string())
