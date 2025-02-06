@@ -11,7 +11,7 @@ Current languages include:
     German
     Italian
 Languages to add:
-    Spanish
+    Spanish (two versions)
 
 Dictionaries included:
     MONTH_ABBREVIATIONS             - used for determining the date (or date range) as it appears in the screenshot
