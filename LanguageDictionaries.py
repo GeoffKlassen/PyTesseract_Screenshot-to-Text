@@ -40,16 +40,21 @@ Variables included:
     TIME_FORMAT_STR_FOR_SECONDS     - a regex for the numerical format for a time value in seconds
 """
 
-"""Language keywords"""
+"""
+    Language keywords
+"""
 KEYWORD_GERMAN = ['Gestern', 'Benachrichtigungen', 'Entsperrungen']
 KEYWORD_ITALIAN = ['utilizzo', 'dello schermo', ' leri ', 'leri', 'notifiche', 'NOTIFICHE', 'UTILIZZATE', 'DOPO',
                    # duplicate words with differences in spaces.
                    'ricevute', 'sblocchi', 'Sblocchi', 'blocchi', 'volte', 'batteria', 'Oggi']
 KEYWORD_ENGLISH = ['Screen time', 'SCREEN', 'Updated', 'Yesterday', 'yesterday', 'Today', 'today', 'received']
 KEYWORD_FRENCH = ['Applications les plus', 'fois', 'Notifications', 'Hier']
-# If one of the keywords above is found in a given screenshot, that screenshot is classified as being of the language of that keyword.
+# If one of the keywords above is found in a given screenshot, that screenshot is classified as being of the language of
+# that keyword. Otherwise, the screenshot is classified as being of the default language, as set in RuntimeValues.py.
 
-"""Date dictionaries"""
+"""
+    Date dictionaries
+"""
 MONTH_ABBREVIATIONS = {'ita': ['gen', 'feb', 'mar', 'apr', 'mag',  'giu',  'lug',  'ago',  'set', 'ott', 'nov', 'dic'],
                        'eng': ['jan', 'feb', 'mar', 'apr', 'may',  'jun',  'jul',  'aug',  'sep', 'oct', 'nov', 'dec'],
                        'ger': ['jan', 'feb', 'mar', 'apr', 'mai',  'jun',  'jul',  'aug',  'sep', 'okt', 'nov', 'dez'],
@@ -63,7 +68,9 @@ DATE_FORMAT = {'ita': [r'\d{1,2}\s?MMM'],
 # MMM stands in for the 3-4 letter abbreviation for each month.
 # The list of abbreviations for the necessary language will be subbed in as needed to create the full regex.
 
-"""Day/week dictionaries"""
+"""
+    Day/week dictionaries
+"""
 KEYWORDS_FOR_TODAY = {'ita': ['Oggi', 'oggi'],
                       'ger': ['Heute', 'heute'],
                       'eng': ['Today', 'today'],
@@ -87,7 +94,9 @@ KEYWORDS_FOR_WEEK = {'ita': ['Questa settimana', 'Media giornaliera'],
 # Keywords used to determine if screenshot contains 'week' data (instead of 'day' data)
 
 
-"""Heading dictionaries"""
+"""
+    Heading dictionaries
+"""
 # Order in Dashboard: SCREEN TIME, (LIMITS), MOST USED, PICKUPS, FIRST PICKUP, FIRST USED AFTER PICKUP, NOTIFICATIONS
 # The LIMITS heading only appears if the user's phone has a daily time limit set for at least one app.
 KEYWORD_FOR_SCREEN_TIME = {'ita': 'TEMPO DI UTILIZZO',
@@ -138,7 +147,9 @@ KEYWORDS_FOR_HOURS_AXIS = ['00 06', '06 12', '12 18',
                            '00 Uhr 06 Uhr', '06 Uhr 12 Uhr', '12 Uhr 18 Uhr',
                            'Uhr Uhr']  # TODO This method is a bit messy
 
-"""Variables for time values"""
+"""
+    Variables for time values
+"""
 MIN_KEYWORD = r'min|m'
 HOUR_KEYWORD = 'h'
 SECONDS_KEYWORD = 's'

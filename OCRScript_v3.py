@@ -37,6 +37,7 @@ RESPONSE_DATE = 'response_date'
 IMG_RESPONSE_TYPE = 'img_response_type'
 IMG_URL = 'img_url'
 
+
 def compile_list_of_urls(df, screentime_cols, pickups_cols, notifications_cols,
                          time_col='Record Time', id_col='Participant ID', label_col='Participant Label'):
     """Create a dataframe of URLs from a provided dataframe of survey responses.
@@ -94,17 +95,6 @@ def compile_list_of_urls(df, screentime_cols, pickups_cols, notifications_cols,
 
     return url_df
 
-
-test_screenshot = Screenshot("hi")
-
-list_of_screenshots = []
-print("doing it")
-list_of_screenshots.append(test_screenshot)
-for ss in list_of_screenshots:
-    print(ss)
-
-list_of_screenshots[0].url = "changing URL"
-print(list_of_screenshots[0])
 
 if __name__ == '__main__':
     dir_for_downloaded_images = "Saved Images"
