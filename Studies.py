@@ -1,3 +1,10 @@
+"""This file contains the definitions for the different studies that have been analyzed using this program so far.
+So far:
+    HappyB (1.0)
+    HappyB2.0
+    BCH
+"""
+
 CSV_FILE = 'csv_file'
 SCREEN_COLS = 'screen_cols'
 PICKUP_COLS = 'pickup_cols'
@@ -14,8 +21,9 @@ happyb_daily_survey = {CSV_FILE: 'activity_response_2207_14718_9.csv',
                        SCREEN_COLS: ['[2_IMG] iOS screentime'],
                        PICKUP_COLS: ['[3_IMG] iOS unlocks'],
                        NOTIF_COLS: ['[4_IMG] iOS notifications']}
+
 """
-    HappyB 2.0
+    HappyB2.0
 """
 happyb2_baseline_survey = {CSV_FILE: 'study-3749-export-173-survey-responses-20973-2024-10-23-20-20-34.csv',
                            SCREEN_COLS: ['[24_IMG] iOS_screenshot_1_duration'],

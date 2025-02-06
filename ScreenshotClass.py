@@ -10,17 +10,20 @@ class Screenshot:
     category_submitted: the category in which the screenshot was submitted (screentime, notifications, pickups/unlocks)
                         as taken from the database of URLs
     """
-    def __init__(self, url=None, user_id=0, date=0, category=''):
+    def __init__(self, url=None, user_id=None, date=None, category=None):
         self.url = url
         self.filename = ''  # call function to extract the file name from the url
         self.user_id = user_id
-        self.date_taken = date
+        self.date_submitted = date
         self.category_submitted = category
         self.image = ''  # call function to extract image from file/URL
 
 
     def __str__(self):
-        return f"My URL is {self.url if self.url is not None else 'None'}"
+        s_user_id = f"User ID: {self.user_id}".ljust(25)
+        s_date = f"Date submitted: {self.date_submitted}".ljust(35)
+        s_cat = f"Category submitted: {self.category_submitted}"
+        return f"URL: {self.url}\n{s_user_id}{s_date}{s_cat}"
 
     # def extract_filename(url):
     #    if the url doesn't contain a forward-slash, or a .jpg/.png extension, then the URL isn't valid,

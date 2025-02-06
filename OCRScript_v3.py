@@ -110,3 +110,12 @@ if __name__ == '__main__':
         print(f"Done.\n{current_list.shape[0]} URLs found.")
         url_list = pd.concat([url_list, current_list], ignore_index=True)
     print(f'All URLs compiled. Total URLs: {url_list.shape[0]}')
+
+    # Cycle through the images, creating a screenshot object for each one
+    screenshots = []
+    for index in url_list.index:
+        current_screenshot = Screenshot(url=url_list[IMG_URL][index],
+                                        user_id=url_list[PARTICIPANT_ID][index],
+                                        date=url_list[RESPONSE_DATE][index],
+                                        category=url_list[IMG_RESPONSE_TYPE][index])
+        print(current_screenshot)
