@@ -86,14 +86,14 @@ def compile_list_of_urls(df, screentime_cols, pickups_cols, notifications_cols,
                 img_response_type = NOTIFICATIONS
             else:
                 img_response_type = None
-            # For the Boston Children's Hospital data, all images are of type SCREENTIME
+            # Note: For the Boston Children's Hospital data, all images are of type SCREENTIME
 
             new_row = {PARTICIPANT_ID: user_id,
                        RESEARCHER: True if df.loc[i, id_col] == RESEARCHER else False,
                        RESPONSE_DATE: response_date.date(),
                        IMG_RESPONSE_TYPE: img_response_type,
                        IMG_URL: url}
-            url_df.loc[len(url_df)] = new_row
+            url_df = pd.concat([url_df, pd.DataFrame([new_row])], ignore_index=True)
 
     return url_df
 
