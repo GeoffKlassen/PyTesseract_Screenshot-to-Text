@@ -4,11 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c55e9a34-33b9-471a-a770-4f23caf24d17" name="Changes" comment="Added function to compile list of URLs from a single CSV.&#10;&#10;Program now reads in a list of CSVs and extracts the URLs from each CSV in the list.">
-      <change afterPath="$PROJECT_DIR$/RuntimeValues.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/OCRScript_v3.py" beforeDir="false" afterPath="$PROJECT_DIR$/OCRScript_v3.py" afterDir="false" />
-    </list>
+    <list default="true" id="c55e9a34-33b9-471a-a770-4f23caf24d17" name="Changes" comment="Added function to compile list of URLs from a single CSV.&#10;&#10;Program now reads in a list of CSVs and extracts the URLs from each CSV in the list." />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
