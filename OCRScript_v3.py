@@ -1,11 +1,12 @@
-import os
-
 from ScreenshotClass import Screenshot
 from LanguageDictionaries import *
+from RuntimeValues import *
 import pandas as pd
 from datetime import datetime
 
-"""Variables defined for convenience"""
+"""
+    Variables defined for use as column names
+"""
 SCREENTIME = 'screentime'
 PICKUPS = 'pickups'
 NOTIFICATIONS = 'notifications'
@@ -31,14 +32,10 @@ DAY_OF_THE_WEEK = 'weekday'
 WEEK = 'week'
 
 PARTICIPANT_ID = 'participant_id'
-RESEARCHER = 'researcher'
+IS_RESEARCHER = 'is_researcher'
 RESPONSE_DATE = 'response_date'
 IMG_RESPONSE_TYPE = 'img_response_type'
 IMG_URL = 'img_url'
-
-# Set the current working directory (CWD)
-os.chdir('C:\\Users\\gbk546\\OneDrive - University of Saskatchewan\\Grad Studies\\Boston Childrens Hospital')
-
 
 def compile_list_of_urls(df, screentime_cols, pickups_cols, notifications_cols,
                          time_col='Record Time', id_col='Participant ID', label_col='Participant Label'):
@@ -52,7 +49,7 @@ def compile_list_of_urls(df, screentime_cols, pickups_cols, notifications_cols,
                             (For Avicenna CSVs, this is usually 'Record Time')
         id_col:             The name of the column in df that contains the ID of the user
                             (For Avicenna CSVs, this is usually 'Participant ID')
-        label_col:          The name of the column in df that indicates whether the row is for a researcher
+        label_col:          The name of the column in df that indicates whether the row is for a IS_RESEARCHER
                             (For Avicenna CSVs, this is usually 'Participant Label')
     Returns:
         pd.Dataframe:       A dataframe of image URLs, along with the user ID, response date, and category the image was
@@ -62,7 +59,7 @@ def compile_list_of_urls(df, screentime_cols, pickups_cols, notifications_cols,
     notifications. Because of this, the dataframe provided may have multiple columns of URLs (e.g. one column for each
     usage category, multiple columns for only one category, or multiple columns for all three categories).
     """
-    url_df = pd.DataFrame(columns=[PARTICIPANT_ID, RESEARCHER, RESPONSE_DATE, IMG_RESPONSE_TYPE, IMG_URL])
+    url_df = pd.DataFrame(columns=[PARTICIPANT_ID, IS_RESEARCHER, RESPONSE_DATE, IMG_RESPONSE_TYPE, IMG_URL])
     for i in df.index:
         user_id = df[id_col][i]
 
@@ -89,7 +86,7 @@ def compile_list_of_urls(df, screentime_cols, pickups_cols, notifications_cols,
             # Note: For the Boston Children's Hospital data, all images are of type SCREENTIME
 
             new_row = {PARTICIPANT_ID: user_id,
-                       RESEARCHER: True if df.loc[i, id_col] == RESEARCHER else False,
+                       IS_RESEARCHER: True if df.loc[i, id_col] == IS_RESEARCHER else False,
                        RESPONSE_DATE: response_date.date(),
                        IMG_RESPONSE_TYPE: img_response_type,
                        IMG_URL: url}
@@ -114,22 +111,12 @@ if __name__ == '__main__':
     if not os.path.exists(dir_for_downloaded_images):
         os.makedirs(dir_for_downloaded_images)
 
-    # Read in the list of URLs
-    # For the BCH Study, there is only one CSV, in which there are two columns for SCREENTIME data.
-
-    # baseline_survey = DOES NOT EXIST / DOES NOT CONTAIN SCREENSHOT URLs for BCH STUDY
-    ss_survey = {'csv_file': 'study-2037-export-3-survey-responses-16872-2024-10-01-14-25-42.csv',
-                 'screen_cols': ['[3_IMG] Question 3 of Survey 16872', '[4_IMG] Question 4 of Survey 16872'],
-                 'pickup_cols': [],
-                 'notif_cols': []}
-
-    survey_list = [ss_survey]
+    # Read in the list of URLs for the appropriate Study (as specified in RuntimeValues.py)
     url_list = pd.DataFrame()
-
     for survey in survey_list:
-        print(f"Compiling URLs from {survey['csv_file']}...", end='')
-        survey_csv = pd.read_csv(survey['csv_file'])
-        current_list = compile_list_of_urls(survey_csv, survey['screen_cols'], survey['pickup_cols'], survey['notif_cols'])
+        print(f"Compiling URLs from {survey[CSV_FILE]}...", end='')
+        survey_csv = pd.read_csv(survey[CSV_FILE])
+        current_list = compile_list_of_urls(survey_csv, survey[SCREEN_COLS], survey[PICKUP_COLS], survey[NOTIF_COLS])
         print(f"Done.\n{current_list.shape[0]} URLs found.")
         url_list = pd.concat([url_list, current_list], ignore_index=True)
     print(f'All URLs compiled. Total URLs: {url_list.shape[0]}')

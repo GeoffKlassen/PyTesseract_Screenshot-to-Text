@@ -4,10 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c55e9a34-33b9-471a-a770-4f23caf24d17" name="Changes" comment="Added more documentation to LanguageDictionaries.py">
-      <change beforePath="$PROJECT_DIR$/.idea/OCRScript_v3.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/OCRScript_v3.iml" afterDir="false" />
+    <list default="true" id="c55e9a34-33b9-471a-a770-4f23caf24d17" name="Changes" comment="Added function to compile list of URLs from a single CSV.&#10;&#10;Program now reads in a list of CSVs and extracts the URLs from each CSV in the list.">
+      <change afterPath="$PROJECT_DIR$/RuntimeValues.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LanguageDictionaries.py" beforeDir="false" afterPath="$PROJECT_DIR$/LanguageDictionaries.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/OCRScript_v3.py" beforeDir="false" afterPath="$PROJECT_DIR$/OCRScript_v3.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -23,6 +22,11 @@
     </option>
   </component>
   <component name="Git.Settings">
+    <option name="PREVIOUS_COMMIT_AUTHORS">
+      <list>
+        <option value="gbk546 &lt;geoff.klassen@usask.ca&gt;" />
+      </list>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="ProjectColorInfo">{
@@ -34,16 +38,16 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Python.OCRScript_v3.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "master",
-    "last_opened_file_path": "C:/Users/gbk546/OneDrive - University of Saskatchewan/Grad Studies/HappyB 2.0",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.OCRScript_v3.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/gbk546/OneDrive - University of Saskatchewan/Grad Studies/HappyB 2.0&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
   }
-}]]></component>
+}</component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -84,13 +88,30 @@
       <option name="project" value="LOCAL" />
       <updated>1738715058465</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Added function to compile list of URLs from a single CSV.&#10;&#10;Program now reads in a list of CSVs and extracts the URLs from each CSV in the list.">
+      <option name="closed" value="true" />
+      <created>1738874859685</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1738874859685</updated>
+    </task>
+    <task id="LOCAL-00005" summary="Added function to compile list of URLs from a single CSV.&#10;&#10;Program now reads in a list of CSVs and extracts the URLs from each CSV in the list.">
+      <option name="closed" value="true" />
+      <created>1738875102798</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1738875102798</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Initial commit - copied language dictionaries from OCRScript_v2, and initializing class Screenshot to contain metadata, raw image, and extracted data for each screenshot" />
     <MESSAGE value="Added documentation to LanguageDictionaries.py" />
     <MESSAGE value="Added more documentation to LanguageDictionaries.py" />
-    <option name="LAST_COMMIT_MESSAGE" value="Added more documentation to LanguageDictionaries.py" />
+    <MESSAGE value="Added function to compile list of URLs from a single CSV.&#10;&#10;Program now reads in a list of CSVs and extracts the URLs from each CSV in the list." />
+    <option name="LAST_COMMIT_MESSAGE" value="Added function to compile list of URLs from a single CSV.&#10;&#10;Program now reads in a list of CSVs and extracts the URLs from each CSV in the list." />
   </component>
 </project>
