@@ -43,54 +43,60 @@ Variables included:
 """
     Language keywords
 """
-KEYWORD_GERMAN = ['Gestern', 'Benachrichtigungen', 'Entsperrungen']
-KEYWORD_ITALIAN = ['utilizzo', 'dello schermo', ' leri ', 'leri', 'notifiche', 'NOTIFICHE', 'UTILIZZATE', 'DOPO',
-                   # duplicate words with differences in spaces.
-                   'ricevute', 'sblocchi', 'Sblocchi', 'blocchi', 'volte', 'batteria', 'Oggi']
-KEYWORD_ENGLISH = ['Screen time', 'SCREEN', 'Updated', 'Yesterday', 'yesterday', 'Today', 'today', 'received']
-KEYWORD_FRENCH = ['Applications les plus', 'fois', 'Notifications', 'Hier']
+GER = 'German'
+ITA = 'Italian'
+ENG = 'English'
+FRA = 'French'
+
+LANGUAGE_KEYWORDS = {GER: ['Gestern', 'Benachrichtigungen', 'Entsperrungen'],
+                     ITA: ['utilizzo', 'dello schermo', ' leri ', 'leri', 'notifiche', 'NOTIFICHE', 'UTILIZZATE', 'DOPO',
+                             # duplicate words with differences in spaces.
+                             'ricevute', 'sblocchi', 'Sblocchi', 'blocchi', 'volte', 'batteria', 'Oggi'],
+                     ENG: ['Screen time', 'SCREEN', 'Updated', 'Yesterday', 'yesterday', 'Today', 'today', 'received'],
+                     FRA: ['Applications les plus', 'fois', 'Notifications', 'Hier']
+                     }
 # If one of the keywords above is found in a given screenshot, that screenshot is classified as being of the language of
 # that keyword. Otherwise, the screenshot is classified as being of the default language, as set in RuntimeValues.py.
 
 """
     Date dictionaries
 """
-MONTH_ABBREVIATIONS = {'ita': ['gen', 'feb', 'mar', 'apr', 'mag',  'giu',  'lug',  'ago',  'set', 'ott', 'nov', 'dic'],
-                       'eng': ['jan', 'feb', 'mar', 'apr', 'may',  'jun',  'jul',  'aug',  'sep', 'oct', 'nov', 'dec'],
-                       'ger': ['jan', 'feb', 'mar', 'apr', 'mai',  'jun',  'jul',  'aug',  'sep', 'okt', 'nov', 'dez'],
-                       'fra': ['jan', 'fev', 'mar', 'avr', 'mai', 'juin', 'juil', 'aout', 'sept', 'oct', 'nov', 'dec']}
+MONTH_ABBREVIATIONS = {ITA: ['gen', 'feb', 'mar', 'apr', 'mag',  'giu',  'lug',  'ago',  'set', 'ott', 'nov', 'dic'],
+                       ENG: ['jan', 'feb', 'mar', 'apr', 'may',  'jun',  'jul',  'aug',  'sep', 'oct', 'nov', 'dec'],
+                       GER: ['jan', 'feb', 'mar', 'apr', 'mai',  'jun',  'jul',  'aug',  'sep', 'okt', 'nov', 'dez'],
+                       FRA: ['jan', 'fev', 'mar', 'avr', 'mai', 'juin', 'juil', 'aout', 'sept', 'oct', 'nov', 'dec']}
 # Abbreviations must be in chronological order, from January to December.
 
-DATE_FORMAT = {'ita': [r'\d{1,2}\s?MMM'],
-               'eng': [r'\d{1,2}\s?MMM', r'MMM[a-z]*\s?\d{1,2}'],
-               'ger': [r'\d{1,2}\s?MMM'],
-               'fra': [r'\d{1,2}\s?MMM']}
+DATE_FORMAT = {ITA: [r'\d{1,2}\s?MMM'],
+               ENG: [r'\d{1,2}\s?MMM', r'MMM[a-z]*\s?\d{1,2}'],
+               GER: [r'\d{1,2}\s?MMM'],
+               FRA: [r'\d{1,2}\s?MMM']}
 # MMM stands in for the 3-4 letter abbreviation for each month.
 # The list of abbreviations for the necessary language will be subbed in as needed to create the full regex.
 
 """
     Day/week dictionaries
 """
-KEYWORDS_FOR_TODAY = {'ita': ['Oggi', 'oggi'],
-                      'ger': ['Heute', 'heute'],
-                      'eng': ['Today', 'today'],
-                      'fra': ['Aujourd', 'aujourd']}  # Abbreviated version for French (aujourd'hui)
+KEYWORDS_FOR_TODAY = {ITA: ['Oggi', 'oggi'],
+                      GER: ['Heute', 'heute'],
+                      ENG: ['Today', 'today'],
+                      FRA: ['Aujourd', 'aujourd']}  # Abbreviated version for French (aujourd'hui)
 
-KEYWORD_FOR_YESTERDAY = {'ita': 'leri',  # true word is Ieri, but pytesseract usually reads the 'I' as 'l'.
-                         'eng': 'Yesterday',
-                         'fra': 'Hier',
-                         'ger': 'Gestern'}
+KEYWORD_FOR_YESTERDAY = {ITA: 'leri',  # true word is Ieri, but pytesseract usually reads the 'I' as 'l'.
+                         ENG: 'Yesterday',
+                         FRA: 'Hier',
+                         GER: 'Gestern'}
 
-KEYWORDS_FOR_DAYS_OF_THE_WEEK = {'ita': ['lunedi', 'martedi', 'mercoledi', 'giovedi', 'venerdi', 'sabato', 'domenica'],
-                                 'eng': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
-                                 'fra': ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'],
-                                 'ger': ['montag', 'dienstag', 'mittwoch', 'donnerstag', 'freitag', 'samstag',
+KEYWORDS_FOR_DAYS_OF_THE_WEEK = {ITA: ['lunedi', 'martedi', 'mercoledi', 'giovedi', 'venerdi', 'sabato', 'domenica'],
+                                 ENG: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+                                 FRA: ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'],
+                                 GER: ['montag', 'dienstag', 'mittwoch', 'donnerstag', 'freitag', 'samstag',
                                          'sonntag']}
 
-KEYWORDS_FOR_WEEK = {'ita': ['Questa settimana', 'Media giornaliera'],
-                     'eng': ['This week', 'Daily Average'],
-                     'ger': ['TODO FILL THIS IN'],  # TODO Fill this in
-                     'fra': ['TODO FILL THIS IN']}  # TODO Fill this in
+KEYWORDS_FOR_WEEK = {ITA: ['Questa settimana', 'Media giornaliera'],
+                     ENG: ['This week', 'Daily Average'],
+                     GER: ['TODO FILL THIS IN'],  # TODO Fill this in
+                     FRA: ['TODO FILL THIS IN']}  # TODO Fill this in
 # Keywords used to determine if screenshot contains 'week' data (instead of 'day' data)
 
 
@@ -99,42 +105,42 @@ KEYWORDS_FOR_WEEK = {'ita': ['Questa settimana', 'Media giornaliera'],
 """
 # Order in Dashboard: SCREEN TIME, (LIMITS), MOST USED, PICKUPS, FIRST PICKUP, FIRST USED AFTER PICKUP, NOTIFICATIONS
 # The LIMITS heading only appears if the user's phone has a daily time limit set for at least one app.
-KEYWORD_FOR_SCREEN_TIME = {'ita': 'TEMPO DI UTILIZZO',
-                           'eng': 'SCREEN TIME',
-                           'fra': 'TODO FILL THIS IN',  # TODO Fill this in
-                           'ger': 'TODO FILL THIS IN'}  # TODO Fill this in
+KEYWORD_FOR_SCREEN_TIME = {ITA: 'TEMPO DI UTILIZZO',
+                           ENG: 'SCREEN TIME',
+                           FRA: 'TODO FILL THIS IN',  # TODO Fill this in
+                           GER: 'TODO FILL THIS IN'}  # TODO Fill this in
 
-KEYWORD_FOR_LIMITATIONS = {'ita': 'LIMITAZIONI',
-                           'eng': 'LIMITS',
-                           'fra': 'TODO FILL THIS IN',  # TODO Fill this in
-                           'ger': 'TODO FILL THIS IN'}  # TODO Fill this in
+KEYWORD_FOR_LIMITATIONS = {ITA: 'LIMITAZIONI',
+                           ENG: 'LIMITS',
+                           FRA: 'TODO FILL THIS IN',  # TODO Fill this in
+                           GER: 'TODO FILL THIS IN'}  # TODO Fill this in
 
-KEYWORD_FOR_MOST_USED = {'ita': 'PIU UTILIZZATE',
-                         'eng': 'MOST USED',
-                         'fra': 'TODO FILL THIS IN',  # TODO Fill this in
-                         'ger': 'VERWENDET'}  # Real heading is AM HÄUFIGSTEN VERWENDET but VERWENDET is on its own line
+KEYWORD_FOR_MOST_USED = {ITA: 'PIU UTILIZZATE',
+                         ENG: 'MOST USED',
+                         FRA: 'TODO FILL THIS IN',  # TODO Fill this in
+                         GER: 'VERWENDET'}  # Real heading is AM HÄUFIGSTEN VERWENDET but VERWENDET is on its own line
 
-KEYWORDS_FOR_PICKUPS = {'ita': ['ATTIVAZIONI SCHERMO'],
-                        'eng': ['PICKUPS', 'PICK-UPS'],  # Some versions of iOS use the hyphenated form PICK-UPS
-                        'fra': ['TODO FILL THIS IN'],  # TODO Fill this in
-                        'ger': ['AKTIVIERUNGEN']}
+KEYWORDS_FOR_PICKUPS = {ITA: ['ATTIVAZIONI SCHERMO'],
+                        ENG: ['PICKUPS', 'PICK-UPS'],  # Some versions of iOS use the hyphenated form PICK-UPS
+                        FRA: ['TODO FILL THIS IN'],  # TODO Fill this in
+                        GER: ['AKTIVIERUNGEN']}
 
-KEYWORDS_FOR_FIRST_PICKUP = {'ita': ['1 attivazione schermo Totale', '1 attivazione schermo', 'schermo', 'Totale'],
-                             'eng': ['First Pickup Total Pickups', 'First Pickup', 'Total Pickups'],
-                             'fra': ['TODO FILL THIS IN'],  # TODO Fill this in
-                             'ger': ['1 Aktivierung Aktivierungen insgesamt', '1 Aktivierung',
+KEYWORDS_FOR_FIRST_PICKUP = {ITA: ['1 attivazione schermo Totale', '1 attivazione schermo', 'schermo', 'Totale'],
+                             ENG: ['First Pickup Total Pickups', 'First Pickup', 'Total Pickups'],
+                             FRA: ['TODO FILL THIS IN'],  # TODO Fill this in
+                             GER: ['1 Aktivierung Aktivierungen insgesamt', '1 Aktivierung',
                                      'Aktivierungen insgesamt', 'insgesamt']}
 
-KEYWORDS_FOR_FIRST_USED_AFTER_PICKUP = {'ita': ['PRIME APP UTILIZZATE DOPO LATTIVAZIONE',
+KEYWORDS_FOR_FIRST_USED_AFTER_PICKUP = {ITA: ['PRIME APP UTILIZZATE DOPO LATTIVAZIONE',
                                                 'PRIME APP UTILIZZATE DOPO', 'LATTIVAZIONE'],  # When on separate lines
-                                        'eng': ['FIRST USED AFTER PICKUP', 'FIRST USED AFTER PICK UP', 'USED AFTER PICKUP'],
-                                        'fra': ['TODO FILL THIS IN'],  # TODO Fill this in
-                                        'ger': ['1 NUTZUNG NACH AKTIVIERUNG', 'AKTIVIERUNG']}
+                                        ENG: ['FIRST USED AFTER PICKUP', 'FIRST USED AFTER PICK UP', 'USED AFTER PICKUP'],
+                                        FRA: ['TODO FILL THIS IN'],  # TODO Fill this in
+                                        GER: ['1 NUTZUNG NACH AKTIVIERUNG', 'AKTIVIERUNG']}
 
-KEYWORDS_FOR_NOTIFICATIONS = {'ita': ['NOTIFICHE'],
-                              'ger': ['BENACHRICHTIGUNGEN', 'MITTEILUNGEN'],
-                              'eng': ['NOTIFICATIONS', 'NOTIFICATIONS RECEIVED'],
-                              'fra': ['NOTIFICATIONS', 'NOTIFICATIONS RECUES', 'RECUES']}
+KEYWORDS_FOR_NOTIFICATIONS = {ITA: ['NOTIFICHE'],
+                              GER: ['BENACHRICHTIGUNGEN', 'MITTEILUNGEN'],
+                              ENG: ['NOTIFICATIONS', 'NOTIFICATIONS RECEIVED'],
+                              FRA: ['NOTIFICATIONS', 'NOTIFICATIONS RECUES', 'RECUES']}
 
 KEYWORDS_FOR_HOURS_AXIS = ['00 06', '06 12', '12 18',
                            '6 12 ', '6 18 ', '42 48',
