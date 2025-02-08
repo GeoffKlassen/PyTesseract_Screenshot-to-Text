@@ -1,5 +1,9 @@
-from ScreenshotClass import Screenshot
-from ParticipantClass import Participant
+import Android
+import iOS
+from iOS import *
+from Android import *
+from ScreenshotClass import *
+from ParticipantClass import *
 from RuntimeValues import *
 import os
 import re
@@ -43,14 +47,18 @@ DAY_OF_THE_WEEK = 'weekday'
 WEEK = 'week'
 
 PARTICIPANT_ID = 'participant_id'
+DEVICE_ID = 'device_id'
 IS_RESEARCHER = 'is_researcher'
 RESPONSE_DATE = 'response_date'
 IMG_RESPONSE_TYPE = 'img_response_type'
 IMG_URL = 'img_url'
 
+IOS = 'iOS'
+ANDROID = 'Android'
+UNKNOWN = 'Unknown'
 
 def compile_list_of_urls(df, screentime_cols, pickups_cols, notifications_cols,
-                         time_col='Record Time', id_col='Participant ID', label_col='Participant Label'):
+                         time_col='Record Time', id_col='Participant ID', device_id_col='Device ID'):
     """Create a dataframe of URLs from a provided dataframe of survey responses.
     Args:
         df:                 The dataframe with columns that contain URLs
@@ -59,10 +67,10 @@ def compile_list_of_urls(df, screentime_cols, pickups_cols, notifications_cols,
         notifications_cols: An array of the column names in df that are for URLs of notifications images
         time_col:           The name of the column in df that lists the date & time stamp of submission
                             (For Avicenna CSVs, this is usually 'Record Time')
-        id_col:             The name of the column in df that contains the ID of the user
+        id_col:             The name of the column in df that contains the Avicenna ID of the user
                             (For Avicenna CSVs, this is usually 'Participant ID')
-        label_col:          The name of the column in df that indicates whether the row is for a IS_RESEARCHER
-                            (For Avicenna CSVs, this is usually 'Participant Label')
+        device_id_col:      The name of the column in df that contains the ID of the device from which the user responded
+                            (For Avicenna CSVs, this is usually 'Device ID')
     Returns:
         pd.Dataframe:       A dataframe of image URLs, along with the user ID, response date, and category the image was
                             submitted in.
@@ -71,9 +79,10 @@ def compile_list_of_urls(df, screentime_cols, pickups_cols, notifications_cols,
     notifications. Because of this, the dataframe provided may have multiple columns of URLs (e.g. one column for each
     usage category, multiple columns for only one category, or multiple columns for all three categories).
     """
-    url_df = pd.DataFrame(columns=[PARTICIPANT_ID, IS_RESEARCHER, RESPONSE_DATE, IMG_RESPONSE_TYPE, IMG_URL])
+    url_df = pd.DataFrame(columns=[PARTICIPANT_ID, DEVICE_ID, IS_RESEARCHER, RESPONSE_DATE, IMG_RESPONSE_TYPE, IMG_URL])
     for i in df.index:
         user_id = df[id_col][i]
+        device_id = df[device_id_col][i]
 
         # Extract the response date from the date column, in date format
         try:
@@ -98,6 +107,7 @@ def compile_list_of_urls(df, screentime_cols, pickups_cols, notifications_cols,
             # Note: For the Boston Children's Hospital data, all images are of type SCREENTIME
 
             new_row = {PARTICIPANT_ID: user_id,
+                       DEVICE_ID: device_id,
                        IS_RESEARCHER: True if df.loc[i, id_col] == IS_RESEARCHER else False,
                        RESPONSE_DATE: response_date.date(),
                        IMG_RESPONSE_TYPE: img_response_type,
@@ -191,19 +201,19 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
 
     remove_color_blocks_from_image(image, is_light_mode)
 
-    grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)  # To gray scale.
+    grey_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)  # To gray scale.
     if is_light_mode:
         # threshold arguments: image, threshold value, default to use if value > threshold. type of threshold to apply.
         #       for last argument: can be cv2.THRESH_BINARY or cv2.THRESH_OTSU
         # IMPORTANT: Looks like the best threshold value for a light mode image is 206. # GK: 230 makes text thicker,
         # but also makes the 'thermometer' shaped bars (below each app name) more likely to show up
-        (_, bw_image) = cv2.threshold(grey_image, white_threshold, 255, cv2.THRESH_BINARY)
-        return grey_image, bw_image
+        (_, bw_img) = cv2.threshold(grey_img, white_threshold, 255, cv2.THRESH_BINARY)
+        return grey_img, bw_img
     else:
         # Settings for dark mode.
-        (_, bw_image) = cv2.threshold(grey_image, black_threshold, 180, cv2.THRESH_BINARY)
+        (_, bw_img) = cv2.threshold(grey_img, black_threshold, 180, cv2.THRESH_BINARY)
 
-    return grey_image, bw_image
+    return grey_img, bw_img
 
 
 def merge_df_rows_by_height(df):
@@ -329,32 +339,63 @@ def show_text_on_image(df, img, draw_boxes=True):
 
 
 def determine_language_of_image(participant, df):
-    user_default_lang = participant.language if participant.language is not None else default_language
-    print("Detecting language: ", end='')
+    backup_lang = participant.language if participant.language is not None else default_language
+    backup_lang_msg = f"Setting image language to {'study' if participant.language is None else 'user'} default {backup_lang}."
+    user_lang_exists = True if participant.language is not None else False
 
+    print("Detecting language: ", end='')
     if df.shape[0] <= 1:
-        print(f"No text detected. Defaulting to {user_default_lang}.")
-        return user_default_lang
+        print(f"No text detected. {backup_lang_msg}")
+        return backup_lang, False
     for key, val in LANGUAGE_KEYWORDS.items():
         if df['text'].str.contains('|'.join(val)).any():
             print(f"{key}")
-            return key
+            return key, True
 
-    print(f"Unknown. Defaulting to {user_default_lang}.")
-    return user_default_lang
+    print(f"Unknown. {backup_lang_msg}")
+    return backup_lang, user_lang_exists
 
 
-def get_or_create_participant(users, test_user_id):
+def get_or_create_participant(users, user_id, dev_id):
     for u in users:
-        if u.id == test_user_id:
+        if u.user_id == user_id:
             print(f"Found existing user: {u}")
             return u
 
     # If no matching participant is found, create a new one
-    new_user = Participant(test_user_id)
+    new_user = Participant(user_id=user_id, device_id=dev_id, device_os=get_os(dev_id))
     users.append(new_user)
     print(f"New user created: {new_user}")
     return new_user
+
+
+def get_os(dev_id):
+    """ Returns the (very likely) device OS based on the Device ID.
+
+    Args:
+        dev_id:    The Device ID of the device used to submit an image.
+
+    Returns:
+        The operating system (iOS or Android)
+
+    As of February 7, 2025, all iPhone Device IDs in Avicenna CSVs appear as 32-digit hexadecimal numbers, and
+    all Android device IDs in Avicenna CSVs appear as 16-digit hexadecimal numbers.
+    Other Device IDs that occur include:
+    W_MACOSX_SAFARI             - macOS (MacBook or iMac)
+    W_IOS_MOBILESAFARI          - iOS Safari browser
+    W_ANDROID_CHROMEMOBILE      - Android Chrome browser
+    W_ANDROID_FIREFOXMOBILE     - Android Firefox browser
+    """
+    if dev_id is None:
+        return None
+    elif not bool(re.compile(r'^[0-9a-fA-F]+$').match(dev_id)):
+        return UNKNOWN
+    elif len(dev_id) == 16:
+        return ANDROID
+    elif len(dev_id) == 32:
+        return IOS
+    else:
+        return UNKNOWN
 
 
 if __name__ == '__main__':
@@ -381,15 +422,19 @@ if __name__ == '__main__':
             # Only extract data from the images within the bounds specified in RuntimeValues.py
             continue
 
+        current_participant = get_or_create_participant(users=participants,
+                                                        user_id=url_list[PARTICIPANT_ID][index],
+                                                        dev_id=url_list[DEVICE_ID][index])
+
         current_screenshot = Screenshot(url=url_list[IMG_URL][index],
                                         user_id=url_list[PARTICIPANT_ID][index],
+                                        device_os=get_os(url_list[DEVICE_ID][index]),
                                         date=url_list[RESPONSE_DATE][index],
                                         category=url_list[IMG_RESPONSE_TYPE][index])
         print(f"File {index+1} of {num_urls}:\n{current_screenshot}")
 
+        # Add the current screenshot to the array of all screenshots, and load/create the participant
         screenshots.append(current_screenshot)
-        current_participant = get_or_create_participant(participants, current_screenshot.user_id)
-
         # Download the image (if not using local images) or open the local image
         grey_image, bw_image = load_and_process_image(current_screenshot, white_threshold=226)
         current_screenshot.set_image(grey_image)
@@ -407,6 +452,26 @@ if __name__ == '__main__':
             continue
 
         current_screenshot.set_dimensions(bw_image.shape)
-        image_language = determine_language_of_image(current_participant, text_df)
-        current_screenshot.set_language(image_language)
-        current_participant.set_language(image_language)
+
+        # Get the language of the image, and assign that language to the screenshot & user (if a language was detected)
+        image_language, language_was_detected = determine_language_of_image(current_participant, text_df)
+        if language_was_detected:
+            current_screenshot.set_language(image_language)
+            current_participant.set_language(image_language)
+
+        if current_screenshot.device_os == ANDROID:
+            ## Perhaps all you need to do is copy the code for extracting Android data into the Android.py file ??
+            Android.main()
+            # Run the code in Android.py
+            # Return the extracted data
+
+        elif current_screenshot.device_os == IOS:
+            iOS.main()
+
+            ## Run code in iOS.py
+            # Return the extracted data
+
+
+
+        # Once we have the language, we know what language-specific spellings of dates & headings to look for.
+        # At this point, we use whether the image is Android or iOS.

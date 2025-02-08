@@ -4,12 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c55e9a34-33b9-471a-a770-4f23caf24d17" name="Changes" comment="Modified __str__ function in ScreenshotClass.py to print out more data; OCRScript_v3.py now creates a screenshot object for each URL in url_list">
-      <change afterPath="$PROJECT_DIR$/ParticipantClass.py" afterDir="false" />
+    <list default="true" id="c55e9a34-33b9-471a-a770-4f23caf24d17" name="Changes" comment="Added ParticipantClass.py, to keep track of users. Each participant has a user_id, a language, and a phone OS.&#10;&#10;Added some 'set' functions to ScreenshotClass.py">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LanguageDictionaries.py" beforeDir="false" afterPath="$PROJECT_DIR$/LanguageDictionaries.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/OCRScript_v3.py" beforeDir="false" afterPath="$PROJECT_DIR$/OCRScript_v3.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/RuntimeValues.py" beforeDir="false" afterPath="$PROJECT_DIR$/RuntimeValues.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ParticipantClass.py" beforeDir="false" afterPath="$PROJECT_DIR$/ParticipantClass.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ScreenshotClass.py" beforeDir="false" afterPath="$PROJECT_DIR$/ScreenshotClass.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -161,7 +159,15 @@
       <option name="project" value="LOCAL" />
       <updated>1738883782485</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="Added ParticipantClass.py, to keep track of users. Each participant has a user_id, a language, and a phone OS.&#10;&#10;Added some 'set' functions to ScreenshotClass.py">
+      <option name="closed" value="true" />
+      <created>1738964634068</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1738964634068</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -172,6 +178,7 @@
     <MESSAGE value="Added RuntimeValues.py for values that the user can specify at runtime, and added Studies.py that includes the definitions of the surveys from the currently available studies." />
     <MESSAGE value="Included some preset studies in RuntimeValues.py so that the program can be easily run on one of the specific studies that have already been analyzed." />
     <MESSAGE value="Modified __str__ function in ScreenshotClass.py to print out more data; OCRScript_v3.py now creates a screenshot object for each URL in url_list" />
-    <option name="LAST_COMMIT_MESSAGE" value="Modified __str__ function in ScreenshotClass.py to print out more data; OCRScript_v3.py now creates a screenshot object for each URL in url_list" />
+    <MESSAGE value="Added ParticipantClass.py, to keep track of users. Each participant has a user_id, a language, and a phone OS.&#10;&#10;Added some 'set' functions to ScreenshotClass.py" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added ParticipantClass.py, to keep track of users. Each participant has a user_id, a language, and a phone OS.&#10;&#10;Added some 'set' functions to ScreenshotClass.py" />
   </component>
 </project>
