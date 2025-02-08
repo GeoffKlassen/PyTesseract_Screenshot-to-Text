@@ -58,27 +58,20 @@ ANDROID = 'Android'
 UNKNOWN = 'Unknown'
 
 
-def compile_list_of_urls(df, screentime_cols, pickups_cols, notifications_cols,
-                         time_col='Record Time', id_col='Participant ID', device_id_col='Device ID'):
-    """Create a dataframe of URLs from a provided dataframe of survey responses.
-    Args:
-        df:                 The dataframe with columns that contain URLs
-        screentime_cols:    An array of the column names in df that are for URLs of screentime images
-        pickups_cols:       An array of the column names in df that are for URLs of pickups (unlocks) images
-        notifications_cols: An array of the column names in df that are for URLs of notifications images
-        time_col:           The name of the column in df that lists the date & time stamp of submission
-                            (For Avicenna CSVs, this is usually 'Record Time')
-        id_col:             The name of the column in df that contains the Avicenna ID of the user
-                            (For Avicenna CSVs, this is usually 'Participant ID')
-        device_id_col:      The name of the column in df that contains the ID of the device from which the user responded
-                            (For Avicenna CSVs, this is usually 'Device ID')
-    Returns:
-        pd.Dataframe:       A dataframe of image URLs, along with the user ID, response date, and category the image was
-                            submitted in.
+def compile_list_of_urls(df, url_cols,
+                         date_col='Record Time', id_col='Participant ID', device_id_col='Device ID'):
+    """Create a DataFrame of URLs from a provided DataFrame of survey responses.
+    :param df:                 The dataframe with columns that contain URLs
+    :param url_cols:           A dictionary of column names for screentime URLs, pickups URLs, and notifications URLs
+    :param date_col:           The name of the column in df that lists the date & time stamp of submission (For Avicenna CSVs, this is usually 'Record Time')
+    :param id_col:             The name of the column in df that contains the Avicenna ID of the user (For Avicenna CSVs, this is usually 'Participant ID')
+    :param device_id_col:      The name of the column in df that contains the ID of the device from which the user responded (For Avicenna CSVs, this is usually 'Device ID')
 
-    NOTE: iOS & Android Dashboards have three categories of usage statistics: screentime, pickups (aka unlocks), and
-    notifications. Because of this, the dataframe provided may have multiple columns of URLs (e.g. one column for each
-    usage category, multiple columns for only one category, or multiple columns for all three categories).
+    :return: A DataFrame of image URLs, with user ID, response date, and category the image was submitted in.
+
+    NOTE: iOS & Android Dashboards have three categories of usage statistics: screentime, pickups (a.k.a. unlocks), and
+    notifications. Because of this, the table provided from the study may have multiple columns of URLs (e.g. one column
+    for each usage category, multiple columns for only one category, or multiple columns for all three categories).
     """
     url_df = pd.DataFrame(columns=[PARTICIPANT_ID, DEVICE_ID, IS_RESEARCHER, RESPONSE_DATE, IMG_RESPONSE_TYPE, IMG_URL])
     for i in df.index:
@@ -87,33 +80,25 @@ def compile_list_of_urls(df, screentime_cols, pickups_cols, notifications_cols,
 
         # Extract the response date from the date column, in date format
         try:
-            response_date = datetime.strptime(str(df[time_col][i])[0:10], "%Y-%m-%d")  # YYYY-MM-DD = 10 chars
+            response_date = datetime.strptime(str(df[date_col][i])[0:10], "%Y-%m-%d")  # YYYY-MM-DD = 10 chars
         except ValueError:  #
             response_date = datetime.strptime("1999-01-01", "%Y-%m-%d")  # TODO: try None?
 
-        for col_name in screentime_cols + pickups_cols + notifications_cols:
-            # Cycle through each column in which a user might have submitted a screenshot and add its URL to the list
-            url = str(df[col_name][i])
-            if not url.startswith("https://file.avicennaresearch.com"):
-                continue
+        for key, col_list in url_cols.items():
+            for col_name in col_list:
+                url = str(df[col_name][i])
+                img_response_type = key
+                if not url.startswith("https://file.avicennaresearch.com"):
+                    continue
+                # Note: For the Boston Children's Hospital data, all images are of type SCREENTIME
 
-            if col_name in screentime_cols:
-                img_response_type = SCREENTIME
-            elif col_name in pickups_cols:
-                img_response_type = PICKUPS
-            elif col_name in notifications_cols:
-                img_response_type = NOTIFICATIONS
-            else:
-                img_response_type = None
-            # Note: For the Boston Children's Hospital data, all images are of type SCREENTIME
-
-            new_row = {PARTICIPANT_ID: user_id,
-                       DEVICE_ID: device_id,
-                       IS_RESEARCHER: True if df.loc[i, id_col] == IS_RESEARCHER else False,
-                       RESPONSE_DATE: response_date.date(),
-                       IMG_RESPONSE_TYPE: img_response_type,
-                       IMG_URL: url}
-            url_df = pd.concat([url_df, pd.DataFrame([new_row])], ignore_index=True)
+                new_row = {PARTICIPANT_ID: user_id,
+                           DEVICE_ID: device_id,
+                           IS_RESEARCHER: True if df.loc[i, id_col] == IS_RESEARCHER else False,
+                           RESPONSE_DATE: response_date.date(),
+                           IMG_RESPONSE_TYPE: img_response_type,
+                           IMG_URL: url}
+                url_df = pd.concat([url_df, pd.DataFrame([new_row])], ignore_index=True)
 
     return url_df
 
@@ -307,9 +292,15 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+')
     return df_words, df_lines
 
 
-def show_text_on_image(df, img, draw_boxes=True):
-    # Show where text is found on an image (mostly for debugging)
+def show_image(df, img, draw_boxes=True):
+    """
+    Opens a new window of the image currently being analyzed for data. Press any key to close the window.
 
+    :param df: The dataframe that contains text extracted from the image (img) 
+    :param img: The image from which the text in df is extracted
+    :param draw_boxes: If True, coloured boxes are drawn around the text located in img.
+    :return: None
+    """
     img_height, img_width = img.shape
 
     img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
@@ -341,7 +332,7 @@ def show_text_on_image(df, img, draw_boxes=True):
 
 def determine_language_of_image(participant, df):
     backup_lang = participant.language if participant.language is not None else default_language
-    backup_lang_msg = f"Setting image language to {'study' if participant.language is None else 'user'} default {backup_lang}."
+    backup_lang_msg = f"Setting image language to {'study' if participant.language is None else 'user'} default ({backup_lang})."
     user_lang_exists = True if participant.language is not None else False
 
     print("Detecting language: ", end='')
@@ -408,7 +399,7 @@ if __name__ == '__main__':
     for survey in survey_list:
         print(f"Compiling URLs from {survey[CSV_FILE]}...", end='')
         survey_csv = pd.read_csv(survey[CSV_FILE])
-        current_list = compile_list_of_urls(survey_csv, survey[SCREEN_COLS], survey[PICKUP_COLS], survey[NOTIF_COLS])
+        current_list = compile_list_of_urls(survey_csv, survey[URL_COLUMNS])
         print(f"Done.\n{current_list.shape[0]} URLs found.")
         url_list = pd.concat([url_list, current_list], ignore_index=True)
 
@@ -423,6 +414,8 @@ if __name__ == '__main__':
             # Only extract data from the images within the bounds specified in RuntimeValues.py
             continue
 
+        print(f"\n\nFile {index + 1} of {num_urls}: {url_list[IMG_URL][index]}")
+
         current_participant = get_or_create_participant(users=participants,
                                                         user_id=url_list[PARTICIPANT_ID][index],
                                                         dev_id=url_list[DEVICE_ID][index])
@@ -432,7 +425,6 @@ if __name__ == '__main__':
                                         device_os=get_os(url_list[DEVICE_ID][index]),
                                         date=url_list[RESPONSE_DATE][index],
                                         category=url_list[IMG_RESPONSE_TYPE][index])
-        print(f"File {index+1} of {num_urls}:\n{current_screenshot}")
 
         # Add the current screenshot to the array of all screenshots, and load/create the participant
         screenshots.append(current_screenshot)
@@ -445,7 +437,7 @@ if __name__ == '__main__':
         text_df_single_words, text_df = extract_text_from_image(bw_image)
 
         if show_images:
-            show_text_on_image(text_df, bw_image, draw_boxes=True)
+            show_image(text_df, bw_image, draw_boxes=True)
 
         if text_df.shape[0] == 0:
             print(f"No text found.  Setting {current_screenshot.category_submitted} values to {NO_NUMBER}.")

@@ -11,14 +11,14 @@ from LanguageDictionaries import *
 """
 studies = ["HappyB2.0",      "BCH"]
 #           studies[0], studies[1] 
-study_to_analyze = studies[1]   
+study_to_analyze = studies[1]
 
 pc_user = 'geoff'  # gbk546 (when at University of Saskatchewan) or geoff (when at home)
 if study_to_analyze == "HappyB2.0":
     os.chdir(
-        f'C:\\Users\\{pc_user}\\OneDrive - University of Saskatchewan\\Grad Studies\\HappyB 2.0\\OCRScript_iOS_v2')
+        f'C:\\Users\\{pc_user}\\OneDrive - University of Saskatchewan\\Grad Studies\\HappyB 2.0')
     default_language = ENG
-    survey_list = [happyb2_baseline_survey, happyb2_daily_survey]
+    survey_list = [happyb2_baseline_survey, happyb2_daily_survey_ios]  # , happyb2_daily_survey_android]
 elif study_to_analyze == "BCH":
     os.chdir(
         f'C:\\Users\\{pc_user}\\OneDrive - University of Saskatchewan\\Grad Studies\\Boston Childrens Hospital')
@@ -46,13 +46,14 @@ use_downloaded_images = True  # If False, local copies of images are not used (a
 user = "geoff.klassen@usask.ca"
 passw = "Phi1*618ah"
 
-# Location of PyTesseract on local drive
-# pytesseract.pytesseract.tesseract_cmd = r'C:\Users\gbk546\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'  # At U of S
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'  # At home
 
 show_images = False  # If True, images of the screenshots will be shown during runtime (mostly for debugging).
 
 conf_limit = 80
+
+# Location of PyTesseract on local drive
+# pytesseract.pytesseract.tesseract_cmd = r'C:\Users\gbk546\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'  # At U of S
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'  # At home
 
 test_lower_bound = 100
 test_upper_bound = 110
