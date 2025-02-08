@@ -57,6 +57,7 @@ IOS = 'iOS'
 ANDROID = 'Android'
 UNKNOWN = 'Unknown'
 
+
 def compile_list_of_urls(df, screentime_cols, pickups_cols, notifications_cols,
                          time_col='Record Time', id_col='Participant ID', device_id_col='Device ID'):
     """Create a dataframe of URLs from a provided dataframe of survey responses.

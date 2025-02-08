@@ -101,7 +101,7 @@ KEYWORDS_FOR_WEEK = {ITA: ['Questa settimana', 'Media giornaliera'],
 
 
 """
-    Heading dictionaries
+    iOS Heading dictionaries
 """
 # Order in Dashboard: SCREEN TIME, (LIMITS), MOST USED, PICKUPS, FIRST PICKUP, FIRST USED AFTER PICKUP, NOTIFICATIONS
 # The LIMITS heading only appears if the user's phone has a daily time limit set for at least one app.

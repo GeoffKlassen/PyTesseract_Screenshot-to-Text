@@ -28,7 +28,7 @@ class Screenshot:
 
     def __str__(self):
         s_user_id = f"User ID: {self.user_id}".ljust(22)
-        s_device_os = f"Device OS: {self.device_os}".ljust(15)
+        s_device_os = f"Device OS: {self.device_os}".ljust(23)
         s_date = f"Date submitted: {self.date_submitted}".ljust(33)
         s_cat = f"Category submitted: {self.category_submitted}"
         return f"URL: {self.url}\n{s_user_id}{s_device_os}{s_date}{s_cat}"
