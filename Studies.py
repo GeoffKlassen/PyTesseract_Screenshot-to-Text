@@ -30,21 +30,22 @@ happyb_daily_survey = {CSV_FILE: 'activity_response_2207_14718_9.csv',
 """
     HappyB2.0
 """
-happyb2_baseline_survey = {CSV_FILE: 'OCRScript_iOS_v2\\study-3749-export-173-survey-responses-20973-2024-10-23-20-20-34.csv',
+happyb2_baseline_survey = {CSV_FILE: 'OCRScript_Android_v2\\study-3749-export-1-survey-responses-20973-2024-07-03-20-37-24.csv',
                            URL_COLUMNS: {SCREEN_COLS: ['[24_IMG] iOS_screenshot_1_duration'],
                                          PICKUP_COLS: ['[25_IMG] iOS_screenshot_2_unlocks'],
                                          NOTIFY_COLS: ['[26_IMG] iOS_screenshot_3_notifications']
                                          }
                            }
-happyb2_daily_survey_ios = {CSV_FILE: 'OCRScript_iOS_v2\\study-3749-export-174-survey-responses-20976-2024-10-23-20-20-53.csv',
+happyb2_daily_survey_ios = {CSV_FILE: 'OCRScript_iOS_v2\\study-3749-export-1-survey-responses-20976-2024-07-26-22-11-50.csv',
                             URL_COLUMNS: {SCREEN_COLS: ['[2_IMG] iOS screentime'],
                                           PICKUP_COLS: ['[3_IMG] iOS unlocks'],
                                           NOTIFY_COLS: ['[4_IMG] iOS notifications']
                                          }
                             }
-happyb2_daily_survey_android = {CSV_FILE: 'OCRScript_Android_v2\\study-3749-export-175-survey-responses-20977-2024-10-23-20-21-05.csv',
-                                # Note: This CSV contains ~40,000 URLs.
-                                # Many of the Android users were found to be fraudulent.
+happyb2_daily_survey_android = {CSV_FILE: 'OCRScript_Android_v2\\study-3749-export-2-survey-responses-20977-2024-07-03-20-38-28.csv',
+                                # Note: OCRScript_Android_v2\\study-3749-export-175-survey-responses-20977-2024-10-23
+                                # -20-21-05.csv contains ~40,000 URLs. Many of the Android users were found to be
+                                # fraudulent.
                                 URL_COLUMNS: {SCREEN_COLS: ['[2_IMG] AndroidScreentime'],
                                               PICKUP_COLS: ['[3_IMG] Android unlocks'],
                                               NOTIFY_COLS: ['[4_IMG] Android notifications']
@@ -53,7 +54,7 @@ happyb2_daily_survey_android = {CSV_FILE: 'OCRScript_Android_v2\\study-3749-expo
 
 
 """
-    Boston Children's Hospital
+    Boston Children's Hospital (BCH)
 """
 bch_survey = {CSV_FILE: 'study-2037-export-3-survey-responses-16872-2024-10-01-14-25-42.csv',
               URL_COLUMNS: {SCREEN_COLS: ['[3_IMG] Question 3 of Survey 16872', '[4_IMG] Question 4 of Survey 16872'],

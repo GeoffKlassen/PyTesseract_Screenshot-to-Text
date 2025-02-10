@@ -127,7 +127,7 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
                 if use_downloaded_images:
                     img = img.convert('RGB')  # We'll standardize the image to RGB format.
                     img.save(img_local_path)
-                    print(f"Image saved to local folder '{dir_for_downloaded_images}'.")
+                    print(f"Image saved to local folder '{dir_for_downloaded_images}\\{screenshot.device_os}'.")
                 # _adjust_size(img)   # TODO verify if img properly adjusted.
                 img_array = np.array(img, dtype='uint8')
                 return img_array
@@ -166,10 +166,15 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
             else:
                 img[mask > 0] = [0, 0, 0]  # Make all pixels in mask black
 
+    if not os.path.exists(dir_for_downloaded_images):
+        os.makedirs(dir_for_downloaded_images)
+    if not os.path.exists(f"{dir_for_downloaded_images}\\{screenshot.device_os}"):
+        os.makedirs(f"{dir_for_downloaded_images}\\{screenshot.device_os}")
+
     if use_downloaded_images:
-        img_local_path = os.path.join(dir_for_downloaded_images, screenshot.filename)
+        img_local_path = os.path.join(dir_for_downloaded_images, screenshot.device_os, screenshot.filename)
         if os.path.exists(img_local_path):
-            print("Opening local image...")
+            print(f"Opening local image in '{dir_for_downloaded_images}\\{screenshot.device_os}'...")
             image = Image.open(img_local_path)
             image = image.convert('RGB')
             image = np.array(image, dtype='uint8')
@@ -392,10 +397,49 @@ def get_os(dev_id):
         return UNKNOWN
 
 
-if __name__ == '__main__':
-    if not os.path.exists(dir_for_downloaded_images):
-        os.makedirs(dir_for_downloaded_images)
+# TODO This function has a more recent version in the CHB code.
+#  Use that, and merge in the Android values for value_format.
+"""
+def choose_between_two_values(text1, conf1, text2, conf2):
+    text1 = str(text1)
+    text2 = str(text2)
+    value_format = (USE misread_time_formats FROM IOS.PY) if \
+        dashboard_category == SCREENTIME else r'^[0-9A]+$'
+    format_name = 'time' if dashboard_category == SCREENTIME else 'number'
 
+    if conf1 != NO_CONF and conf2 != NO_CONF:
+        if bool(re.search(value_format, text1)) and not bool(re.search(value_format, text2)):
+            print(f"Only 1st scan matches a proper {format_name} format. Keeping 1st scan.")
+            return text1, conf1
+        elif not bool(re.search(value_format, text1)) and bool(re.search(value_format, text2)):
+            print(f"Only 2nd scan matches a proper {format_name} format. Using 2nd scan.")
+            return text2, conf2
+        elif len(text1) > len(text2):
+            print("1st scan is longer than 2nd scan. Keeping 1st scan.")
+            return text1, conf1
+        elif len(text1) < len(text2):
+            print("2nd scan is longer than 1st scan. Using 2nd scan.")
+            return text2, conf2
+        else:
+            if conf1 > conf2:
+                print("1st scan has higher confidence. Keeping 1st scan.")
+                return text1, conf1
+            else:
+                print("2nd scan has higher confidence. Using 2nd scan.")
+                return text2, conf2
+    elif conf1 != NO_CONF:
+        print("No text found on 2nd scan. Keeping 1st scan.")
+        return text1, conf1
+    elif conf2 != NO_CONF:
+        print("No text found on 1st scan. Using 2nd scan.")
+        return text2, conf2
+    else:
+        print("No text found on 1st or 2nd scan.")
+        return NO_NUMBER, NO_CONF
+"""
+
+
+if __name__ == '__main__':
     # Read in the list of URLs for the appropriate Study (as specified in RuntimeValues.py)
     url_list = pd.DataFrame()
     for survey in survey_list:
@@ -458,11 +502,11 @@ if __name__ == '__main__':
         if current_screenshot.device_os == ANDROID:
             ## Perhaps all you need to do is copy the code for extracting Android data into the Android.py file ??
             Android.main()
-            # Run the code in Android.py
+            # use functions from Android.py
             # Return the extracted data
 
         elif current_screenshot.device_os == IOS:
             iOS.main()
 
-            ## Run code in iOS.py
+            ## use functions from iOS.py
             # Return the extracted data

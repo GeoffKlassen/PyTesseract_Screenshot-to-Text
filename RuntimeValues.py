@@ -1,4 +1,5 @@
 """This file contains variables that the user can change prior to runtime."""
+
 import os
 import pytesseract
 from Studies import *
@@ -6,27 +7,30 @@ from LanguageDictionaries import *
 
 """
     User can specify one of the pre-set studies that have been analyzed with this program already.
-    As of now, that is either HappyB2.0 or BCH.
     Otherwise, the values below can be customized.
+    
+    As of Feb 10, 2025, there are 2 preset studies available: HappyB2.0 and BCH.
 """
 studies = ["HappyB2.0",      "BCH"]
 #           studies[0], studies[1] 
 study_to_analyze = studies[1]
 
-pc_user = 'geoff'  # gbk546 (when at University of Saskatchewan) or geoff (when at home)
+pc_user = 'Geoff'  # gbk546 (when at University of Saskatchewan) or Geoff (when at home)
 if study_to_analyze == "HappyB2.0":
     os.chdir(
         f'C:\\Users\\{pc_user}\\OneDrive - University of Saskatchewan\\Grad Studies\\HappyB 2.0')
     default_language = ENG
-    survey_list = [happyb2_baseline_survey, happyb2_daily_survey_ios]  # , happyb2_daily_survey_android]
+    survey_list = [happyb2_baseline_survey, happyb2_daily_survey_ios, happyb2_daily_survey_android]
+
 elif study_to_analyze == "BCH":
     os.chdir(
         f'C:\\Users\\{pc_user}\\OneDrive - University of Saskatchewan\\Grad Studies\\Boston Childrens Hospital')
     default_language = ENG
     survey_list = [bch_survey]
 else:
+
     """ These are the values that can be customized per study """
-    # Set the current working directory (CWD)
+    # Set the current working directory (CWD) where the survey CSV files are located
     os.chdir(
         'C:\\Users\\gbk546\\OneDrive - University of Saskatchewan\\Grad Studies\\HappyB 2.0\\OCRScript_iOS_v2')  # For HappyB 2.0
 
@@ -38,8 +42,7 @@ else:
     # survey_list = [happyb2_baseline_survey, happyb2_daily_survey]     # For HappyB2.0
     survey_list = [bch_survey]  # For Boston Children's Hospital
 
-# Where to store downloaded images (a subfolder within the CWD)
-dir_for_downloaded_images = "Saved Images"
+dir_for_downloaded_images = f"Saved Images\\{study_to_analyze}"  # Where to store downloaded images (a sub-folder within the CWD)
 use_downloaded_images = True  # If False, local copies of images are not used (always download images from URLs).
 
 # Login credentials for downloading images from www.avicennaresearch.com

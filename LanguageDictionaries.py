@@ -49,17 +49,16 @@ ENG = 'English'
 FRA = 'French'
 
 LANGUAGE_KEYWORDS = {GER: ['Gestern', 'Heute', 'Benachrichtigungen', 'Entsperrungen'],
-                     ITA: ['Tempo di utilizzo''utilizzo', 'dello schermo', ' leri ', '\bleri\b', 'notifiche', 'NOTIFICHE', 'UTILIZZATE',
-                           'DOPO', 'ricevute', 'sblocchi', 'Sblocchi', 'blocchi', 'volte', 'batteria', 'atteria',
-                           'Oggi'],
-                     # duplicate words with differences in spaces.
+                     ITA: ['Tempo di utilizzo''utilizzo', 'dello schermo', ' leri ', '\bleri\b', 'notifiche',
+                           'NOTIFICHE', 'UTILIZZATE', 'DOPO', 'ricevute', 'sblocchi', 'Sblocchi', 'blocchi', 'volte',
+                           'batteria', 'atteria', 'Oggi'],
                      ENG: ['Screen time', 'SCREEN', 'Updated', 'Yesterday', 'yesterday', 'Today', 'View more', 'today',
                            'received', 'Unlocks', 'unlocks'],
                      FRA: ['Applications les plus', 'fois', 'Notifications', 'Hier']
                      }
-
 # If one of the keywords above is found in a given screenshot, that screenshot is classified as being of the language of
-# that keyword. Otherwise, the screenshot is classified as being of the default language, as set in RuntimeValues.py.
+# that keyword. Otherwise, the screenshot is classified as being of the previously detected language for its participant
+# or, if that's not available, the study's default language as set in RuntimeValues.py.
 
 """
     Date dictionaries
@@ -83,7 +82,7 @@ DATE_FORMAT = {ITA: [r'\d{1,2}\s?MMM'],
 KEYWORDS_FOR_TODAY = {ITA: ['Oggi', 'oggi'],
                       GER: ['Heute', 'heute'],
                       ENG: ['Today', 'today'],
-                      FRA: ['Aujourd', 'aujourd']}  # Abbreviated version for French (aujourd'hui)
+                      FRA: ['Aujourd', 'aujourd']}  # Abbreviated version for aujourd'hui
 
 KEYWORDS_FOR_YESTERDAY = {ITA: ['leri'],  # True word is Ieri, but pytesseract usually reads the 'I' as 'l'.
                           ENG: ['Yesterday'],
