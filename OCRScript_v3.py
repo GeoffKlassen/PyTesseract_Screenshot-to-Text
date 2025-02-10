@@ -368,13 +368,11 @@ def get_or_create_participant(users, user_id, dev_id):
 
 
 def get_os(dev_id):
-    """ Returns the (very likely) device OS based on the Device ID.
+    """ Returns the (almost certain) device OS based on the Device ID.
 
-    Args:
-        dev_id:    The Device ID of the device used to submit an image.
+    :param dev_id: The Device ID of the device used to submit an image.
 
-    Returns:
-        The operating system (iOS or Android)
+    :returns: The operating system of the device (iOS or Android).
 
     As of February 7, 2025, all iPhone Device IDs in Avicenna CSVs appear as 32-digit hexadecimal numbers, and
     all Android device IDs in Avicenna CSVs appear as 16-digit hexadecimal numbers.
@@ -479,10 +477,12 @@ if __name__ == '__main__':
         # Download the image (if not using local images) or open the local image
         grey_image, bw_image = load_and_process_image(current_screenshot, white_threshold=226)
         current_screenshot.set_image(grey_image)
-
         current_screenshot.is_light_mode = True if np.mean(grey_image) > 170 else False
         # Light-mode images have an average pixel brightness above 170 (scale 0 to 255).
+
+        # Extract the text (if any) that can be found in the image.
         text_df_single_words, text_df = extract_text_from_image(bw_image)
+        current_screenshot.set_text(text_df)
 
         if show_images:
             show_image(text_df, bw_image, draw_boxes=True)
@@ -509,5 +509,13 @@ if __name__ == '__main__':
         elif current_screenshot.device_os == IOS:
             iOS.main()
 
-            ## use functions from iOS.py
+            # Different languages display dates in different formats. Create the regex pattern for the date.
+            date_pattern = iOS.get_date_regex(image_language)
+
+            # Determine the date in the screenshot
+            date_in_screenshot = iOS.get_date_in_screenshot(current_screenshot, date_pattern)
+            current_screenshot.set_date_detected(date_in_screenshot)
+
+            # Determine if screenshot contains 'daily' data or 'weekly' data
+
             # Return the extracted data

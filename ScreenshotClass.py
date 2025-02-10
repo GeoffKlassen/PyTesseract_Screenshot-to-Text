@@ -25,6 +25,7 @@ class Screenshot:
         self.grey_image = None
         self.date_detected = None
         self.category_detected = None
+        self.text = None
 
     def __str__(self):
         s_user_id = f"User ID: {self.user_id}".ljust(22)
@@ -47,3 +48,6 @@ class Screenshot:
 
     def set_category_detected(self, cat):
         self.category_detected = cat
+
+    def set_text(self, text):
+        self.text = text

@@ -1,4 +1,10 @@
 """This file contains iOS-specific dictionaries, functions, and variables."""
+from datetime import datetime
+
+import numpy as np
+import re
+import warnings
+from RuntimeValues import *
 
 """
     Language abbreviations
@@ -74,34 +80,60 @@ TIME_FORMAT_STR_FOR_MINUTES = r'\d+\s?(min|m)'
 TIME_FORMAT_STR_FOR_HOURS = r'\d+\s?h'
 TIME_FORMAT_STR_FOR_SECONDS = r'\d+\s?s'
 
+HEADING_COLUMN = 'heading'
+SCREENTIME_HEADING = 'screentime'
+LIMITS_HEADING = 'limits'
+MOST_USED_HEADING = 'most used'
+PICKUPS_HEADING = 'pickups'
+FIRST_PICKUP_HEADING = 'first pickup'
+FIRST_USED_AFTER_PICKUP_HEADING = 'first used after pickup'
+NOTIFICATIONS_HEADING = 'notifications'
+HOURS_AXIS_HEADING = 'hours row'
+DAY_OR_WEEK_HEADING = 'day or week'
 
 misread_time_format = r'^[\d|t]+\s?[hn]$|^[\d|t]+\s?[hn]\s?[\d|tA]+\s?(min|m)$|^.{0,2}\s?[0-9AIt]+\s?(min|m)$|\d+\s?s$'
 misread_number_format = r'^[0-9A]+$'
 misread_time_or_number_format = '|'.join([misread_time_format, misread_number_format])
 
 
-def get_date_regex(_list):
-    # This function replaces the MMM's in the values of the DATE dictionaries
-    # with the month abbreviations for the current language.
+def get_date_regex(img_lang):
+    """
+    Compile the regular expression of the date format to look for in an image based on its language.
+    :param img_lang: (String) the language to use for making the date regex. ('English', 'Italian', etc.)
+
+    :return: (String) The date regex for the given language.
+    """
+    _list = DATE_FORMAT[img_lang]
     patterns = []
     for _format in _list:
+        # Replace the 'MMM's in DATE_FORMAT with the appropriate 3-4 letter abbreviations for the months.
         patterns.append(re.sub('MMM', ''.join(['(', '|'.join(MONTH_ABBREVIATIONS[img_lang]), ')']), _format))
     pattern = '|'.join(patterns)
 
     return pattern
 
 
-def determine_date_in_screenshot(df):
+def get_date_in_screenshot(screenshot, date_pattern):
+    """
+    Checks if any text found in the given screenshot matches the given date pattern. If there's a match, return it.
+    :param screenshot: The screenshot to search for a date.
+    :param date_pattern: The date pattern (regex) to look for in the screenshot.
+    :return: The date-format value of the date found in the screenshot text (if any), otherwise 'None'.
+    """
+    df = screenshot.text
+    lang = screenshot.language if screenshot.language is not None else default_language
+
     try:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            row_with_date = df[df['text'].str.contains(str(date_pattern), case=False)].iloc[0]
+            row_with_date = df[df['text'].str.contains(date_pattern, regex=True, case=False)].iloc[0]
+
         date_detected = re.search(date_pattern, row_with_date['text'], flags=re.IGNORECASE).group()
         month_detected = re.search(r'[a-zA-Z]+', date_detected).group().lower()
         day_detected = re.search(r'\d+', date_detected).group()
 
-        months_to_replace = MONTH_ABBREVIATIONS[img_lang]
-        english_months = MONTH_ABBREVIATIONS['eng']
+        months_to_replace = MONTH_ABBREVIATIONS[lang]
+        english_months = MONTH_ABBREVIATIONS[ENG]
         for i, abbr in enumerate(months_to_replace):
             month_detected = month_detected.replace(abbr, english_months[i])
         month_detected = month_detected[0:3]  # datetime.strptime requires month to be 3 characters
@@ -116,7 +148,7 @@ def determine_date_in_screenshot(df):
             month_numeric = month_mapping.get(month_detected)
             if month_numeric:
                 # Construct the complete date with the year
-                complete_date = date_object.replace(year=int(date_recorded.year), month=month_numeric)
+                complete_date = date_object.replace(year=int(screenshot.date_submitted.year), month=month_numeric)
                 print(f"Date text detected: {row_with_date['text']}.  Setting date to {complete_date.date()}.")
                 return complete_date.date()
             else:
@@ -130,7 +162,12 @@ def determine_date_in_screenshot(df):
 
 
 def levenshtein_distance(s1, s2):
-    # Determine the number of insertions + deletions + substitutions needed to turn s1 into s2
+    """
+    Determines the number of character insertions/deletions/substitutions required to transform s1 into s2.
+    :param s1: (String) One of the strings
+    :param s2: (String) The other string
+    :return: (int) The distance between s1 and s2.
+    """
     if len(s1) < len(s2):
         return levenshtein_distance(s2, s1)
 
@@ -214,11 +251,11 @@ def get_headings(df):
 
         if rows_with_day_or_week is not None and i in rows_with_day_or_week.index:
             df.loc[i, HEADING_COLUMN] = DAY_OR_WEEK_HEADING
-        elif levenshtein_distance(row_text, KEYWORD_FOR_SCREEN_TIME[img_lang]) <= error_margin:
+        elif min(levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_SCREEN_TIME[img_lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = SCREENTIME_HEADING
-        elif levenshtein_distance(row_text, KEYWORD_FOR_LIMITATIONS[img_lang]) <= error_margin:
+        elif min(levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_LIMITATIONS[img_lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = LIMITS_HEADING
-        elif levenshtein_distance(row_text, KEYWORD_FOR_MOST_USED[img_lang]) <= error_margin:
+        elif min(levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_MOST_USED[img_lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = MOST_USED_HEADING
         elif min(levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_PICKUPS[img_lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = PICKUPS_HEADING
