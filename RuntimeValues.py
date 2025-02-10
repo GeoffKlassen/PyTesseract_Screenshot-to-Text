@@ -43,7 +43,8 @@ else:
     survey_list = [bch_survey]  # For Boston Children's Hospital
 
 dir_for_downloaded_images = f"Saved Images\\{study_to_analyze}"  # Where to store downloaded images (a sub-folder within the CWD)
-use_downloaded_images = True  # If False, local copies of images are not used (always download images from URLs).
+use_downloaded_images = True  # If False, local copies of images are not used (all images are downloaded at runtime).
+save_downloaded_images = True  # If True, images downloaded at runtime are saved to a local folder for quicker access.
 
 # Login credentials for downloading images from www.avicennaresearch.com
 user = "geoff.klassen@usask.ca"

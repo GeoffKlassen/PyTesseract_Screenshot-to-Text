@@ -116,7 +116,7 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
             print("Skipping. Invalid URL.")
             return empty_arr
         test_url = img_path.replace("https", "http")
-        print("Downloading image...")
+        print("Downloading image from URL...")
         # The first request without auth headers to check what the redirected URL is.
         response = requests.get(test_url, verify=True)
         actual_url = response.url
@@ -124,10 +124,10 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
             response = requests.get(img_path, verify=True, auth=(user, passw))
             if response.status_code == 200:
                 img = Image.open(BytesIO(response.content))
-                if use_downloaded_images:
-                    img = img.convert('RGB')  # We'll standardize the image to RGB format.
+                img = img.convert('RGB')  # We'll standardize the image to RGB format.
+                if save_downloaded_images:
                     img.save(img_local_path)
-                    print(f"Image saved to local folder '{dir_for_downloaded_images}\\{screenshot.device_os}'.")
+                    print(f"Image saved to '{dir_for_downloaded_images}\\{screenshot.device_os}\\{screenshot.filename}'.")
                 # _adjust_size(img)   # TODO verify if img properly adjusted.
                 img_array = np.array(img, dtype='uint8')
                 return img_array
@@ -166,15 +166,16 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
             else:
                 img[mask > 0] = [0, 0, 0]  # Make all pixels in mask black
 
-    if not os.path.exists(dir_for_downloaded_images):
-        os.makedirs(dir_for_downloaded_images)
-    if not os.path.exists(f"{dir_for_downloaded_images}\\{screenshot.device_os}"):
-        os.makedirs(f"{dir_for_downloaded_images}\\{screenshot.device_os}")
+    if use_downloaded_images or save_downloaded_images:
+        if not os.path.exists(dir_for_downloaded_images):
+            os.makedirs(dir_for_downloaded_images)
+        if not os.path.exists(f"{dir_for_downloaded_images}\\{screenshot.device_os}"):
+            os.makedirs(f"{dir_for_downloaded_images}\\{screenshot.device_os}")
+    img_local_path = os.path.join(dir_for_downloaded_images, screenshot.device_os, screenshot.filename)
 
     if use_downloaded_images:
-        img_local_path = os.path.join(dir_for_downloaded_images, screenshot.device_os, screenshot.filename)
         if os.path.exists(img_local_path):
-            print(f"Opening local image in '{dir_for_downloaded_images}\\{screenshot.device_os}'...")
+            print(f"Opening local image '{dir_for_downloaded_images}\\{screenshot.device_os}\\{screenshot.filename}'...")
             image = Image.open(img_local_path)
             image = image.convert('RGB')
             image = np.array(image, dtype='uint8')
