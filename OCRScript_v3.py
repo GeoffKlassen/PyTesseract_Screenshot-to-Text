@@ -372,7 +372,7 @@ def get_os(dev_id):
 
     As of February 7, 2025, all iPhone Device IDs in Avicenna CSVs appear as 32-digit hexadecimal numbers, and
     all Android device IDs in Avicenna CSVs appear as 16-digit hexadecimal numbers.
-    Other Device IDs that occur include:
+    When a user submits a survey response via a web browser, the Device ID will reflect that browser:
     W_MACOSX_SAFARI             - macOS (MacBook or iMac)
     W_IOS_MOBILESAFARI          - iOS Safari browser
     W_ANDROID_CHROMEMOBILE      - Android Chrome browser
@@ -381,12 +381,14 @@ def get_os(dev_id):
     if dev_id is None:
         return None
     elif not bool(re.compile(r'^[0-9a-fA-F]+$').match(dev_id)):
+        # If the Device ID is not a hexadecimal string, we cannot guarantee the survey response is from a phone.
         return UNKNOWN
     elif len(dev_id) == 16:
         return ANDROID
     elif len(dev_id) == 32:
         return IOS
     else:
+        # If the Device ID is a hexadecimal string that is not 16- or 32-digits, we can't guarantee the phone OS.
         return UNKNOWN
 
 
@@ -416,6 +418,7 @@ if __name__ == '__main__':
 
         print(f"\n\nFile {index + 1} of {num_urls}: {url_list[IMG_URL][index]}")
 
+        # Load the participant for the current screenshot if they already exist, or create a new participant if not
         current_participant = get_or_create_participant(users=participants,
                                                         user_id=url_list[PARTICIPANT_ID][index],
                                                         dev_id=url_list[DEVICE_ID][index])
@@ -426,7 +429,7 @@ if __name__ == '__main__':
                                         date=url_list[RESPONSE_DATE][index],
                                         category=url_list[IMG_RESPONSE_TYPE][index])
 
-        # Add the current screenshot to the array of all screenshots, and load/create the participant
+        # Add the current screenshot to the list of all screenshots
         screenshots.append(current_screenshot)
         # Download the image (if not using local images) or open the local image
         grey_image, bw_image = load_and_process_image(current_screenshot, white_threshold=226)
@@ -463,8 +466,3 @@ if __name__ == '__main__':
 
             ## Run code in iOS.py
             # Return the extracted data
-
-
-
-        # Once we have the language, we know what language-specific spellings of dates & headings to look for.
-        # At this point, we use whether the image is Android or iOS.
