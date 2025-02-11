@@ -6,15 +6,7 @@ import pandas as pd
 import re
 import warnings
 from RuntimeValues import *
-
-"""
-    Language abbreviations
-"""
-GER = 'German'
-ITA = 'Italian'
-ENG = 'English'
-FRA = 'French'
-
+from ConvenienceVariables import *
 
 """
     iOS-Specific dictionaries
@@ -81,22 +73,6 @@ SECONDS_KEYWORD = 's'
 TIME_FORMAT_STR_FOR_MINUTES = r'\d+\s?(min|m)'
 TIME_FORMAT_STR_FOR_HOURS = r'\d+\s?h'
 TIME_FORMAT_STR_FOR_SECONDS = r'\d+\s?s'
-
-HEADING_COLUMN = 'heading'
-SCREENTIME_HEADING = 'screentime'
-LIMITS_HEADING = 'limits'
-MOST_USED_HEADING = 'most used'
-PICKUPS_HEADING = 'pickups'
-FIRST_PICKUP_HEADING = 'first pickup'
-FIRST_USED_AFTER_PICKUP_HEADING = 'first used after pickup'
-NOTIFICATIONS_HEADING = 'notifications'
-HOURS_AXIS_HEADING = 'hours row'
-DAY_OR_WEEK_HEADING = 'day or week'
-
-TODAY = 'today'
-YESTERDAY = 'yesterday'
-DAY_OF_THE_WEEK = 'weekday'
-WEEK = 'week'
 
 misread_time_format = r'^[\d|t]+\s?[hn]$|^[\d|t]+\s?[hn]\s?[\d|tA]+\s?(min|m)$|^.{0,2}\s?[0-9AIt]+\s?(min|m)$|\d+\s?s$'
 misread_number_format = r'^[0-9A]+$'
@@ -325,16 +301,26 @@ def get_headings(screenshot):
         print(df[['text', 'heading']])
     else:
         print("No headings found.")
+    print()
 
     return df
 
 
-def get_dashboard_category(heads_df):
+def get_dashboard_category(screenshot):
+    """
+    Determines the categories of data present in the screenshot image, and chooses which one to assign to the screenshot.
+
+    :param screenshot: The screenshot to search for categories.
+    :return: (String) The category of data to search for in the image, or None (if no categories are detected).
+    """
     # Headings in iOS Dashboard appear in this order:
     #     SCREEN TIME,  (LIMITS),  MOST USED,  PICKUPS,  FIRST PICKUP,  FIRST USED AFTER PICKUP,  NOTIFICATIONS
     # This function checks for the occurrence of these headings in that order.
+    heads_df = screenshot.headings_df
+    text_df = screenshot.text
+    backup_category = screenshot.category_submitted
+
     categories_found = []
-    backup_category = image_response_type
 
     if heads_df[HEADING_COLUMN].str.contains(SCREENTIME_HEADING).any() or \
             (heads_df[HEADING_COLUMN].str.contains(LIMITS_HEADING).any() and
@@ -344,26 +330,24 @@ def get_dashboard_category(heads_df):
             heads_df[HEADING_COLUMN].str.contains(MOST_USED_HEADING).any() and (
             text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == MOST_USED_HEADING].index[0] + 1 or
             heads_df[heads_df[HEADING_COLUMN] == MOST_USED_HEADING].iloc[-1]['top'] <
-            0.9 * screenshot_height):
+            0.9 * screenshot.height):
         # Found screentime heading; or
         # Found limits heading and hours row, and limits is below hours; or
         # Found most used heading and either:
         #     text_df has more data below the most used heading, or
-        #     the most used heading is not too close to the bottom
+        #     the most used heading is not too close to the bottom of the screenshot
         categories_found.append(SCREENTIME)
-        # return SCREENTIME
 
     if heads_df[HEADING_COLUMN].str.contains(PICKUPS_HEADING).any() or \
             heads_df[HEADING_COLUMN].str.contains(FIRST_USED_AFTER_PICKUP_HEADING).any() and (
             text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == FIRST_USED_AFTER_PICKUP_HEADING].index[0] + 1 or
             heads_df[heads_df[HEADING_COLUMN] == FIRST_USED_AFTER_PICKUP_HEADING].iloc[-1]['top'] <
-            0.9 * screenshot_height):
+            0.9 * screenshot.height):
         # Found pickups heading; or
         # Found "first used after pickup" heading and either:
         #     there's more data below, or
-        #     the "first used after pickup" heading is not close to the bottom
+        #     the "first used after pickup" heading is not close to the bottom of the screenshot
         categories_found.append(PICKUPS)
-        # return PICKUPS
 
     if heads_df[HEADING_COLUMN].str.contains(NOTIFICATIONS_HEADING).any() or \
             heads_df[HEADING_COLUMN].str.contains(HOURS_AXIS_HEADING).any() and (
@@ -371,20 +355,20 @@ def get_dashboard_category(heads_df):
             heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].index[0] > heads_df[heads_df[HEADING_COLUMN] == MOST_USED_HEADING].index[0]) and (
             text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].index[0] + 1 or
             heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].iloc[-1]['top'] <
-            0.9 * screenshot_height):
+            0.9 * screenshot.height):
         # Found notifications heading; or
         # Found hours row and either:
         #     there's more data below, or
-        #     the hours row is not close to the bottom
+        #     the hours row is not close to the bottom of the screenshot
         categories_found.append(NOTIFICATIONS)
-        # return NOTIFICATIONS
 
     if not categories_found:
-        print(f"Category not detected.  Defaulting to submitted category: {backup_category}")
+        print(f"No categories detected.")  # Defaulting to submitted category: {backup_category}")
         # Returning None to flag the screenshot for manual review;
         # screenshot category is set to backup_category after this function is called
         return None
     else:
+        print(f"Category submitted: {screenshot.category_submitted}    ", end='')
         print(f"Categories detected: {categories_found}")
         if backup_category in categories_found:
             print(f"Setting category to: {backup_category}")

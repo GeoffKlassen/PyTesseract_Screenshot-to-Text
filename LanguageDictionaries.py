@@ -39,14 +39,7 @@ Variables included:
     TIME_FORMAT_STR_FOR_HOURS       - a regex for the numerical format for a time value in hours
     TIME_FORMAT_STR_FOR_SECONDS     - a regex for the numerical format for a time value in seconds
 """
-
-"""
-    Language abbreviations
-"""
-GER = 'German'
-ITA = 'Italian'
-ENG = 'English'
-FRA = 'French'
+from ConvenienceVariables import *
 
 LANGUAGE_KEYWORDS = {GER: ['Gestern', 'Heute', 'Benachrichtigungen', 'Entsperrungen'],
                      ITA: ['Tempo di utilizzo''utilizzo', 'dello schermo', ' leri ', '\bleri\b', 'notifiche',

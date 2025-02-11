@@ -4,11 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c55e9a34-33b9-471a-a770-4f23caf24d17" name="Changes" comment="Added iOS functions for get_date_range_in_screenshot and get_headings">
+    <list default="true" id="c55e9a34-33b9-471a-a770-4f23caf24d17" name="Changes" comment="determine_language_of_image() now prints the language keyword that it detected.">
+      <change beforePath="$PROJECT_DIR$/.idea/OCRScript_v3.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/OCRScript_v3.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/OCRScript_v3.py" beforeDir="false" afterPath="$PROJECT_DIR$/OCRScript_v3.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ScreenshotClass.py" beforeDir="false" afterPath="$PROJECT_DIR$/ScreenshotClass.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iOS.py" beforeDir="false" afterPath="$PROJECT_DIR$/iOS.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RuntimeValues.py" beforeDir="false" afterPath="$PROJECT_DIR$/RuntimeValues.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -39,18 +39,18 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Python.OCRScript_v3.executor": "Run",
-    "Python.RuntimeValues.executor": "Run",
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "master",
-    "last_opened_file_path": "C:/Users/geoff/OneDrive - University of Saskatchewan/Grad Studies/HappyB 2.0/OCRScript_v3",
-    "settings.editor.selected.configurable": "project.propVCSSupport.CommitDialog"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.OCRScript_v3.executor&quot;: &quot;Run&quot;,
+    &quot;Python.RuntimeValues.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/geoff/OneDrive - University of Saskatchewan/Grad Studies/HappyB 2.0/OCRScript_v3&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;project.propVCSSupport.CommitDialog&quot;
   }
-}]]></component>
+}</component>
   <component name="RunAnythingCache">
     <option name="myCommands">
       <command value="pip install opencv-python" />
@@ -66,8 +66,9 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
+      <option name="SDK_NAME" value="Python 3.13" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
+      <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/OCRScript_v3.py" />
@@ -88,7 +89,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-python-sdk-5a2391486177-d3b881c8e49f-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-233.13763.11" />
+        <option value="bundled-python-sdk-495700d161d3-aa17d162503b-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-243.22562.220" />
       </set>
     </attachedChunks>
   </component>
@@ -245,7 +246,15 @@
       <option name="project" value="LOCAL" />
       <updated>1739253932342</updated>
     </task>
-    <option name="localTasksCounter" value="19" />
+    <task id="LOCAL-00019" summary="determine_language_of_image() now prints the language keyword that it detected.">
+      <option name="closed" value="true" />
+      <created>1739293660911</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1739293660911</updated>
+    </task>
+    <option name="localTasksCounter" value="20" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -276,6 +285,7 @@
     <MESSAGE value="Added the ability to choose whether downloaded images are saved locally. Rewrote the opening/downloading console text to account for this." />
     <MESSAGE value="Added iOS functions for get_date_regex and get_date_in_screenshot." />
     <MESSAGE value="Added iOS functions for get_date_range_in_screenshot and get_headings" />
-    <option name="LAST_COMMIT_MESSAGE" value="Added iOS functions for get_date_range_in_screenshot and get_headings" />
+    <MESSAGE value="determine_language_of_image() now prints the language keyword that it detected." />
+    <option name="LAST_COMMIT_MESSAGE" value="determine_language_of_image() now prints the language keyword that it detected." />
   </component>
 </project>

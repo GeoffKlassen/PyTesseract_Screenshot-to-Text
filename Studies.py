@@ -4,12 +4,21 @@ So far:
     HappyB2.0
     BCH
 """
+import pytesseract
+from ConvenienceVariables import *
 
-CSV_FILE = 'csv_file'
-SCREEN_COLS = 'screentime'
-PICKUP_COLS = 'pickups'
-NOTIFY_COLS = 'notifications'
-URL_COLUMNS = 'urls'
+coding_location = 'uni'  # uni or home
+
+if coding_location == 'uni':
+    pc_user = 'gbk546'
+    pytesseract.pytesseract.tesseract_cmd = r'C:\Users\gbk546\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'
+elif coding_location == 'home':
+    pc_user = 'Geoff'
+    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
+else:
+    pc_user = ''
+    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
+
 
 """
     HappyB (1.0)
@@ -63,3 +72,16 @@ bch_survey = {CSV_FILE: 'study-2037-export-3-survey-responses-16872-2024-10-01-1
                             }
               }
 # For the BCH Study, there is only one CSV, in which there are two columns of SCREENTIME screenshots.
+
+study_happyb2_0 = {'Name': "HappyB2.0",
+                   'Directory': f'C:\\Users\\{pc_user}\\OneDrive - University of Saskatchewan\\Grad Studies\\HappyB 2.0',
+                   'Default Language': ENG,
+                   'Survey List': [happyb2_baseline_survey, happyb2_daily_survey_ios, happyb2_daily_survey_android],
+                   'Categories': [SCREENTIME, PICKUPS, NOTIFICATIONS]}
+study_bch = {'Name': "BCH",
+             'Directory': f'C:\\Users\\{pc_user}\\OneDrive - University of Saskatchewan\\Grad Studies\\Boston Childrens Hospital',
+             'Default Language': ENG,
+             'Survey List': [bch_survey],
+             'Categories': [SCREENTIME]}
+
+studies = [study_happyb2_0, study_bch]

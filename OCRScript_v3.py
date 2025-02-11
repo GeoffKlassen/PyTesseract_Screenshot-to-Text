@@ -2,9 +2,10 @@ import Android
 import iOS
 from iOS import *
 from Android import *
-from ScreenshotClass import *
-from ParticipantClass import *
 from RuntimeValues import *
+from ScreenshotClass import Screenshot
+from ParticipantClass import Participant
+from ConvenienceVariables import *
 import os
 import re
 import numpy as np
@@ -18,39 +19,6 @@ from io import BytesIO
 import warnings
 from datetime import datetime
 import time
-
-"""
-    Variables defined for use as column names
-"""
-SCREENTIME = 'screentime'
-PICKUPS = 'pickups'
-NOTIFICATIONS = 'notifications'
-
-HEADING_COLUMN = 'heading'
-SCREENTIME_HEADING = SCREENTIME
-LIMITS_HEADING = 'limits'
-MOST_USED_HEADING = 'most used'
-PICKUPS_HEADING = PICKUPS
-FIRST_PICKUP_HEADING = 'first pickup'
-FIRST_USED_AFTER_PICKUP_HEADING = 'first used after pickup'
-NOTIFICATIONS_HEADING = NOTIFICATIONS
-HOURS_AXIS_HEADING = 'hours row'
-DAY_OR_WEEK_HEADING = 'day or week'
-
-NO_TEXT = '-99999'
-NO_NUMBER = -99999
-NO_CONF = -1
-
-PARTICIPANT_ID = 'participant_id'
-DEVICE_ID = 'device_id'
-IS_RESEARCHER = 'is_researcher'
-RESPONSE_DATE = 'response_date'
-IMG_RESPONSE_TYPE = 'img_response_type'
-IMG_URL = 'img_url'
-
-IOS = 'iOS'
-ANDROID = 'Android'
-UNKNOWN = 'Unknown'
 
 
 def compile_list_of_urls(df, url_cols,
@@ -495,6 +463,13 @@ if __name__ == '__main__':
             current_screenshot.set_language(image_language)
             current_participant.set_language(image_language)
 
+        if study_to_analyze['Categories'].__len__() == 1:
+            # If the study we're analyzing only asked for one category of screenshot,
+            # then we can ignore looking for the other categories.
+            dashboard_category = study_to_analyze['Categories'][0]
+        else:
+            dashboard_category = None
+
         if current_screenshot.device_os == ANDROID:
             Android.main()
 
@@ -516,4 +491,20 @@ if __name__ == '__main__':
             # Find the rows in the screenshot that contain headings ("SCREEN TIME", "MOST USED", "PICKUPS", etc.)
             headings_df = iOS.get_headings(current_screenshot)
             current_screenshot.set_headings(headings_df)
+
+            # Get the category of data that is visible in the screenshot (Screen time, pickups, or notifications)
+            if dashboard_category is not None:
+                print(f"{study_to_analyze['Name']} study only requested screenshots of {dashboard_category} data.  "
+                      f"Category already set to '{dashboard_category}'.")
+            elif not headings_df.empty:
+                dashboard_category = iOS.get_dashboard_category(current_screenshot)
+                if dashboard_category is None:
+                    dashboard_category_not_detected = True
+                    dashboard_category = current_screenshot.category_submitted
+                else:
+                    dashboard_category_not_detected = False
+            else:
+                dashboard_category_not_detected = True
+                dashboard_category = current_screenshot.category_submitted
+
             # Return the extracted data

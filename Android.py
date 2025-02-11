@@ -1,18 +1,12 @@
 """This file contains Android-specific dictionaries, functions, and variables."""
 
-"""
-    Language abbreviations
-"""
-GER = 'German'
-ITA = 'Italian'
-ENG = 'English'
-FRA = 'French'
+from ConvenienceVariables import *
 
 """
     Android-Specific dictionaries
 
-    Some keyword dictionaries are iOS-specific. For example, Android has a dictionary for HOURS, but iOS doesn't need
-    one because all iOS phones use 'h' for hours. Conversely, iOS has a LIMITATIONS heading while Android doesn't.
+    Some keyword dictionaries are Android-specific. For example, Android has a dictionary for HOURS, but iOS doesn't need
+    one because iOS uses 'h' for hours in all languages. Conversely, iOS has a LIMITATIONS heading while Android doesn't.
 """
 
 DATE_RANGE_FORMAT = {ITA: [r'\d{1,2}-\d{1,2}\s?MMM',
