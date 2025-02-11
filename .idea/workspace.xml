@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c55e9a34-33b9-471a-a770-4f23caf24d17" name="Changes" comment="Added iOS functions for get_date_regex and get_date_in_screenshot.">
+    <list default="true" id="c55e9a34-33b9-471a-a770-4f23caf24d17" name="Changes" comment="Added iOS functions for get_date_range_in_screenshot and get_headings">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/OCRScript_v3.py" beforeDir="false" afterPath="$PROJECT_DIR$/OCRScript_v3.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ScreenshotClass.py" beforeDir="false" afterPath="$PROJECT_DIR$/ScreenshotClass.py" afterDir="false" />
@@ -237,7 +237,15 @@
       <option name="project" value="LOCAL" />
       <updated>1739221825654</updated>
     </task>
-    <option name="localTasksCounter" value="18" />
+    <task id="LOCAL-00018" summary="Added iOS functions for get_date_range_in_screenshot and get_headings">
+      <option name="closed" value="true" />
+      <created>1739253932342</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1739253932342</updated>
+    </task>
+    <option name="localTasksCounter" value="19" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -267,6 +275,7 @@
     <MESSAGE value="Program now saves downloaded images to a folder with the name of the study, and then within sub-folders iOS and Android, so images from multiple studies don't end up in one big folder." />
     <MESSAGE value="Added the ability to choose whether downloaded images are saved locally. Rewrote the opening/downloading console text to account for this." />
     <MESSAGE value="Added iOS functions for get_date_regex and get_date_in_screenshot." />
-    <option name="LAST_COMMIT_MESSAGE" value="Added iOS functions for get_date_regex and get_date_in_screenshot." />
+    <MESSAGE value="Added iOS functions for get_date_range_in_screenshot and get_headings" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added iOS functions for get_date_range_in_screenshot and get_headings" />
   </component>
 </project>

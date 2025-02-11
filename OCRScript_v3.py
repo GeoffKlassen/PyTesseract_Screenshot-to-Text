@@ -336,16 +336,16 @@ def determine_language_of_image(participant, df):
     backup_lang_msg = f"Setting image language to {'study' if participant.language is None else 'user'} default ({backup_lang})."
     user_lang_exists = True if participant.language is not None else False
 
-    print("Detecting language: ", end='')
     if df.shape[0] <= 1:
         print(f"No text detected. {backup_lang_msg}")
         return backup_lang, False
-    for key, val in LANGUAGE_KEYWORDS.items():
-        if df['text'].str.contains('|'.join(val)).any():
-            print(f"{key}")
-            return key, True
+    for key, _list in LANGUAGE_KEYWORDS.items():
+        for val in _list:
+            if df['text'].str.contains(val).any():
+                print(f"Language keyword detected: \"{val}\". Setting language to {key}.")
+                return key, True
 
-    print(f"Unknown. {backup_lang_msg}")
+    print(f"No language keywords detected. {backup_lang_msg}")
     return backup_lang, user_lang_exists
 
 
@@ -497,22 +497,23 @@ if __name__ == '__main__':
 
         if current_screenshot.device_os == ANDROID:
             Android.main()
+
             # use functions from Android.py
             # Return the extracted data
 
         elif current_screenshot.device_os == IOS:
-            iOS.main()
+            """Execute the procedure for extracting data from an iOS screenshot"""
 
             # Determine the date in the screenshot
             date_in_screenshot = iOS.get_date_in_screenshot(current_screenshot)
             current_screenshot.set_date_detected(date_in_screenshot)
 
             # Determine if screenshot contains 'daily' data or 'weekly' data
-            date_range, rows_with_date_range = get_date_range_in_screenshot(current_screenshot)
-            current_screenshot.set_time_period(date_range)
-            current_screenshot.set_rows_with_date_range(rows_with_date_range)
+            day_type, rows_with_day_type = iOS.get_day_type_in_screenshot(current_screenshot)
+            current_screenshot.set_time_period(day_type)
+            current_screenshot.set_rows_with_day_type(rows_with_day_type)
 
             # Find the rows in the screenshot that contain headings ("SCREEN TIME", "MOST USED", "PICKUPS", etc.)
-            headings_df = get_headings(current_screenshot)
+            headings_df = iOS.get_headings(current_screenshot)
             current_screenshot.set_headings(headings_df)
             # Return the extracted data

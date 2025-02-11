@@ -28,7 +28,7 @@ class Screenshot:
         self.category_detected = None
         self.text = None
         self.time_period = None
-        self.rows_with_date_range = None
+        self.rows_with_day_type = None
         self.headings_df = None
 
     def __str__(self):
@@ -59,8 +59,8 @@ class Screenshot:
     def set_time_period(self, period):
         self.time_period = period
 
-    def set_rows_with_date_range(self, df):
-        self.rows_with_date_range = df
+    def set_rows_with_day_type(self, df):
+        self.rows_with_day_type = df
 
     def set_headings(self, df):
         self.headings_df = df

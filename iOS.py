@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta
 
 import numpy as np
+import pandas as pd
 import re
 import warnings
 from RuntimeValues import *
@@ -212,14 +213,14 @@ def levenshtein_distance(s1, s2):
     return distances[-1]
 
 
-def get_date_range_in_screenshot(screenshot):
+def get_day_type_in_screenshot(screenshot):
     """
     Determines whether the given screenshot contains daily data (today, yesterday, weekday) or weekly data.
     :param screenshot: The screenshot to find the date (range) for
     :returns: tuple: (A day identifier, the row of the text in the screenshot that contains the day identifier)
     """
     lang = get_best_language(screenshot)
-    df = screenshot.text
+    df = screenshot.text.copy()
     date_pattern = get_date_regex(lang)
     # moe = margin of error
     # Set how close a spelling can be to a keyword in order for that spelling to be considered the (misread) keyword.
@@ -284,8 +285,8 @@ def get_headings(screenshot):
     :param screenshot: The screenshot to search for headings
     :return: A df that contains only the rows with headings from the text within the screenshot (if none, an empty df)
     """
-    df = screenshot.text
-    date_range_rows = screenshot.rows_with_date_range
+    df = screenshot.text.copy()
+    day_type_rows = screenshot.rows_with_day_type
     lang = get_best_language(screenshot)
 
     df[HEADING_COLUMN] = None
@@ -295,7 +296,7 @@ def get_headings(screenshot):
         row_text = df['text'][i]
         error_margin = round(np.log(len(str(row_text))))
 
-        if date_range_rows is not None and i in date_range_rows.index:
+        if day_type_rows is not None and i in day_type_rows.index:
             df.loc[i, HEADING_COLUMN] = DAY_OR_WEEK_HEADING
         elif min(levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_SCREEN_TIME[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = SCREENTIME_HEADING
