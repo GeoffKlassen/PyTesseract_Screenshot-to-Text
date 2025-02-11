@@ -12,10 +12,11 @@ class Screenshot:
     category_submitted: the category in which the screenshot was submitted (screentime, notifications, pickups/unlocks)
                         as taken from the database of URLs
     """
-    def __init__(self, url=None, user_id=None, device_os=None, date=None, category=None):
+    def __init__(self, participant, url, device_os=None, date=None, category=None):
+        self.participant = participant
         self.url = url
         self.filename = url[url.rfind('/') + 1:] if url is not None else None
-        self.user_id = user_id
+        self.user_id = participant.user_id
         self.device_os = device_os
         self.date_submitted = date
         self.category_submitted = category
@@ -26,6 +27,9 @@ class Screenshot:
         self.date_detected = None
         self.category_detected = None
         self.text = None
+        self.time_period = None
+        self.rows_with_date_range = None
+        self.headings_df = None
 
     def __str__(self):
         s_user_id = f"User ID: {self.user_id}".ljust(22)
@@ -51,3 +55,12 @@ class Screenshot:
 
     def set_text(self, text):
         self.text = text
+
+    def set_time_period(self, period):
+        self.time_period = period
+
+    def set_rows_with_date_range(self, df):
+        self.rows_with_date_range = df
+
+    def set_headings(self, df):
+        self.headings_df = df

@@ -4,9 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c55e9a34-33b9-471a-a770-4f23caf24d17" name="Changes" comment="Added the ability to choose whether downloaded images are saved locally. Rewrote the opening/downloading console text to account for this.">
+    <list default="true" id="c55e9a34-33b9-471a-a770-4f23caf24d17" name="Changes" comment="Added iOS functions for get_date_regex and get_date_in_screenshot.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/OCRScript_v3.py" beforeDir="false" afterPath="$PROJECT_DIR$/OCRScript_v3.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ScreenshotClass.py" beforeDir="false" afterPath="$PROJECT_DIR$/ScreenshotClass.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/iOS.py" beforeDir="false" afterPath="$PROJECT_DIR$/iOS.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -228,7 +229,15 @@
       <option name="project" value="LOCAL" />
       <updated>1739216416838</updated>
     </task>
-    <option name="localTasksCounter" value="17" />
+    <task id="LOCAL-00017" summary="Added iOS functions for get_date_regex and get_date_in_screenshot.">
+      <option name="closed" value="true" />
+      <created>1739221825654</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1739221825654</updated>
+    </task>
+    <option name="localTasksCounter" value="18" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -257,17 +266,7 @@
     <MESSAGE value="Added iOS- and Android-specific dictionaries to their respective .py files, so they don't conflict with each other in LanguageDictionaries.py" />
     <MESSAGE value="Program now saves downloaded images to a folder with the name of the study, and then within sub-folders iOS and Android, so images from multiple studies don't end up in one big folder." />
     <MESSAGE value="Added the ability to choose whether downloaded images are saved locally. Rewrote the opening/downloading console text to account for this." />
-    <option name="LAST_COMMIT_MESSAGE" value="Added the ability to choose whether downloaded images are saved locally. Rewrote the opening/downloading console text to account for this." />
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/iOS.py</url>
-          <line>112</line>
-          <option name="timeStamp" value="1" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
+    <MESSAGE value="Added iOS functions for get_date_regex and get_date_in_screenshot." />
+    <option name="LAST_COMMIT_MESSAGE" value="Added iOS functions for get_date_regex and get_date_in_screenshot." />
   </component>
 </project>

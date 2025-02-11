@@ -1,5 +1,5 @@
 """This file contains iOS-specific dictionaries, functions, and variables."""
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import numpy as np
 import re
@@ -13,6 +13,7 @@ GER = 'German'
 ITA = 'Italian'
 ENG = 'English'
 FRA = 'French'
+
 
 """
     iOS-Specific dictionaries
@@ -68,8 +69,8 @@ KEYWORDS_FOR_HOURS_AXIS = ['00 06', '06 12', '12 18',
                            '6AM 6PM', '12AM 6PM',
                            'AM PM', 'PM AM', 'PM PM', 'AM AM',
                            'mele 12', '112 118', r'0\s+.*\s+12',
-                           '00 Uhr 06 Uhr', '06 Uhr 12 Uhr', '12 Uhr 18 Uhr',
-                           'Uhr Uhr']  # TODO This method is a bit messy
+                           '00 Uhr 06 Uhr', '06 Uhr 12 Uhr', '12 Uhr 18 Uhr', 'Uhr Uhr',
+                           r'^0\s.*12|6\s.*18$']  # TODO This method is a bit messy
 
 # Variables for iOS time values
 # Even though the words for 'hours', 'minutes', and 'seconds' differ by language, iOS uses h/min/m/s for all languages.
@@ -91,57 +92,81 @@ NOTIFICATIONS_HEADING = 'notifications'
 HOURS_AXIS_HEADING = 'hours row'
 DAY_OR_WEEK_HEADING = 'day or week'
 
+TODAY = 'today'
+YESTERDAY = 'yesterday'
+DAY_OF_THE_WEEK = 'weekday'
+WEEK = 'week'
+
 misread_time_format = r'^[\d|t]+\s?[hn]$|^[\d|t]+\s?[hn]\s?[\d|tA]+\s?(min|m)$|^.{0,2}\s?[0-9AIt]+\s?(min|m)$|\d+\s?s$'
 misread_number_format = r'^[0-9A]+$'
 misread_time_or_number_format = '|'.join([misread_time_format, misread_number_format])
 
+english_months = MONTH_ABBREVIATIONS[ENG]
+month_mapping = {mon: english_months.index(mon) + 1 for mon in english_months}  # 1:January, 2:February, 3:March, etc.
 
-def get_date_regex(img_lang):
-    """
-    Compile the regular expression of the date format to look for in an image based on its language.
-    :param img_lang: (String) the language to use for making the date regex. ('English', 'Italian', etc.)
 
-    :return: (String) The date regex for the given language.
+def get_best_language(screenshot):
     """
-    _list = DATE_FORMAT[img_lang]
+    Determines the language to use when looking up keywords in language dictionaries. Returns (in descending order
+    of availability) the screenshot language, the participant language, or the study default language.
+
+    :param screenshot: The screenshot to find the best language for
+
+    :return: (String) The language to use as the key for dictionaries
+    """
+    if screenshot.language is not None:
+        return screenshot.language
+    elif screenshot.participant.language is not None:
+        return screenshot.participant.language
+    else:
+        return default_language
+
+
+def get_date_regex(lang):
+    """
+    Creates the date regular expression to use when looking for text in a screenshot that matches a date format.
+    :param lang: The language to use for month abbreviations
+    :return: The full date regex of all possible date formats for the given language
+    """
     patterns = []
-    for _format in _list:
+    for _format in DATE_FORMAT[lang]:
         # Replace the 'MMM's in DATE_FORMAT with the appropriate 3-4 letter abbreviations for the months.
-        patterns.append(re.sub('MMM', ''.join(['(', '|'.join(MONTH_ABBREVIATIONS[img_lang]), ')']), _format))
-    pattern = '|'.join(patterns)
+        patterns.append(re.sub('MMM', ''.join(['(', '|'.join(MONTH_ABBREVIATIONS[lang]), ')']), _format))
+    date_regex = '|'.join(patterns)
+    return date_regex
 
-    return pattern
 
-
-def get_date_in_screenshot(screenshot, date_pattern):
+def get_date_in_screenshot(screenshot):
     """
-    Checks if any text found in the given screenshot matches the given date pattern. If there's a match, return it.
+    Checks if any text found in the given screenshot matches the appropriate date pattern based on the language of the
+    image. If there's a match, return it.
     :param screenshot: The screenshot to search for a date.
-    :param date_pattern: The date pattern (regex) to look for in the screenshot.
     :return: The date-format value of the date found in the screenshot text (if any), otherwise 'None'.
     """
-    df = screenshot.text
-    lang = screenshot.language if screenshot.language is not None else default_language
 
+    df = screenshot.text
+    lang = get_best_language(screenshot)
+    # Different languages display dates in different formats. Create the correct regex pattern for the date.
+    date_pattern = get_date_regex(lang)
     try:
+        # Pull out the first row of df where the text contains the date regex
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
             row_with_date = df[df['text'].str.contains(date_pattern, regex=True, case=False)].iloc[0]
 
+        # Extract the date, month, and day from that row of text, as strings
         date_detected = re.search(date_pattern, row_with_date['text'], flags=re.IGNORECASE).group()
         month_detected = re.search(r'[a-zA-Z]+', date_detected).group().lower()
         day_detected = re.search(r'\d+', date_detected).group()
 
+        # Create a translation dictionary to replace non-English month names with English ones.
         months_to_replace = MONTH_ABBREVIATIONS[lang]
-        english_months = MONTH_ABBREVIATIONS[ENG]
         for i, abbr in enumerate(months_to_replace):
             month_detected = month_detected.replace(abbr, english_months[i])
-        month_detected = month_detected[0:3]  # datetime.strptime requires month to be 3 characters
-
-        month_mapping = {mon: english_months.index(mon) + 1 for mon in english_months}
+        month_detected = month_detected[0:3]  # datetime.strptime (used below) requires month to be 3 characters
 
         try:
-            # Parse the date string
+            # Convert the string date to a date object
             date_object = datetime.strptime(f"{day_detected} {month_detected}", "%d %b")
 
             # Get the numeric month value from the mapping
@@ -149,7 +174,10 @@ def get_date_in_screenshot(screenshot, date_pattern):
             if month_numeric:
                 # Construct the complete date with the year
                 complete_date = date_object.replace(year=int(screenshot.date_submitted.year), month=month_numeric)
-                print(f"Date text detected: {row_with_date['text']}.  Setting date to {complete_date.date()}.")
+                if (screenshot.date_submitted - complete_date.date()).days < 0:
+                    # In case a screenshot of a previous year is submitted after the new year, correct the year.
+                    complete_date = date_object.replace(year=(int(screenshot.date_submitted.year) - 1))
+                print(f"Date text detected: \"{row_with_date['text']}\".  Setting date to {complete_date.date()}.")
                 return complete_date.date()
             else:
                 print("Invalid month abbreviation.")
@@ -184,30 +212,38 @@ def levenshtein_distance(s1, s2):
     return distances[-1]
 
 
-def determine_if_screenshot_is_daily_or_weekly(df):
+def get_date_range_in_screenshot(screenshot):
+    """
+    Determines whether the given screenshot contains daily data (today, yesterday, weekday) or weekly data.
+    :param screenshot: The screenshot to find the date (range) for
+    :returns: tuple: (A day identifier, the row of the text in the screenshot that contains the day identifier)
+    """
+    lang = get_best_language(screenshot)
+    df = screenshot.text
+    date_pattern = get_date_regex(lang)
     # moe = margin of error
     # Set how close a spelling can be to a keyword in order for that spelling to be considered the (misread) keyword.
-    moe_yesterday = round(np.log(len(KEYWORD_FOR_YESTERDAY[img_lang])))
-    moe_today = round(np.log(max((len(string) for string in KEYWORDS_FOR_TODAY[img_lang]))))
-    moe_weekday = round(np.log(max((len(string) for string in KEYWORDS_FOR_DAYS_OF_THE_WEEK[img_lang]))))
-    moe_week_keyword = round(np.log(max((len(string) for string in KEYWORDS_FOR_WEEK[img_lang]))))
+    moe_yesterday = round(np.log(max((len(string) for string in KEYWORDS_FOR_YESTERDAY[lang]))))
+    moe_today = round(np.log(max((len(string) for string in KEYWORDS_FOR_TODAY[lang]))))
+    moe_weekday = round(np.log(max((len(string) for string in KEYWORDS_FOR_DAYS_OF_THE_WEEK[lang]))))
+    moe_week_keyword = round(np.log(max((len(string) for string in KEYWORDS_FOR_WEEK[lang]))))
 
     df['next_text'] = df['text'].shift(-1)
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
         rows_with_yesterday = df[(df['text'].apply(
             # Row contains yesterday, and (1) also contains date or (2) the next row contains a date
-            lambda x: min(levenshtein_distance(row_word, KEYWORD_FOR_YESTERDAY[img_lang])
-                          for row_word in str.split(x))) <= moe_yesterday) &
+            lambda x: min(levenshtein_distance(row_word, key)
+                          for row_word in str.split(x)
+                          for key in KEYWORDS_FOR_YESTERDAY[lang])) <= moe_yesterday) &
                                  ((df['text'].str.contains(date_pattern, case=False)) |
                                   (df['next_text'].str.contains(date_pattern, case=False)))]
         # rows_with_yesterday.drop(columns=['next_text'], inplace=True)
-
         rows_with_today = df[(df['text'].apply(
             # Row contains today, and (1) also contains date, or (2) the next row contains a date
             lambda x: min(levenshtein_distance(row_word, key)
                           for row_word in str.split(x)
-                          for key in KEYWORDS_FOR_TODAY[img_lang])) <= moe_today) &
+                          for key in KEYWORDS_FOR_TODAY[lang])) <= moe_today) &
                              ((df['text'].str.contains(date_pattern, case=False)) |
                               (df['next_text'].str.contains(date_pattern, case=False)))]
         # rows_with_today.drop(columns=['next_text'], inplace=True)
@@ -215,65 +251,79 @@ def determine_if_screenshot_is_daily_or_weekly(df):
         rows_with_weekday = df[(df['text'].apply(
             # Row contains name of weekday, and (1) also contains date, or (2) the next row contains a date
             lambda x: min(levenshtein_distance(str.split(x)[0], key)
-                          for key in KEYWORDS_FOR_DAYS_OF_THE_WEEK[img_lang])) <= moe_weekday) &
+                          for key in KEYWORDS_FOR_DAYS_OF_THE_WEEK[lang])) <= moe_weekday) &
                                ((df['text'].str.contains(date_pattern, case=False)) |
                                 (df['next_text'].str.contains(date_pattern, case=False)))]
         # rows_with_weekday.drop(columns=['next_text'], inplace=True)
 
         rows_with_week_keyword = df[(df['text'].apply(
             # Row contains one of the keywords for a week-format screenshot (e.g. Daily Average)
-            lambda x: min(levenshtein_distance(x, key) for key in KEYWORDS_FOR_WEEK[img_lang])) <= moe_week_keyword)]
+            lambda x: min(levenshtein_distance(x, key) for key in KEYWORDS_FOR_WEEK[lang])) <= moe_week_keyword)]
         # rows_with_week_keyword.drop(columns=['next_text'], inplace=True)
 
     if rows_with_yesterday.shape[0] > 0:
-        print(f"Found '{YESTERDAY}': {rows_with_yesterday.iloc[0]['text']}.  Setting image type to '{YESTERDAY}'.")
+        print(f"Day text detected: \"{rows_with_yesterday.iloc[0]['text']}\".  Setting image type to '{YESTERDAY}'.")
         return YESTERDAY, rows_with_yesterday
     elif rows_with_today.shape[0] > 0:
-        print(f"Found '{TODAY}': {rows_with_today.iloc[0]['text']}.  Setting image type to '{TODAY}'.")
+        print(f"Day text detected: \"{rows_with_today.iloc[0]['text']}\".  Setting image type to '{TODAY}'.")
         return TODAY, rows_with_today
     elif rows_with_weekday.shape[0] > 0:
-        print(f"Found '{DAY_OF_THE_WEEK}': {rows_with_weekday.iloc[0]['text']}.  "
+        print(f"Day text detected: \"{rows_with_weekday.iloc[0]['text']}.\"  "
               f"Setting image type to '{DAY_OF_THE_WEEK}'.")
         return DAY_OF_THE_WEEK, rows_with_weekday
     elif rows_with_week_keyword.shape[0] > 0:
-        print(f"Found '{WEEK}': {rows_with_week_keyword.iloc[0]['text']}.  Setting image type to '{WEEK}'.")
+        print(f"Week text detected: \"{rows_with_week_keyword.iloc[0]['text']}\".  Setting image type to '{WEEK}'.")
         return WEEK, rows_with_week_keyword
     else:
         return None, None
 
 
-def get_headings(df):
+def get_headings(screenshot):
+    """
+    Finds the rows of text within the given screenshot that contain key headings ("SCREENTIME", "MOST USED", etc.)
+    :param screenshot: The screenshot to search for headings
+    :return: A df that contains only the rows with headings from the text within the screenshot (if none, an empty df)
+    """
+    df = screenshot.text
+    date_range_rows = screenshot.rows_with_date_range
+    lang = get_best_language(screenshot)
+
     df[HEADING_COLUMN] = None
 
+    # If a row in the screenshot (closely) matches the format of a heading, label that row as that heading type.
     for i in df.index:
         row_text = df['text'][i]
         error_margin = round(np.log(len(str(row_text))))
 
-        if rows_with_day_or_week is not None and i in rows_with_day_or_week.index:
+        if date_range_rows is not None and i in date_range_rows.index:
             df.loc[i, HEADING_COLUMN] = DAY_OR_WEEK_HEADING
-        elif min(levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_SCREEN_TIME[img_lang]) <= error_margin:
+        elif min(levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_SCREEN_TIME[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = SCREENTIME_HEADING
-        elif min(levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_LIMITATIONS[img_lang]) <= error_margin:
+        elif min(levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_LIMITATIONS[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = LIMITS_HEADING
-        elif min(levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_MOST_USED[img_lang]) <= error_margin:
+        elif min(levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_MOST_USED[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = MOST_USED_HEADING
-        elif min(levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_PICKUPS[img_lang]) <= error_margin:
+        elif min(levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_PICKUPS[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = PICKUPS_HEADING
         elif min(levenshtein_distance(row_text, keyword) for keyword in
-                 KEYWORDS_FOR_FIRST_PICKUP[img_lang]) <= error_margin:
+                 KEYWORDS_FOR_FIRST_PICKUP[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = FIRST_PICKUP_HEADING
         elif min(levenshtein_distance(row_text, keyword) for keyword in
-                 KEYWORDS_FOR_FIRST_USED_AFTER_PICKUP[img_lang]) <= error_margin:
+                 KEYWORDS_FOR_FIRST_USED_AFTER_PICKUP[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = FIRST_USED_AFTER_PICKUP_HEADING
         elif min(levenshtein_distance(row_text, keyword) for keyword in
-                 KEYWORDS_FOR_NOTIFICATIONS[img_lang]) <= error_margin:
+                 KEYWORDS_FOR_NOTIFICATIONS[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = NOTIFICATIONS_HEADING
-        elif re.search('|'.join(KEYWORDS_FOR_HOURS_AXIS), row_text) or re.search(r'^0\s.*12|6\s.*18$', row_text):
+        elif re.search('|'.join(KEYWORDS_FOR_HOURS_AXIS), row_text):  # or re.search(r'^0\s.*12|6\s.*18$', row_text):
             df.loc[i, HEADING_COLUMN] = HOURS_AXIS_HEADING
         else:
             df = df.drop(i)
-    print("\n\nHeadings found:")
-    print(df[['text', 'heading']])
+
+    if df.shape[0] > 0:
+        print("\n\nHeadings found:")
+        print(df[['text', 'heading']])
+    else:
+        print("No headings found.")
 
     return df
 

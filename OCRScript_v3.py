@@ -41,11 +41,6 @@ NO_TEXT = '-99999'
 NO_NUMBER = -99999
 NO_CONF = -1
 
-TODAY = 'today'
-YESTERDAY = 'yesterday'
-DAY_OF_THE_WEEK = 'weekday'
-WEEK = 'week'
-
 PARTICIPANT_ID = 'participant_id'
 DEVICE_ID = 'device_id'
 IS_RESEARCHER = 'is_researcher'
@@ -466,8 +461,8 @@ if __name__ == '__main__':
                                                         user_id=url_list[PARTICIPANT_ID][index],
                                                         dev_id=url_list[DEVICE_ID][index])
 
-        current_screenshot = Screenshot(url=url_list[IMG_URL][index],
-                                        user_id=url_list[PARTICIPANT_ID][index],
+        current_screenshot = Screenshot(participant=current_participant,
+                                        url=url_list[IMG_URL][index],
                                         device_os=get_os(url_list[DEVICE_ID][index]),
                                         date=url_list[RESPONSE_DATE][index],
                                         category=url_list[IMG_RESPONSE_TYPE][index])
@@ -482,7 +477,6 @@ if __name__ == '__main__':
 
         # Extract the text (if any) that can be found in the image.
         text_df_single_words, text_df = extract_text_from_image(bw_image)
-        current_screenshot.set_text(text_df)
 
         if show_images:
             show_image(text_df, bw_image, draw_boxes=True)
@@ -492,6 +486,7 @@ if __name__ == '__main__':
             # update_all_columns_for_empty_screenshot(reason='No text found')
             continue
 
+        current_screenshot.set_text(text_df)
         current_screenshot.set_dimensions(bw_image.shape)
 
         # Get the language of the image, and assign that language to the screenshot & user (if a language was detected)
@@ -501,7 +496,6 @@ if __name__ == '__main__':
             current_participant.set_language(image_language)
 
         if current_screenshot.device_os == ANDROID:
-            ## Perhaps all you need to do is copy the code for extracting Android data into the Android.py file ??
             Android.main()
             # use functions from Android.py
             # Return the extracted data
@@ -509,13 +503,16 @@ if __name__ == '__main__':
         elif current_screenshot.device_os == IOS:
             iOS.main()
 
-            # Different languages display dates in different formats. Create the regex pattern for the date.
-            date_pattern = iOS.get_date_regex(image_language)
-
             # Determine the date in the screenshot
-            date_in_screenshot = iOS.get_date_in_screenshot(current_screenshot, date_pattern)
+            date_in_screenshot = iOS.get_date_in_screenshot(current_screenshot)
             current_screenshot.set_date_detected(date_in_screenshot)
 
             # Determine if screenshot contains 'daily' data or 'weekly' data
+            date_range, rows_with_date_range = get_date_range_in_screenshot(current_screenshot)
+            current_screenshot.set_time_period(date_range)
+            current_screenshot.set_rows_with_date_range(rows_with_date_range)
 
+            # Find the rows in the screenshot that contain headings ("SCREEN TIME", "MOST USED", "PICKUPS", etc.)
+            headings_df = get_headings(current_screenshot)
+            current_screenshot.set_headings(headings_df)
             # Return the extracted data
