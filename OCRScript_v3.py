@@ -1,7 +1,5 @@
-import Android
-import iOS
-from iOS import *
-from Android import *
+import AndroidFunctions as Android
+import iOSFunctions as iOS
 from RuntimeValues import *
 from ScreenshotClass import Screenshot
 from ParticipantClass import Participant
@@ -335,11 +333,12 @@ def get_os(dev_id):
 
     :param dev_id: The Device ID of the device used to submit an image.
 
-    :returns: The operating system of the device (iOS or Android).
+    :returns: The operating system of the device (iOS or Android); if unsure, returns 'Unknown'.
 
     As of February 7, 2025, all iPhone Device IDs in Avicenna CSVs appear as 32-digit hexadecimal numbers, and
     all Android device IDs in Avicenna CSVs appear as 16-digit hexadecimal numbers.
-    When a user submits a survey response via a web browser, the Device ID will reflect that browser:
+    If a user submits a survey response via a web browser instead, the Device ID will reflect that browser:
+
     W_MACOSX_SAFARI             - macOS (MacBook or iMac)
     W_IOS_MOBILESAFARI          - iOS Safari browser
     W_ANDROID_CHROMEMOBILE      - Android Chrome browser
@@ -358,9 +357,6 @@ def get_os(dev_id):
         # If the Device ID is a hexadecimal string that is not 16- or 32-digits, we can't guarantee the phone OS.
         return UNKNOWN
 
-
-# TODO This function has a more recent version in the CHB code.
-#  Use that, and merge in the Android values for value_format.
 
 def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False):
     t1 = f"'{str(text1)}'" if conf1 != NO_CONF else "N/A"
@@ -454,15 +450,31 @@ if __name__ == '__main__':
         screenshots.append(current_screenshot)
         # Download the image (if not using local images) or open the local image
         grey_image, bw_image = load_and_process_image(current_screenshot, white_threshold=220)  # 226
-        current_screenshot.set_image(grey_image)
         current_screenshot.is_light_mode = True if np.mean(grey_image) > 170 else False
         # Light-mode images have an average pixel brightness above 170 (scale 0 to 255).
 
+        # pytesseract does a better job of extracting text from images if the text isn't too big.
+        if grey_image.shape[1] >= 2500:
+            scale_factor = 1 / 3
+        elif grey_image.shape[1] >= 2000:
+            scale_factor = 1 / 2
+        elif grey_image.shape[1] >= 1500:
+            scale_factor = 2 / 3
+        else:
+            scale_factor = 1
+
+        grey_image_scaled = cv2.resize(grey_image, dsize=None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_AREA)
+        bw_image_scaled = cv2.resize(bw_image, dsize=None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_AREA)
+
+        current_screenshot.set_scale_factor(scale_factor)
+        current_screenshot.set_image(grey_image_scaled)
+        current_screenshot.set_dimensions(grey_image_scaled.shape)
+
         # Extract the text (if any) that can be found in the image.
-        text_df_single_words, text_df = extract_text_from_image(bw_image)
+        text_df_single_words, text_df = extract_text_from_image(bw_image_scaled)
 
         if show_images:
-            show_image(text_df, bw_image, draw_boxes=True)
+            show_image(text_df, bw_image_scaled, draw_boxes=True)
 
         if text_df.shape[0] == 0:
             print(f"No text found.  Setting {current_screenshot.category_submitted} values to {NO_NUMBER}.")
@@ -470,7 +482,6 @@ if __name__ == '__main__':
             continue
 
         current_screenshot.set_text(text_df)
-        current_screenshot.set_dimensions(bw_image.shape)
 
         # Get the language of the image, and assign that language to the screenshot & user (if a language was detected)
         image_language, language_was_detected = determine_language_of_image(current_participant, text_df)
@@ -478,17 +489,17 @@ if __name__ == '__main__':
             current_screenshot.set_language(image_language)
             current_participant.set_language(image_language)
 
-        if study_to_analyze['Categories'].__len__() == 1:
+        if study_to_analyze[CATEGORIES].__len__() == 1:
             # If the study we're analyzing only asked for one category of screenshot,
             # then we can ignore looking for the other categories.
-            dashboard_category = study_to_analyze['Categories'][0]
+            dashboard_category = study_to_analyze[CATEGORIES][0]
         else:
             dashboard_category = None
 
         if current_screenshot.device_os == ANDROID:
             Android.main()
 
-            # use functions from Android.py
+            # use functions from AndroidFunctions.py
             # Return the extracted data
 
         elif current_screenshot.device_os == IOS:
@@ -526,15 +537,28 @@ if __name__ == '__main__':
             current_screenshot.set_category_detected(dashboard_category)
 
             # Get the daily total usage (if it's present in the screenshot)
-            daily_total, daily_total_conf = iOS.get_daily_total_and_confidence(current_screenshot, bw_image)
+            daily_total, daily_total_conf = iOS.get_daily_total_and_confidence(current_screenshot, bw_image_scaled)
 
             if dashboard_category == PICKUPS:
                 daily_total_2nd_loc, daily_total_2nd_loc_conf = iOS.get_total_pickups_2nd_location(current_screenshot,
-                                                                                                   bw_image)
+                                                                                                   bw_image_scaled)
                 print("Comparing both locations for total pickups:")
                 daily_total, daily_total_conf = choose_between_two_values(daily_total, daily_total_conf,
                                                                           daily_total_2nd_loc, daily_total_2nd_loc_conf)
-
             current_screenshot.set_daily_total(daily_total, daily_total_conf)
+
+            # Crop image to app region
+
+            # Perform pre-scan to remove bars and fragments of app icons
+
+            # Do initial scan for app data
+
+            # Remove hi-conf data from initial scan for app data
+
+            # Do secondary scan for app data
+
+            # Merge the two scans into one
+
+            # Organize the data into 'app names' and 'app numbers'
 
             # Return the extracted data

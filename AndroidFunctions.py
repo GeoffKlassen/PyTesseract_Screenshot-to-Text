@@ -151,4 +151,4 @@ KEYWORDS_FOR_UNRELATED_SCREENSHOTS = {'ita': ['USO BATTERIA', 'Benessere digital
 
 
 def main():
-    print("I am now in Android.py")
+    print("I am now in AndroidFunctions.py")

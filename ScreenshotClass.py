@@ -19,6 +19,7 @@ class Screenshot:
         self.category_submitted = category
         self.height = 0
         self.width = 0
+        self.scale_factor = None
         self.language = None
         self.grey_image = None
         self.date_detected = None
@@ -67,3 +68,6 @@ class Screenshot:
     def set_daily_total(self, value, conf):
         self.daily_total = value
         self.daily_total_conf = conf
+
+    def set_scale_factor(self, scale):
+        self.scale_factor = scale
