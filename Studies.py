@@ -73,15 +73,19 @@ bch_survey = {CSV_FILE: 'study-2037-export-3-survey-responses-16872-2024-10-01-1
               }
 # For the BCH Study, there is only one CSV, in which there are two columns of SCREENTIME screenshots.
 
-study_happyb2_0 = {'Name': "HappyB2.0",
-                   'Directory': f'C:\\Users\\{pc_user}\\OneDrive - University of Saskatchewan\\Grad Studies\\HappyB 2.0',
-                   'Default Language': ENG,
-                   'Survey List': [happyb2_baseline_survey, happyb2_daily_survey_ios, happyb2_daily_survey_android],
-                   'Categories': [SCREENTIME, PICKUPS, NOTIFICATIONS]}
-study_bch = {'Name': "BCH",
-             'Directory': f'C:\\Users\\{pc_user}\\OneDrive - University of Saskatchewan\\Grad Studies\\Boston Childrens Hospital',
-             'Default Language': ENG,
-             'Survey List': [bch_survey],
-             'Categories': [SCREENTIME]}
+"""
+    Definitions of the studies the code has been used on
+"""
+study_happyb2_0 = {NAME: "HappyB2.0",
+                   DIRECTORY: f'C:\\Users\\{pc_user}\\OneDrive - University of Saskatchewan\\Grad Studies\\HappyB 2.0',
+                   DEFAULT_LANGUAGE: ENG,
+                   SURVEY_LIST: [happyb2_baseline_survey, happyb2_daily_survey_ios, happyb2_daily_survey_android],
+                   CATEGORIES: [SCREENTIME, PICKUPS, NOTIFICATIONS]}
+
+study_bch = {NAME: "BCH",
+             DIRECTORY: f'C:\\Users\\{pc_user}\\OneDrive - University of Saskatchewan\\Grad Studies\\Boston Childrens Hospital',
+             DEFAULT_LANGUAGE: ENG,
+             SURVEY_LIST: [bch_survey],
+             CATEGORIES: [SCREENTIME]}
 
 studies = [study_happyb2_0, study_bch]

@@ -1,12 +1,17 @@
 """This file contains iOS-specific dictionaries, functions, and variables."""
 from datetime import datetime, timedelta
+from turtledemo.sorting_animate import show_text
 
 import numpy as np
 import pandas as pd
 import re
 import warnings
+import cv2
+
+import OCRScript_v3
 from RuntimeValues import *
 from ConvenienceVariables import *
+from OCRScript_v3 import extract_text_from_image, choose_between_two_values
 
 """
     iOS-Specific dictionaries
@@ -74,9 +79,6 @@ TIME_FORMAT_STR_FOR_MINUTES = r'\d+\s?(min|m)'
 TIME_FORMAT_STR_FOR_HOURS = r'\d+\s?h'
 TIME_FORMAT_STR_FOR_SECONDS = r'\d+\s?s'
 
-misread_time_format = r'^[\d|t]+\s?[hn]$|^[\d|t]+\s?[hn]\s?[\d|tA]+\s?(min|m)$|^.{0,2}\s?[0-9AIt]+\s?(min|m)$|\d+\s?s$'
-misread_number_format = r'^[0-9A]+$'
-misread_time_or_number_format = '|'.join([misread_time_format, misread_number_format])
 
 english_months = MONTH_ABBREVIATIONS[ENG]
 month_mapping = {mon: english_months.index(mon) + 1 for mon in english_months}  # 1:January, 2:February, 3:March, etc.
@@ -202,7 +204,7 @@ def get_day_type_in_screenshot(screenshot):
     # Set how close a spelling can be to a keyword in order for that spelling to be considered the (misread) keyword.
     moe_yesterday = round(np.log(max((len(string) for string in KEYWORDS_FOR_YESTERDAY[lang]))))
     moe_today = round(np.log(max((len(string) for string in KEYWORDS_FOR_TODAY[lang]))))
-    moe_weekday = round(np.log(max((len(string) for string in KEYWORDS_FOR_DAYS_OF_THE_WEEK[lang]))))
+    moe_weekday = round(np.log(max((len(string) for string in KEYWORDS_FOR_WEEKDAY_NAMES[lang]))))
     moe_week_keyword = round(np.log(max((len(string) for string in KEYWORDS_FOR_WEEK[lang]))))
 
     df['next_text'] = df['text'].shift(-1)
@@ -228,7 +230,7 @@ def get_day_type_in_screenshot(screenshot):
         rows_with_weekday = df[(df['text'].apply(
             # Row contains name of weekday, and (1) also contains date, or (2) the next row contains a date
             lambda x: min(levenshtein_distance(str.split(x)[0], key)
-                          for key in KEYWORDS_FOR_DAYS_OF_THE_WEEK[lang])) <= moe_weekday) &
+                          for key in KEYWORDS_FOR_WEEKDAY_NAMES[lang])) <= moe_weekday) &
                                ((df['text'].str.contains(date_pattern, case=False)) |
                                 (df['next_text'].str.contains(date_pattern, case=False)))]
         # rows_with_weekday.drop(columns=['next_text'], inplace=True)
@@ -406,30 +408,43 @@ def convert_text_time_to_minutes(text):
     return total_usage_time_mins
 
 
-def filter_time_or_number_text(text):
+def filter_time_or_number_text(text, f):
     if str(text) == NO_TEXT:
         return NO_TEXT
 
+    fmt = re.compile(f, re.IGNORECASE)
+    matches = re.findall(fmt, text)
+    if matches:
+        text = str(max(matches, key=len))
+    else:
+        return NO_TEXT
+
     # Replace common misread characters (e.g. pytesseract sometimes misreads '1h' as 'Th'/'th').
-    text = re.sub(r'[TtIi](?=.?[hm])', '1', text)  # gets used
-    text = re.sub('ah', '4h', text)  # gets used
-    text = re.sub(r'(Os|O s)', '0s', text)  # gets used
-    text = re.sub('A', '4', text)  # gets used
+    text = re.sub(r'[TtIi](?=.?[hm])', '1', text)  # 1 (before h or m) can be misread as T/I
+    text = re.sub('ah', '4h', text)  # 4h can be misread as ah
+    text = re.sub('oh', '5h', text)  # 5h can be misread as oh
+    text = re.sub(r'(Os|O s)', '0s', text)  # 0s can be misread as Os (letter O and letter s)
+    text = re.sub('A', '4', text)  # 4 can be misread as A
 
     # Remove any characters that aren't a digit or a 'time' character ('h' = hours, 'min' = minutes, 's' = seconds)
-    text = re.sub(r'[^0-9hmins]', '', text)
+    text = re.sub(r'[^0-9hminsHMINS]', '', text)
 
     return text
 
 
-def get_daily_total_and_confidence(df, heading):
-    print(f"\nSearching for total {heading}:")
+def get_daily_total_and_confidence(screenshot, img):
+    df = screenshot.text.copy()
+    category = screenshot.category_detected
+    headings_df = screenshot.headings_df
+    rows_with_day_type = screenshot.rows_with_day_type
+
+    print(f"\nSearching for total {category}:")
 
     # Initialize first scan values
-    daily_total_1st_scan = ''
+    daily_total_1st_scan = NO_TEXT
     daily_total_1st_scan_conf = NO_CONF
 
-    number_pattern = r'^\d+h|^\d+m|\d+(m|min)$|^\d+s$' if heading == SCREENTIME_HEADING else r'^\d+$'
+    value_pattern = misread_time_format if category == SCREENTIME else misread_number_format
 
     # Initialize the row above the total to an empty df
     row_above_total = df.drop(df.index)
@@ -438,7 +453,7 @@ def get_daily_total_and_confidence(df, heading):
 
     if not headings_df.empty:
         # Take the closest heading (to the daily total) that's above where the daily total would appear
-        heading_row = headings_df[headings_df[HEADING_COLUMN] == heading]
+        heading_row = headings_df[headings_df[HEADING_COLUMN] == category]
         if not heading_row.empty:
             day_below_heading_row = headings_df[
                 (headings_df.index == heading_row.index[-1] + 1) & (headings_df[HEADING_COLUMN] == DAY_OR_WEEK_HEADING)]
@@ -447,15 +462,15 @@ def get_daily_total_and_confidence(df, heading):
             else:
                 row_above_total = heading_row.iloc[-1]
                 using_heading_row = True
-        elif rows_with_day_or_week is not None:
-            if rows_with_day_or_week.shape[0] == 1:
-                row_above_total = rows_with_day_or_week.iloc[0]
+        elif rows_with_day_type is not None:
+            if rows_with_day_type.shape[0] == 1:
+                row_above_total = rows_with_day_type.iloc[0]
                 only_one_day_row = True
             else:
-                if rows_with_day_or_week.index[1] == rows_with_day_or_week.index[0] + 1:
-                    row_above_total = rows_with_day_or_week.iloc[1]
+                if rows_with_day_type.index[1] == rows_with_day_type.index[0] + 1:
+                    row_above_total = rows_with_day_type.iloc[1]
                 else:
-                    row_above_total = rows_with_day_or_week.iloc[0]
+                    row_above_total = rows_with_day_type.iloc[0]
 
         if row_above_total.size > 0:
             index_to_start = row_above_total.name + 1
@@ -464,7 +479,7 @@ def get_daily_total_and_confidence(df, heading):
                 # The heading row is higher than the day row, so when using the heading row as the reference,
                 # crop_top should be further down (on the screenshot)
                 crop_top += 2 * row_above_total['height']
-            elif row_above_total['left'] > (0.15 * screenshot_width):
+            elif row_above_total['left'] > (0.15 * screenshot.width):
                 crop_top += row_above_total['height']
 
             # iOS shows the daily total in a larger font size than the headings,
@@ -480,7 +495,7 @@ def get_daily_total_and_confidence(df, heading):
             # This is a default, in case the screenshot was cropped before uploading,
             # in such a way that the Daily Total value is the first row of text.
             crop_top = 0
-            crop_bottom = crop_top + int(screenshot_width / 8)  # Daily Total height is usually < 8x screenshot_width.
+            crop_bottom = crop_top + int(screenshot.width / 8)  # Daily Total height is usually < 8x screenshot_width.
 
         if df.shape[0] > index_to_start + 1:
             loop_number = 0
@@ -492,46 +507,52 @@ def get_daily_total_and_confidence(df, heading):
                     # it's also never on the same line as another heading
                     break
                 # The Daily Total is always left aligned, and never too wide,
-                # so skip text that starts more than 20% away from the left edge of the screenshot,
+                # so skip text that starts more than 15% away from the left edge of the screenshot,
                 # and skip text that ends more than 80% from the left edge of the screenshot.
-                if df.loc[i]['left'] > (0.2 * screenshot_width) or \
-                        df.loc[i]['left'] + df.loc[i]['width'] > (0.8 * screenshot_width):
+                if df.loc[i]['left'] > (0.15 * screenshot.width) or \
+                        df.loc[i]['left'] + df.loc[i]['width'] > (0.8 * screenshot.width):
                     continue
                 row_text = df.loc[i]['text']
                 row_conf = round(df.loc[i]['conf'], 4)  # 4 decimal points of precision for the confidence value
-                row_text = filter_time_or_number_text(row_text)
-                if re.search(number_pattern, row_text):
-                    daily_total_1st_scan = row_text
+
+                if re.search(value_pattern, row_text):
+                    row_text_filtered = filter_time_or_number_text(row_text, value_pattern)
+                    daily_total_1st_scan = row_text_filtered
                     daily_total_1st_scan_conf = row_conf
                     break
 
             if daily_total_1st_scan_conf == NO_CONF:
-                print(f"Total {heading} not found on 1st scan.")
+                print(f"Total {category} not found on 1st scan.")
 
     else:
         print("No headings found on first scan.")
         # This is a default, in case the uploaded screenshot was cropped in such a way that the Daily Total value
         # is the first row of text.
         crop_top = 0
-        crop_bottom = crop_top + int(screenshot_width / 8)  # Daily Total height is usually < 8x screenshot_width.
+        crop_bottom = crop_top + int(screenshot.width / 8)  # Daily Total height is usually < 8x screenshot_width.
 
     crop_left = 0
-    crop_right = int(0.6 * screenshot_width)
+    crop_right = int(0.6 * screenshot.width)
     # Right edge of Daily Total is not likely more than 60% away from the left edge of the screenshot
 
-    cropped_image = filtered_image[crop_top:crop_bottom, crop_left:crop_right]
+    cropped_image = img[crop_top:crop_bottom, crop_left:crop_right]
     scale = 0.5  # Pytesseract sometimes fails to read very large text; scale down the cropped region
     scaled_cropped_image = cv2.resize(cropped_image, None,
                                       fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
 
-    if heading == SCREENTIME_HEADING:
+    kernel_dim = int(screenshot.width / 500)
+    kernel_dim -= 1 if kernel_dim % 2 == 0 else 0
+    kernel_size = (kernel_dim, kernel_dim)
+    scaled_cropped_image = cv2.GaussianBlur(scaled_cropped_image, kernel_size, 0)
+
+    if category == SCREENTIME:
         _, rescan_df = extract_text_from_image(scaled_cropped_image)
     else:
         _, rescan_df = extract_text_from_image(scaled_cropped_image, cmd_config=r'--oem 3 --psm 6 outputbase digits')
 
     # For debugging.
     if show_images:
-        show_text_on_image(rescan_df, scaled_cropped_image)
+        OCRScript_v3.show_image(rescan_df, scaled_cropped_image)
 
     # Initialize second scan values
     daily_total_2nd_scan = NO_TEXT
@@ -540,26 +561,27 @@ def get_daily_total_and_confidence(df, heading):
     if rescan_df.shape[0] > 0:
         for i in rescan_df.index:
             # Skip rows that are more than 20% away from the left edge of the screenshot.
-            if rescan_df.loc[i]['left'] > 0.2 * scale_factor * screenshot_width:
+            if rescan_df.loc[i]['left'] > 0.2 * scale * screenshot.width:
                 continue
             row_text = rescan_df.loc[i]['text']
             row_conf = round(rescan_df.loc[i]['conf'], 4)  # 4 decimal points of precision for the confidence value
-            row_text = filter_time_or_number_text(row_text)
-            if 1 <= len(re.findall(number_pattern, row_text)) <= 2 and rescan_df.loc[i]['height'] > 0.01 * screenshot_height:
-                # TODO: can this be just a re.search? number_pattern has ^ and $ in it, so there shouldn't be > 1.
-                daily_total_2nd_scan = row_text
+            # row_text = filter_time_or_number_text(row_text)
+            # if 1 <= len(re.findall(value_pattern, row_text, re.IGNORECASE)) <= 2 and rescan_df.loc[i]['height'] > 0.01 * screenshot.height:
+            if re.search(value_pattern, row_text, re.IGNORECASE) and rescan_df.loc[i]['height'] > 0.01 * screenshot.height:
+                row_text_filtered = filter_time_or_number_text(row_text, value_pattern)
+                daily_total_2nd_scan = row_text_filtered
                 daily_total_2nd_scan_conf = row_conf
                 break
 
     if daily_total_1st_scan_conf != NO_CONF:
-        print(f"Total {heading}, 1st scan: {daily_total_1st_scan} (conf = {daily_total_1st_scan_conf})")
+        print(f"Total {category}, 1st scan: {daily_total_1st_scan} (conf = {daily_total_1st_scan_conf})")
     if daily_total_2nd_scan_conf != NO_CONF:
-        print(f"Total {heading}, 2nd scan: {daily_total_2nd_scan} (conf = {daily_total_2nd_scan_conf})")
+        print(f"Total {category}, 2nd scan: {daily_total_2nd_scan} (conf = {daily_total_2nd_scan_conf})")
 
-    daily_total, daily_total_conf = choose_between_two_values(daily_total_1st_scan, daily_total_1st_scan_conf,
-                                                              daily_total_2nd_scan, daily_total_2nd_scan_conf)
+    daily_tot, daily_tot_conf = choose_between_two_values(daily_total_1st_scan, daily_total_1st_scan_conf,
+                                                          daily_total_2nd_scan, daily_total_2nd_scan_conf)
 
-    return daily_total, daily_total_conf
+    return daily_tot, daily_tot_conf
 
 
 def get_total_pickups_2nd_location():

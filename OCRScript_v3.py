@@ -20,7 +20,6 @@ import warnings
 from datetime import datetime
 import time
 
-
 def compile_list_of_urls(df, url_cols,
                          date_col='Record Time', id_col='Participant ID', device_id_col='Device ID'):
     """Create a DataFrame of URLs from a provided DataFrame of survey responses.
@@ -244,6 +243,7 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+')
             # If conversion fails (i.e., value is not a number), return value
             return str(value)
 
+    # img = cv2.GaussianBlur(img, (7,7), 0)  # Might help finding the large totals, not sure how it affects headings
     if len(cmd_config) > 0:
         df_words = pytesseract.image_to_data(img, output_type='data.frame', config=cmd_config)
     else:
@@ -361,14 +361,15 @@ def get_os(dev_id):
 
 # TODO This function has a more recent version in the CHB code.
 #  Use that, and merge in the Android values for value_format.
-"""
-def choose_between_two_values(text1, conf1, text2, conf2):
+
+def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False):
     text1 = str(text1)
     text2 = str(text2)
-    value_format = (USE misread_time_formats FROM IOS.PY) if \
-        dashboard_category == SCREENTIME else r'^[0-9A]+$'
-    format_name = 'time' if dashboard_category == SCREENTIME else 'number'
 
+    value_format = misread_number_format if value_is_number else misread_time_format
+    format_name = 'number' if value_is_number else 'time'
+
+    print(f"Comparing scan 1: {text1}  vs 2: {text2}  ——  ", end="")
     if conf1 != NO_CONF and conf2 != NO_CONF:
         if bool(re.search(value_format, text1)) and not bool(re.search(value_format, text2)):
             print(f"Only 1st scan matches a proper {format_name} format. Keeping 1st scan.")
@@ -376,11 +377,11 @@ def choose_between_two_values(text1, conf1, text2, conf2):
         elif not bool(re.search(value_format, text1)) and bool(re.search(value_format, text2)):
             print(f"Only 2nd scan matches a proper {format_name} format. Using 2nd scan.")
             return text2, conf2
-        elif len(text1) > len(text2):
-            print("1st scan is longer than 2nd scan. Keeping 1st scan.")
+        elif len(text1) > len(text2) and value_is_number:
+            print(f"1st scan for {format_name} has more characters than 2nd scan. Keeping 1st scan.")
             return text1, conf1
-        elif len(text1) < len(text2):
-            print("2nd scan is longer than 1st scan. Using 2nd scan.")
+        elif len(text1) < len(text2) and value_is_number:
+            print(f"2nd scan for {format_name} has more characters than 1st scan. Using 2nd scan.")
             return text2, conf2
         else:
             if conf1 > conf2:
@@ -390,15 +391,20 @@ def choose_between_two_values(text1, conf1, text2, conf2):
                 print("2nd scan has higher confidence. Using 2nd scan.")
                 return text2, conf2
     elif conf1 != NO_CONF:
+        if value_is_number and not bool(re.search(value_format, text1)):
+            print("Improper number format found on 1st scan; no text found on 2nd scan.")
+            return NO_NUMBER, NO_CONF
         print("No text found on 2nd scan. Keeping 1st scan.")
         return text1, conf1
     elif conf2 != NO_CONF:
+        if value_is_number and not bool(re.search(value_format, text2)):
+            print("No text found on 1st scan; improper number format found on 2nd scan.")
+            return NO_NUMBER, NO_CONF
         print("No text found on 1st scan. Using 2nd scan.")
         return text2, conf2
     else:
         print("No text found on 1st or 2nd scan.")
         return NO_NUMBER, NO_CONF
-"""
 
 
 if __name__ == '__main__':
@@ -483,7 +489,7 @@ if __name__ == '__main__':
             date_in_screenshot = iOS.get_date_in_screenshot(current_screenshot)
             current_screenshot.set_date_detected(date_in_screenshot)
 
-            # Determine if screenshot contains 'daily' data or 'weekly' data
+            # Determine if the screenshot contains 'daily' data ('today', 'yesterday', etc.) or 'weekly' data
             day_type, rows_with_day_type = iOS.get_day_type_in_screenshot(current_screenshot)
             current_screenshot.set_time_period(day_type)
             current_screenshot.set_rows_with_day_type(rows_with_day_type)
@@ -496,6 +502,7 @@ if __name__ == '__main__':
             if dashboard_category is not None:
                 print(f"{study_to_analyze['Name']} study only requested screenshots of {dashboard_category} data.  "
                       f"Category already set to '{dashboard_category}'.")
+                dashboard_category_not_detected = False
             elif not headings_df.empty:
                 dashboard_category = iOS.get_dashboard_category(current_screenshot)
                 if dashboard_category is None:
@@ -506,5 +513,11 @@ if __name__ == '__main__':
             else:
                 dashboard_category_not_detected = True
                 dashboard_category = current_screenshot.category_submitted
+
+            current_screenshot.set_category_detected(dashboard_category)
+
+            # Get the daily total usage (if it's present in the screenshot)
+            daily_total, daily_total_conf = iOS.get_daily_total_and_confidence(current_screenshot, bw_image)
+            current_screenshot.set_daily_total(daily_total, daily_total_conf)
 
             # Return the extracted data

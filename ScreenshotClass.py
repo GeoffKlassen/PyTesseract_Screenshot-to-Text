@@ -30,6 +30,8 @@ class Screenshot:
         self.time_period = None
         self.rows_with_day_type = None
         self.headings_df = None
+        self.daily_total = None
+        self.daily_total_conf = None
 
     def __str__(self):
         s_user_id = f"User ID: {self.user_id}".ljust(22)
@@ -64,3 +66,7 @@ class Screenshot:
 
     def set_headings(self, df):
         self.headings_df = df
+
+    def set_daily_total(self, value, conf):
+        self.daily_total = value
+        self.daily_total_conf = conf

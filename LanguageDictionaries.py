@@ -82,7 +82,7 @@ KEYWORDS_FOR_YESTERDAY = {ITA: ['leri'],  # True word is Ieri, but pytesseract u
                           FRA: ['Hier'],
                           GER: ['Gestern']}
 
-KEYWORDS_FOR_DAYS_OF_THE_WEEK = {ITA: ['lunedi',  'martedi', 'mercoledi',    'giovedi',  'venerdi',   'sabato', 'domenica'],
+KEYWORDS_FOR_WEEKDAY_NAMES = {ITA: ['lunedi',  'martedi', 'mercoledi',    'giovedi',  'venerdi',   'sabato', 'domenica'],
                                  ENG: ['monday',  'tuesday', 'wednesday',   'thursday',   'friday', 'saturday',   'sunday'],
                                  FRA: [ 'lundi',    'mardi',  'mercredi',      'jeudi', 'vendredi',   'samedi', 'dimanche'],
                                  GER: ['montag', 'dienstag',  'mittwoch', 'donnerstag',  'freitag',  'samstag',  'sonntag']}
