@@ -7,7 +7,7 @@ So far:
 import pytesseract
 from ConvenienceVariables import *
 
-coding_location = 'uni'  # uni or home
+coding_location = 'home'  # uni or home
 
 if coding_location == 'uni':
     pc_user = 'gbk546'

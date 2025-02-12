@@ -1,6 +1,5 @@
 """This file contains iOS-specific dictionaries, functions, and variables."""
 from datetime import datetime, timedelta
-from turtledemo.sorting_animate import show_text
 
 import numpy as np
 import pandas as pd
@@ -409,7 +408,7 @@ def convert_text_time_to_minutes(text):
 
 
 def filter_time_or_number_text(text, f):
-    if str(text) == NO_TEXT:
+    if str(text) == NO_TEXT or re.search("AM*AM|AM*PM", str(text)):
         return NO_TEXT
 
     fmt = re.compile(f, re.IGNORECASE)
@@ -423,11 +422,13 @@ def filter_time_or_number_text(text, f):
     text = re.sub(r'[TtIi](?=.?[hm])', '1', text)  # 1 (before h or m) can be misread as T/I
     text = re.sub('ah', '4h', text)  # 4h can be misread as ah
     text = re.sub('oh', '5h', text)  # 5h can be misread as oh
+    text = re.sub('Qh', '9h', text)  # 9h can be misread as Qh
     text = re.sub(r'(Os|O s)', '0s', text)  # 0s can be misread as Os (letter O and letter s)
     text = re.sub('A', '4', text)  # 4 can be misread as A
+    text = text.lower()
 
     # Remove any characters that aren't a digit or a 'time' character ('h' = hours, 'min' = minutes, 's' = seconds)
-    text = re.sub(r'[^0-9hminsHMINS]', '', text)
+    text = re.sub(r'[^0-9hmins]', '', text)
 
     return text
 
@@ -584,10 +585,19 @@ def get_daily_total_and_confidence(screenshot, img):
     return daily_tot, daily_tot_conf
 
 
-def get_total_pickups_2nd_location():
-    # The Daily Total for pickups can appear twice on the screenshot; once in the top left corner of the Pickups block,
-    # and once near the bottom of the Pickups block (under the 'First Pickup, Total Pickups' row).
-    # Look in this 2nd place as well.
+def get_total_pickups_2nd_location(screenshot, img):
+    """
+    Looks for the number of daily total pickups in its alternate location in the iOS dashboard.
+
+    In the iOS dashboard, the number of daily total pickups appears twice—once in big numbers under the
+    heading PICKUPS, and once below the bar chart, with the small heading "Total Pickups". Searching for both instances
+    increases the chance of finding the correct value.
+
+    :return: The number of daily total pickups as shown in the secondary location (if found).
+    """
+
+    headings_df = screenshot.headings_df
+    text_df = screenshot.text
 
     print("\nLooking in 2nd location for total pickups:")
     row_with_first_pickup = headings_df[headings_df[HEADING_COLUMN] == FIRST_PICKUP_HEADING]
@@ -617,34 +627,42 @@ def get_total_pickups_2nd_location():
     try:
         total_pickups_1st_scan = filter_time_or_number_text(str.split(row_with_total_pickups['text'])[-1])
         total_pickups_1st_scan_conf = round(row_with_total_pickups['conf'], 4)  # 4 decimal points of precision
-        print(f"Total pickups, 1st rescan: {total_pickups_1st_scan} (conf = {total_pickups_1st_scan_conf}).")
+        print(f"Total pickups found in 2nd location: {total_pickups_1st_scan} (conf = {total_pickups_1st_scan_conf}).")
     except:
-        print("Total pickups not found on 1st rescan.")
-        total_pickups_1st_scan = ''
+        print("Total pickups in 2nd location not found on first scan.")
+        total_pickups_1st_scan = NO_NUMBER
         total_pickups_1st_scan_conf = NO_CONF
 
-    if total_pickups_1st_scan_conf > conf_limit:
-        print(f"Conf > {conf_limit}. Keeping 1st rescan.")
-        return total_pickups_1st_scan, total_pickups_1st_scan_conf
+    # if total_pickups_1st_scan_conf > conf_limit:
+    #     print(f"Conf > {conf_limit}. Keeping 1st scan.")
+    #     return total_pickups_1st_scan, total_pickups_1st_scan_conf
 
-    crop_left = int(0.25 * screenshot_width)
-    crop_right = screenshot_width
-    cropped_image = filtered_image[crop_top:crop_bottom, crop_left:crop_right]
+    crop_left = int(0.25 * screenshot.width)
+    crop_right = screenshot.width
+    cropped_image = img[crop_top:crop_bottom, crop_left:crop_right]
 
+    scale_factor = 0.5  # pytesseract sometimes fails to read oversize text.
     scaled_cropped_image = cv2.resize(cropped_image, None,
                                       fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_AREA)
-    _, rescan_df = extract_text_from_image(scaled_cropped_image)
+    rescan_words, rescan_df = extract_text_from_image(scaled_cropped_image)
 
     if show_images:
-        show_text_on_image(rescan_df, scaled_cropped_image)
+        OCRScript_v3.show_image(rescan_words, scaled_cropped_image)
 
-    total_pickups_2nd_scan = ''
+    total_pickups_2nd_scan = NO_NUMBER
     total_pickups_2nd_scan_conf = NO_CONF
 
-    if rescan_df.size > 0:
-        total_pickups_2nd_scan = rescan_df['text'][0]
-        total_pickups_2nd_scan_conf = round(rescan_df['conf'][0], 4)
-        print(f"Total pickups, 2nd rescan: {total_pickups_2nd_scan} (conf = {total_pickups_2nd_scan_conf}).")
+    if rescan_words.size > 0:
+        value_found = re.findall(misread_number_format, rescan_words['text'].iloc[-1])
+        if value_found:
+            total_pickups_2nd_scan = value_found[-1]
+            total_pickups_2nd_scan_conf = round(rescan_df['conf'][0], 4)
+            print(f"Total pickups found in 2nd location (rescan): {total_pickups_2nd_scan} "
+                  f"(conf = {total_pickups_2nd_scan_conf}).")
+        else:
+            print("Total pickups not found in 2nd location (rescan).")
+            total_pickups_2nd_scan = NO_NUMBER
+            total_pickups_2nd_scan_conf = NO_CONF
 
     total, total_conf = choose_between_two_values(total_pickups_1st_scan, total_pickups_1st_scan_conf,
                                                   total_pickups_2nd_scan, total_pickups_2nd_scan_conf)
@@ -663,13 +681,13 @@ def erase_bars_below_app_names(df, image):
     for i in df.index:
         # Black bars only exist below rows with app names, which are always near the left edge in the cropped screenshot
         # Skip rows if they aren't near the left edge or if they match a time/number format.
-        if i > 0 and (df['top'][i] < df['top'][i - 1] + df['height'][i - 1] + 0.02 * screenshot_width or
-                      df['left'][i] > 0.1 * screenshot_width or
+        if i > 0 and (df['top'][i] < df['top'][i - 1] + df['height'][i - 1] + 0.02 * screenshot.width or
+                      df['left'][i] > 0.1 * screenshot.width or
                       re.match(time_or_number_format, df['text'][i])):
             continue
 
-        start_row = df['top'][i] + df['height'][i] + round(0.01 * screenshot_width)
-        start_col = df['left'][i] + round(0.01 * screenshot_width)
+        start_row = df['top'][i] + df['height'][i] + round(0.01 * screenshot.width)
+        start_col = df['left'][i] + round(0.01 * screenshot.width)
 
         top_of_bar = 0
         bottom_of_bar = image.shape[0]
@@ -705,7 +723,6 @@ def erase_bars_below_app_names(df, image):
                       box_color_to_paint, -1)
 
     return image
-
 
 
 def main():

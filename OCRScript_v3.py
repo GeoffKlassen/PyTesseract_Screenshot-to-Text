@@ -369,7 +369,7 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False)
     value_format = misread_number_format if value_is_number else misread_time_format
     format_name = 'number' if value_is_number else 'time'
 
-    print(f"Comparing scan 1: {text1}  vs 2: {text2}  ——  ", end="")
+    print(f"Comparing scan 1: {text1} (conf = {conf1})  vs 2: {text2} (conf = {conf2})  ——  ", end="")
     if conf1 != NO_CONF and conf2 != NO_CONF:
         if bool(re.search(value_format, text1)) and not bool(re.search(value_format, text2)):
             print(f"Only 1st scan matches a proper {format_name} format. Keeping 1st scan.")
@@ -518,6 +518,14 @@ if __name__ == '__main__':
 
             # Get the daily total usage (if it's present in the screenshot)
             daily_total, daily_total_conf = iOS.get_daily_total_and_confidence(current_screenshot, bw_image)
+
+            if dashboard_category == PICKUPS:
+                daily_total_2nd_loc, daily_total_2nd_loc_conf = iOS.get_total_pickups_2nd_location(current_screenshot,
+                                                                                                   bw_image)
+                print("Comparing both locations for total pickups:")
+                daily_total, daily_total_conf = choose_between_two_values(daily_total, daily_total_conf,
+                                                                          daily_total_2nd_loc, daily_total_2nd_loc_conf)
+
             current_screenshot.set_daily_total(daily_total, daily_total_conf)
 
             # Return the extracted data

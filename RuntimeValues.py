@@ -14,7 +14,7 @@ from LanguageDictionaries import *
 """
 
 
-study_to_analyze = studies[1]
+study_to_analyze = studies[0]
 # Use studies[0] for the HappyB2.0 study
 # Use studies[1] for the BCH study
 

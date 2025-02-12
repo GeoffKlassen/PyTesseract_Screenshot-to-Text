@@ -4,15 +4,12 @@
 
 class Screenshot:
 
-    """Initialize an object of type Screenshot
-    url               : the full https://.../image.jpg URL as taken from the database of URLs
-    filename          : the name of the file as stored locally (without the web address), taken from the above URL
-    user_id           : the user_ID as taken from the database of URLs
-    date_taken        : the date the screenshot was submitted, as taken from the database of URLs
-    category_submitted: the category in which the screenshot was submitted (screentime, notifications, pickups/unlocks)
-                        as taken from the database of URLs
-    """
     def __init__(self, participant, url, device_os=None, date=None, category=None):
+        """Initialize an object of type Screenshot
+            :param participant: the participant (object) that submitted this screenshot (has variable user_id)
+            :param url: the full https://.../image.jpg URL as taken from the database of URLs
+        """
+
         self.participant = participant
         self.url = url
         self.filename = url[url.rfind('/') + 1:] if url is not None else None
