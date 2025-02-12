@@ -363,25 +363,34 @@ def get_os(dev_id):
 #  Use that, and merge in the Android values for value_format.
 
 def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False):
-    text1 = str(text1)
-    text2 = str(text2)
+    t1 = f"'{str(text1)}'" if conf1 != NO_CONF else "N/A"
+    t2 = f"'{str(text2)}'" if conf2 != NO_CONF else "N/A"
+    c1 = f"(conf = {conf1})" if conf1 != NO_CONF else ""
+    c2 = f"(conf = {conf2})" if conf2 != NO_CONF else ""
 
     value_format = misread_number_format if value_is_number else misread_time_format
     format_name = 'number' if value_is_number else 'time'
 
-    print(f"Comparing scan 1: {text1} (conf = {conf1})  vs 2: {text2} (conf = {conf2})  ——  ", end="")
+    print(f"Comparing scan 1: {t1} {c1}  vs 2: {t2} {c2}  ——  ", end="")
     if conf1 != NO_CONF and conf2 != NO_CONF:
+        if bool(re.search(value_format, text1)) and bool(re.search(value_format, text2)) and text1 != text2:
+            if text1 in text2:
+                print(f"{t2} contains {t1}. Using {t2}.")
+                return text2, conf2
+            elif text2 in text1:
+                print(f"{t1} contains {t2}. Keeping {t1}.")
+                return text1, conf1
         if bool(re.search(value_format, text1)) and not bool(re.search(value_format, text2)):
-            print(f"Only 1st scan matches a proper {format_name} format. Keeping 1st scan.")
+            print(f"Only {t1} matches a proper {format_name} format. Keeping {t1}.")
             return text1, conf1
         elif not bool(re.search(value_format, text1)) and bool(re.search(value_format, text2)):
-            print(f"Only 2nd scan matches a proper {format_name} format. Using 2nd scan.")
+            print(f"Only {t2} matches a proper {format_name} format. Using {t2}.")
             return text2, conf2
         elif len(text1) > len(text2) and value_is_number:
-            print(f"1st scan for {format_name} has more characters than 2nd scan. Keeping 1st scan.")
+            print(f"{t1} has more characters than {t2}. Keeping {t1}.")
             return text1, conf1
         elif len(text1) < len(text2) and value_is_number:
-            print(f"2nd scan for {format_name} has more characters than 1st scan. Using 2nd scan.")
+            print(f"{t2} has more characters than {t1}. Using {t2}.")
             return text2, conf2
         else:
             if conf1 > conf2:
@@ -392,15 +401,15 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False)
                 return text2, conf2
     elif conf1 != NO_CONF:
         if value_is_number and not bool(re.search(value_format, text1)):
-            print("Improper number format found on 1st scan; no text found on 2nd scan.")
+            print(f"Improper number format found in {t1}; no text found in {t2}.")
             return NO_NUMBER, NO_CONF
-        print("No text found on 2nd scan. Keeping 1st scan.")
+        print(f"No text found in 2nd scan. Keeping {t1}.")
         return text1, conf1
     elif conf2 != NO_CONF:
         if value_is_number and not bool(re.search(value_format, text2)):
-            print("No text found on 1st scan; improper number format found on 2nd scan.")
+            print(f"No text found in {t1}; improper number format found in {t2}.")
             return NO_NUMBER, NO_CONF
-        print("No text found on 1st scan. Using 2nd scan.")
+        print(f"No text found on 1st scan. Using {t2}.")
         return text2, conf2
     else:
         print("No text found on 1st or 2nd scan.")
@@ -444,7 +453,7 @@ if __name__ == '__main__':
         # Add the current screenshot to the list of all screenshots
         screenshots.append(current_screenshot)
         # Download the image (if not using local images) or open the local image
-        grey_image, bw_image = load_and_process_image(current_screenshot, white_threshold=226)
+        grey_image, bw_image = load_and_process_image(current_screenshot, white_threshold=220)  # 226
         current_screenshot.set_image(grey_image)
         current_screenshot.is_light_mode = True if np.mean(grey_image) > 170 else False
         # Light-mode images have an average pixel brightness above 170 (scale 0 to 255).

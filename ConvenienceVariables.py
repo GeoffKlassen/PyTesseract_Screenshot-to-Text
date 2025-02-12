@@ -16,7 +16,7 @@ SCREENTIME_HEADING = SCREENTIME
 LIMITS_HEADING = 'limits'
 MOST_USED_HEADING = 'most used'
 PICKUPS_HEADING = PICKUPS
-FIRST_PICKUP_HEADING = 'first pickup'
+FIRST_PICKUP_HEADING = 'total pickups'
 FIRST_USED_AFTER_PICKUP_HEADING = 'first used after pickup'
 NOTIFICATIONS_HEADING = NOTIFICATIONS
 HOURS_AXIS_HEADING = 'hours row'
@@ -81,7 +81,7 @@ NOTIFY_COLS = 'notifications'
 URL_COLUMNS = 'urls'
 
 # misread_time_format = r'^[\d|t]+\s?[hn]$|^[\d|t]+\s?[hn]\s?[\d|tA]+\s?(min|m)$|^.{0,2}\s?[0-9AIt]+\s?(min|m)$|\d+\s?s$'
-misread_time_format = r'\b[0-9toAQ]{1,2}\s?[hn]\s?[0-9tA]{1,2}\s?mi?n?\b|\b[0-9to]{1,2}\s?[hn]\b|\b[0-9AIt]{1,2}\s?mi?n?\b|\b\d{1,2}\s?s\b'
+misread_time_format = r'\b[12T]?[0-9toAQ]\s?[hn]\s?[1-5tA]?[0-9tA]\s?mi?n?\b|\b[12T]?[0-9to]\s?[hn]\b|\b[1-5tA]?[0-9tA]\s?mi?n?\b|\b\d{1,2}\s?s\b'
 misread_number_format = r'\b[0-9A]+\b'
 misread_time_or_number_format = '|'.join([misread_time_format, misread_number_format])
 

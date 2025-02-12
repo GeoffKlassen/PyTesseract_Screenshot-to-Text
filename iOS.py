@@ -407,16 +407,16 @@ def convert_text_time_to_minutes(text):
     return total_usage_time_mins
 
 
-def filter_time_or_number_text(text, f):
-    if str(text) == NO_TEXT or re.search("AM*AM|AM*PM", str(text)):
-        return NO_TEXT
+def filter_time_or_number_text(text, conf, f):
+    if str(text) == NO_TEXT:
+        return NO_TEXT, NO_CONF
 
     fmt = re.compile(f, re.IGNORECASE)
     matches = re.findall(fmt, text)
     if matches:
         text = str(max(matches, key=len))
     else:
-        return NO_TEXT
+        return NO_TEXT, NO_CONF
 
     # Replace common misread characters (e.g. pytesseract sometimes misreads '1h' as 'Th'/'th').
     text = re.sub(r'[TtIi](?=.?[hm])', '1', text)  # 1 (before h or m) can be misread as T/I
@@ -430,7 +430,7 @@ def filter_time_or_number_text(text, f):
     # Remove any characters that aren't a digit or a 'time' character ('h' = hours, 'min' = minutes, 's' = seconds)
     text = re.sub(r'[^0-9hmins]', '', text)
 
-    return text
+    return text, conf
 
 
 def get_daily_total_and_confidence(screenshot, img):
@@ -517,9 +517,7 @@ def get_daily_total_and_confidence(screenshot, img):
                 row_conf = round(df.loc[i]['conf'], 4)  # 4 decimal points of precision for the confidence value
 
                 if re.search(value_pattern, row_text):
-                    row_text_filtered = filter_time_or_number_text(row_text, value_pattern)
-                    daily_total_1st_scan = row_text_filtered
-                    daily_total_1st_scan_conf = row_conf
+                    daily_total_1st_scan, daily_total_1st_scan_conf = filter_time_or_number_text(row_text, row_conf, value_pattern)
                     break
 
             if daily_total_1st_scan_conf == NO_CONF:
@@ -568,9 +566,14 @@ def get_daily_total_and_confidence(screenshot, img):
             row_conf = round(rescan_df.loc[i]['conf'], 4)  # 4 decimal points of precision for the confidence value
             # row_text = filter_time_or_number_text(row_text)
             # if 1 <= len(re.findall(value_pattern, row_text, re.IGNORECASE)) <= 2 and rescan_df.loc[i]['height'] > 0.01 * screenshot.height:
-            if re.search(value_pattern, row_text, re.IGNORECASE) and rescan_df.loc[i]['height'] > 0.01 * screenshot.height:
-                row_text_filtered = filter_time_or_number_text(row_text, value_pattern)
-                daily_total_2nd_scan = row_text_filtered
+            if (re.search(value_pattern, row_text, re.IGNORECASE) and
+                    rescan_df.loc[i]['height'] > 0.01 * screenshot.height) and \
+                    len(re.findall(r'\b(?:AM|PM)', row_text, re.IGNORECASE)) <= 1:
+                # The row text contains a (misread) value, and
+                # the height of that value's textbox is above a minimum threshold, and
+                # that value is not an 'hours' row (Sometimes after cropping the image, the hours row is included
+                # and gets misread as a value format because it may contain AM, which is also a misread form of 4m)
+                daily_total_2nd_scan, daily_total_2nd_scan_conf = filter_time_or_number_text(row_text, row_conf, value_pattern)
                 daily_total_2nd_scan_conf = row_conf
                 break
 
@@ -598,6 +601,7 @@ def get_total_pickups_2nd_location(screenshot, img):
 
     headings_df = screenshot.headings_df
     text_df = screenshot.text
+    value_format = misread_number_format
 
     print("\nLooking in 2nd location for total pickups:")
     row_with_first_pickup = headings_df[headings_df[HEADING_COLUMN] == FIRST_PICKUP_HEADING]
@@ -624,9 +628,12 @@ def get_total_pickups_2nd_location(screenshot, img):
         print(f"Could not find 2nd location for total pickups.  Returning {NO_NUMBER} (conf = {NO_CONF}).")
         return NO_NUMBER, NO_CONF
 
+    last_word_in_row = str.split(row_with_total_pickups['text'])[-1]
+    last_word_in_row_conf = round(row_with_total_pickups['conf'], 4)
     try:
-        total_pickups_1st_scan = filter_time_or_number_text(str.split(row_with_total_pickups['text'])[-1])
-        total_pickups_1st_scan_conf = round(row_with_total_pickups['conf'], 4)  # 4 decimal points of precision
+        total_pickups_1st_scan, total_pickups_1st_scan_conf = filter_time_or_number_text(last_word_in_row,
+                                                                                         last_word_in_row_conf,
+                                                                                         value_format)
         print(f"Total pickups found in 2nd location: {total_pickups_1st_scan} (conf = {total_pickups_1st_scan_conf}).")
     except:
         print("Total pickups in 2nd location not found on first scan.")
@@ -665,7 +672,8 @@ def get_total_pickups_2nd_location(screenshot, img):
             total_pickups_2nd_scan_conf = NO_CONF
 
     total, total_conf = choose_between_two_values(total_pickups_1st_scan, total_pickups_1st_scan_conf,
-                                                  total_pickups_2nd_scan, total_pickups_2nd_scan_conf)
+                                                  total_pickups_2nd_scan, total_pickups_2nd_scan_conf,
+                                                  value_is_number=True)
 
     print(f"Total pickups, 2nd location: {total} (conf = {total_conf}).")
     return total, total_conf

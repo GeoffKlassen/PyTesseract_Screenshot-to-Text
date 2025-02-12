@@ -48,12 +48,12 @@ save_downloaded_images = True  # If True, images downloaded at runtime are saved
 user = "geoff.klassen@usask.ca"
 passw = "Phi1*618ah"
 
-show_images = True  # If True, images of the screenshots will be shown during runtime (mostly for debugging).
+show_images = False  # If True, images of the screenshots will be shown during runtime (mostly for debugging).
 
 conf_limit = 80
 
 # Location of PyTesseract on local drive
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Users\gbk546\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'  # At U of S
 
-test_lower_bound = 90
-test_upper_bound = 100
+test_lower_bound = 80
+test_upper_bound = 90
