@@ -69,15 +69,11 @@ KEYWORDS_FOR_HOURS_AXIS = ['00 06', '06 12', '12 18',
                            '00 Uhr 06 Uhr', '06 Uhr 12 Uhr', '12 Uhr 18 Uhr', 'Uhr Uhr',
                            r'^0\s.*12|6\s.*18$']  # TODO This method is a bit messy
 
-# Variables for iOS time values
+# Variables for iOS time formats
 # Even though the words for 'hours', 'minutes', and 'seconds' differ by language, iOS uses h/min/m/s for all languages.
-MIN_KEYWORD = r'min|m'
-HOUR_KEYWORD = 'h'
-SECONDS_KEYWORD = 's'
-TIME_FORMAT_STR_FOR_MINUTES = r'\d+\s?(min|m)'
-TIME_FORMAT_STR_FOR_HOURS = r'\d+\s?h'
-TIME_FORMAT_STR_FOR_SECONDS = r'\d+\s?s'
-
+MINUTES_FORMAT = r'(min|m)'
+HOURS_FORMAT = 'h'
+SECONDS_FORMAT = 's'
 
 english_months = MONTH_ABBREVIATIONS[ENG]
 month_mapping = {mon: english_months.index(mon) + 1 for mon in english_months}  # 1:January, 2:February, 3:March, etc.
@@ -380,33 +376,6 @@ def get_dashboard_category(screenshot):
             return categories_found[0]
 
 
-def convert_text_time_to_minutes(text):
-    if str(text) == NO_TEXT:
-        return NO_NUMBER
-
-    def extract_unit_of_time_as_int(time_str, time_format_regex=None, time_key_word=None):
-        # Extract the time and return it as an integer.
-        extracted_time_as_str = re.search(time_format_regex, time_str)
-        if extracted_time_as_str:
-            extracted_time_as_str = extracted_time_as_str.group()
-            extracted_time_int = int(re.sub(time_key_word, '', extracted_time_as_str))
-            return extracted_time_int
-        return 0
-
-    total_usage_time_mins = 0
-    usage_time_seconds = extract_unit_of_time_as_int(text, time_format_regex=TIME_FORMAT_STR_FOR_SECONDS,
-                                                     time_key_word=SECONDS_KEYWORD)
-    if not usage_time_seconds:
-        usage_time_hours = (extract_unit_of_time_as_int(text, time_format_regex=TIME_FORMAT_STR_FOR_HOURS,
-                                                        time_key_word=HOUR_KEYWORD))
-        usage_time_hours_to_minutes = (usage_time_hours * 60) if usage_time_hours else 0
-        total_usage_time_mins = extract_unit_of_time_as_int(text, time_format_regex=TIME_FORMAT_STR_FOR_MINUTES,
-                                                            time_key_word=MIN_KEYWORD)
-        total_usage_time_mins += usage_time_hours_to_minutes
-
-    return total_usage_time_mins
-
-
 def filter_time_or_number_text(text, conf, f):
     if str(text) == NO_TEXT:
         return NO_TEXT, NO_CONF
@@ -588,6 +557,48 @@ def get_daily_total_and_confidence(screenshot, img):
     return daily_tot, daily_tot_conf
 
 
+def convert_text_time_to_minutes(time_as_string):
+    """
+        For Screentime screenshots, coverts the daily total (String) into a number of minutes (int).
+        :return: (int) The daily total time converted to minutes
+    """
+    if str(time_as_string) == NO_TEXT:
+        return NO_NUMBER
+
+    def extract_unit_of_time_as_int(time_str, time_unit_format):
+        """
+            Finds the substring of time_str that represents a number of units of time (for a given unit) and
+            extracts the number of those units from that substring.
+            :param time_str: The string to search for a time format
+            :param time_unit_format: The abbreviated form of a unit of time, as used by the OS (can be a regex)
+            :return: (int) The number of units of time represented by the substring
+        """
+
+        time_format_regex = ''.join([r'\d+\s?', time_unit_format])
+        extracted_time_as_str = re.search(time_format_regex, time_str)
+        if extracted_time_as_str:
+            extracted_time_as_str = extracted_time_as_str.group()
+            extracted_time_int = int(re.sub(time_unit_format, '', extracted_time_as_str))
+            return extracted_time_int
+        else:
+            return 0
+
+    # Initialize the minutes counter
+    total_usage_time_mins = 0
+
+    # See if the time value has seconds in it -- if it does, it won't contain minutes, so the number of minutes is 0
+    usage_time_seconds = extract_unit_of_time_as_int(time_as_string, SECONDS_FORMAT)
+    if not usage_time_seconds:
+        # The time was not in seconds, so look for hours, then minutes, and add them together for a total in minutes
+        usage_time_hours = extract_unit_of_time_as_int(time_as_string, HOURS_FORMAT)
+        usage_time_hours_to_minutes = (usage_time_hours * 60) if usage_time_hours else 0
+
+        total_usage_time_mins = extract_unit_of_time_as_int(time_as_string, MINUTES_FORMAT)
+        total_usage_time_mins += usage_time_hours_to_minutes
+
+    return total_usage_time_mins
+
+
 def get_total_pickups_2nd_location(screenshot, img):
     """
     Looks for the number of daily total pickups in its alternate location in the iOS dashboard.
@@ -679,7 +690,7 @@ def get_total_pickups_2nd_location(screenshot, img):
     return total, total_conf
 
 
-def erase_bars_below_app_names(df, image):
+def erase_bars_below_app_names(screenshot, df, image):
     # Screentime and Notifications images have grey bars below the app names; the length of the bars
     # are proportional to the time/count for the app. This code erases those shapes to make the numbers
     # easier to read.
@@ -726,11 +737,76 @@ def erase_bars_below_app_names(df, image):
             # The bars always extend to the left edge of the cropped screenshot,
             # so we'll just paint all the way to the left edge.
 
-        box_color_to_paint = (255, 255, 255) if is_lightmode else (0, 0, 0)
+        box_color_to_paint = (255, 255, 255) if screenshot.is_light_mode else (0, 0, 0)
         cv2.rectangle(image, (left_of_bar, top_of_bar), (right_of_bar, bottom_of_bar),
                       box_color_to_paint, -1)
 
     return image
+
+
+def crop_image_to_app_region(screenshot, img, heading_above, heading_below):
+    # Determine the region of the screenshot that (likely) contains the list of the top n apps.
+    # Initialize the crop region -- the 'for' loop below trims it further
+    headings_df = screenshot.headings_df
+    l_pct = 0.15
+    r_pct = 0.87
+
+    crop_top = 0
+    crop_bottom = screenshot.height
+    crop_left = round(l_pct * screenshot.width)  # The app icons are typically within the leftmost 15% of the screenshot
+    crop_right = round(
+        r_pct * screenshot.width)  # Symbols (arrows, hourglass) typically appear in the rightmost 87% of the screenshot
+    buffer = 18  # A small number of pixels to expand the left edge of the crop rectangle, to increase the chance
+    # the crop edge is left of the app names
+    cropped_prescan_df = None
+
+    if not headings_df.empty:
+        leftmost_heading_index = headings_df['left'].idxmin()
+        crop_left = min(headings_df['left']) + round(0.1 * screenshot.width) - buffer if headings_df[HEADING_COLUMN][
+                                                                                             leftmost_heading_index] not in [
+                                                                                             DAY_OR_WEEK_HEADING,
+                                                                                             HOURS_AXIS_HEADING] else crop_left
+        crop_left = round(l_pct * screenshot.width) if crop_left > round(0.2 * screenshot.width) else crop_left
+        # The above line corrects for when left-aligned headings are not found (e.g., Date heading, or a partial
+        # 'hours' row (i.e. it thinks the left edge of the 'hours' row is further right than it actually is)).
+        for i in headings_df.index:
+            if headings_df[HEADING_COLUMN][i] == heading_above or \
+                    headings_df[HEADING_COLUMN][i] == DAY_OR_WEEK_HEADING and crop_bottom == screenshot.height:
+                crop_top = headings_df['top'][i] + headings_df['height'][i]
+            elif headings_df[HEADING_COLUMN][i] == heading_below:
+                crop_bottom = headings_df['top'][i]
+
+    if (headings_df.empty or
+            headings_df.iloc[-1][HEADING_COLUMN] in [SCREENTIME_HEADING, LIMITS_HEADING] or
+            screenshot.time_period == WEEK or
+            crop_top == 0 or
+            screenshot.category_submitted == SCREENTIME and ~headings_df[HEADING_COLUMN].str.contains(MOST_USED_HEADING).any() and
+            headings_df[HEADING_COLUMN].str.contains(FIRST_USED_AFTER_PICKUP_HEADING).any()):
+        # No relevant app data to extract if:
+        # there are no headings found, or
+        # the last heading found is 'SCREENTIME' or 'LIMITS', or
+        # the screenshot contains week-level data, or
+        # the screenshot is for screentime and
+        #   the 'MOST_USED' heading was not found (the heading for the screentime apps) and
+        #   the 'FIRST_USED_AFTER_PICKUP' heading was found (the heading for pickups apps)
+        print(
+            f"Heading above app list was not found. Setting all app-specific data to {NO_NUMBER} (conf = {NO_CONF}).")
+        crop_left = round(l_pct * screenshot.width)
+        crop_right = round(r_pct * screenshot.width)
+        # empty_rows = [{'app': NO_TEXT, 'app_conf': NO_CONF}] * number_of_apps_to_log
+        # app_names = app_names._append(empty_rows, ignore_index=True)
+        # empty_rows = [{'number': NO_NUMBER, 'number_conf': NO_CONF}] * number_of_apps_to_log
+        # app_numbers = app_numbers._append(empty_rows, ignore_index=True)
+        # app_area_heading_not_found = True
+        # num_missed_app_values = 0
+
+    # Crop the image and apply a different monochrome threshold (improves chances of catching missed text)
+    cropped_grey_image = screenshot.grey_image[crop_top:crop_bottom, crop_left:crop_right]
+    if screenshot.is_light_mode:
+        _, cropped_filtered_image = cv2.threshold(cropped_grey_image, 220, 255, cv2.THRESH_BINARY)
+    else:
+        _, cropped_filtered_image = cv2.threshold(cropped_grey_image, 50, 180, cv2.THRESH_BINARY)
+    return cropped_filtered_image
 
 
 def main():

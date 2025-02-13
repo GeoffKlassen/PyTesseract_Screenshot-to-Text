@@ -18,6 +18,7 @@ import warnings
 from datetime import datetime
 import time
 
+
 def compile_list_of_urls(df, url_cols,
                          date_col='Record Time', id_col='Participant ID', device_id_col='Device ID'):
     """Create a DataFrame of URLs from a provided DataFrame of survey responses.
@@ -450,7 +451,8 @@ if __name__ == '__main__':
         screenshots.append(current_screenshot)
         # Download the image (if not using local images) or open the local image
         grey_image, bw_image = load_and_process_image(current_screenshot, white_threshold=220)  # 226
-        current_screenshot.is_light_mode = True if np.mean(grey_image) > 170 else False
+        is_light_mode = True if np.mean(grey_image) > 170 else False
+        current_screenshot.set_is_light_mode(is_light_mode)
         # Light-mode images have an average pixel brightness above 170 (scale 0 to 255).
 
         # pytesseract does a better job of extracting text from images if the text isn't too big.
@@ -538,18 +540,53 @@ if __name__ == '__main__':
 
             # Get the daily total usage (if it's present in the screenshot)
             daily_total, daily_total_conf = iOS.get_daily_total_and_confidence(current_screenshot, bw_image_scaled)
+            dtm = ""
 
-            if dashboard_category == PICKUPS:
+            if dashboard_category == SCREENTIME:
+                heading_above_applist = MOST_USED_HEADING
+                heading_below_applist = PICKUPS_HEADING
+
+                daily_total_minutes = iOS.convert_text_time_to_minutes(daily_total)
+                current_screenshot.set_daily_total_minutes(daily_total_minutes)
+                dtm = (" (" + str(daily_total_minutes) + " minutes)") if daily_total_conf != NO_CONF else ""
+
+            elif dashboard_category == PICKUPS:
+                heading_above_applist = FIRST_USED_AFTER_PICKUP_HEADING
+                heading_below_applist = NOTIFICATIONS_HEADING
+
                 daily_total_2nd_loc, daily_total_2nd_loc_conf = iOS.get_total_pickups_2nd_location(current_screenshot,
                                                                                                    bw_image_scaled)
                 print("Comparing both locations for total pickups:")
                 daily_total, daily_total_conf = choose_between_two_values(daily_total, daily_total_conf,
                                                                           daily_total_2nd_loc, daily_total_2nd_loc_conf)
+
+            elif dashboard_category == NOTIFICATIONS:
+                heading_above_applist = HOURS_AXIS_HEADING
+                heading_below_applist = ''
+
+            else:
+                heading_above_applist = ''
+                heading_below_applist = ''
+
+            dt = "N/A" if daily_total_conf == NO_CONF else daily_total
+            print(f"Daily total {dashboard_category}: {dt}{dtm}")
+
+
             current_screenshot.set_daily_total(daily_total, daily_total_conf)
-            print(current_screenshot.daily_total_minutes)
+
+            app_names = pd.DataFrame(columns=['app', 'app_conf'])
+            app_numbers = pd.DataFrame(columns=['number', 'number_conf'])
+
             # Crop image to app region
+            cropped_image = iOS.crop_image_to_app_region(current_screenshot, bw_image_scaled, heading_above_applist, heading_below_applist)
 
             # Perform pre-scan to remove bars and fragments of app icons
+            _, cropped_prescan_df = extract_text_from_image(cropped_image)
+
+            if dashboard_category == SCREENTIME:
+                cropped_image_no_bars = iOS.erase_bars_below_app_names(current_screenshot, cropped_prescan_df, cropped_image)
+                if show_images:
+                    show_image(cropped_prescan_df, cropped_image_no_bars)
 
             # Do initial scan for app data
 
