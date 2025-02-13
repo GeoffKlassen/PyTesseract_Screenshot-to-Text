@@ -546,7 +546,7 @@ if __name__ == '__main__':
                 daily_total, daily_total_conf = choose_between_two_values(daily_total, daily_total_conf,
                                                                           daily_total_2nd_loc, daily_total_2nd_loc_conf)
             current_screenshot.set_daily_total(daily_total, daily_total_conf)
-
+            print(current_screenshot.daily_total_minutes)
             # Crop image to app region
 
             # Perform pre-scan to remove bars and fragments of app icons

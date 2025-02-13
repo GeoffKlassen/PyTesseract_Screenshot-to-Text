@@ -93,3 +93,4 @@ misread_sec_format = r'\b\d{1,2}\s?s\b'
 time_format = r'^\d+h$|^\d+h\s?\d+(m|min)$|^\d+(m|min)$|^\d+s$'
 number_format = r'^\d+$'
 time_or_number_format = '|'.join([time_format, number_format])
+
