@@ -51,9 +51,12 @@ passw = "Phi1*618ah"
 
 show_images = True  # If True, images of the screenshots will be shown during runtime (mostly for debugging).
 
+app_area_scale_factor = 0.75  # In addition to the screenshot_scale_factor, this is how much to scale the cropped image
+                              # when searching for app-level data
+
 conf_limit = 80
 # Location of PyTesseract on local drive
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Users\gbk546\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'  # At U of S
 
-test_lower_bound = 92
-test_upper_bound = 100
+test_lower_bound = 76
+test_upper_bound = 80

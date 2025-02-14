@@ -506,18 +506,26 @@ if __name__ == '__main__':
 
         # pytesseract does a better job of extracting text from images if the text isn't too big.
         if grey_image.shape[1] >= 2500:
-            scale_factor = 1 / 3
+            screenshot_scale_factor = 1 / 3
         elif grey_image.shape[1] >= 2000:
-            scale_factor = 1 / 2
+            screenshot_scale_factor = 1 / 2
         elif grey_image.shape[1] >= 1500:
-            scale_factor = 2 / 3
+            screenshot_scale_factor = 2 / 3
         else:
-            scale_factor = 1
+            screenshot_scale_factor = 1
 
-        grey_image_scaled = cv2.resize(grey_image, dsize=None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_AREA)
-        bw_image_scaled = cv2.resize(bw_image, dsize=None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_AREA)
+        grey_image_scaled = cv2.resize(grey_image,
+                                       dsize=None,
+                                       fx=screenshot_scale_factor,
+                                       fy=screenshot_scale_factor,
+                                       interpolation=cv2.INTER_AREA)
+        bw_image_scaled = cv2.resize(bw_image,
+                                     dsize=None,
+                                     fx=screenshot_scale_factor,
+                                     fy=screenshot_scale_factor,
+                                     interpolation=cv2.INTER_AREA)
 
-        current_screenshot.set_scale_factor(scale_factor)
+        current_screenshot.set_scale_factor(screenshot_scale_factor)
         current_screenshot.set_image(grey_image_scaled)
         current_screenshot.set_dimensions(grey_image_scaled.shape)
 
@@ -638,15 +646,19 @@ if __name__ == '__main__':
             current_screenshot.set_app_area_coordinates(app_area_coordinates)
 
             # Perform pre-scan to remove bars below app names
-            app_scale_factor = 0.75
-            scaled_cropped_image = cv2.resize(cropped_image, dsize=None, fx=app_scale_factor, fy=app_scale_factor, interpolation=cv2.INTER_AREA)
+            scaled_cropped_image = cv2.resize(cropped_image,
+                                              dsize=None,
+                                              fx=app_area_scale_factor,
+                                              fy=app_area_scale_factor,
+                                              interpolation=cv2.INTER_AREA)
             cropped_prescan_words, cropped_prescan_df = extract_text_from_image(scaled_cropped_image)
             cropped_prescan_words = cropped_prescan_words.reset_index(drop=True)
-            cropped_image_no_bars = iOS.erase_bars_below_app_names(current_screenshot, cropped_prescan_words,
-                                                                   scaled_cropped_image)
+            cropped_image_no_bars = iOS.erase_bars_below_app_names(screenshot=current_screenshot,
+                                                                   df=cropped_prescan_words,
+                                                                   image=scaled_cropped_image)
 
             # Extract app info from cropped image
-            app_area_df = extract_app_info(current_screenshot, cropped_image_no_bars, app_scale_factor)
+            app_area_df = extract_app_info(current_screenshot, cropped_image_no_bars, app_area_scale_factor)
             if show_images:
                 show_image(app_area_df, scaled_cropped_image)
 

@@ -788,15 +788,19 @@ def erase_bars_below_app_names(screenshot, df, image):
     # load_and_process_image removes these.)
 
     for i in df.index:
-        # Black bars only exist below rows with app names, which are always near the left edge in the cropped screenshot
-        # Skip rows if they aren't near the left edge or if they match a time/number format.
-        if i > 0 and (df['top'][i] < df['top'][i - 1] + df['height'][i - 1] + 0.02 * screenshot.width or
-                      df['left'][i] > 0.1 * screenshot.width or
-                      re.match(time_or_number_format, df['text'][i])):
+        if i > 0 and (df['top'][i] < df['top'][i - 1] + df['height'][i - 1] + 0.02 * image.shape[1] or
+                      df['left'][i] > 0.1 * image.shape[1] or
+                      df['top'][i] + df['height'][i] > image.shape[0] or
+                      re.match(time_or_number_format, df['text'][i])): # or image.shape[0] - (df['top'][i] + df['height'][i]) < 0.02 *
+            # Skip row if either:
+            #   the textbox is too close (vertically) to the textbox above it, or
+            #   the textbox is too far from the left edge of the cropped image, or
+            #   the textbox extends below the bottom of the cropped screenshot, or
+            #   the text in the textbox is a time/number
             continue
-
-        start_row = df['top'][i] + df['height'][i] + round(0.01 * screenshot.width)
-        start_col = df['left'][i] + round(0.01 * screenshot.width)
+        print(f" I will draw a box below {df['text'][i]}")
+        start_row = df['top'][i] + df['height'][i] + round(0.01 * image.shape[1])
+        start_col = df['left'][i] + round(0.01 * image.shape[1])
 
         top_of_bar = 0
         bottom_of_bar = image.shape[0]
@@ -805,27 +809,34 @@ def erase_bars_below_app_names(screenshot, df, image):
         # Iterate through rows starting from start_row
         for row in range(start_row, image.shape[0]):
             # Find the top of the bar
-            if top_of_bar == 0 and image[row, start_col] != image[row - 1, start_col]:
+            if top_of_bar == 0 and image[row, start_col] != image[start_row, start_col]:
                 top_of_bar = row - 2
+                if image.shape[0] - top_of_bar < 0.01 * image.shape[0]:
+                    break
+                print(f"top of bar = {top_of_bar}")
                 continue
             # Find the bottom of the bar
-            elif top_of_bar > 0 and image[row, start_col] != image[row - 1, start_col]:
+            elif top_of_bar > 0 and image[row, start_col] == image[start_row, start_col]:
                 bottom_of_bar = row + 2
+                print(f"bottom of bar = {bottom_of_bar}")
                 break
             else:
                 continue
-        top_of_bar = bottom_of_bar - 2 if top_of_bar == 0 else top_of_bar
-        middle_of_bar = round(0.5 * (bottom_of_bar + top_of_bar))
+        if top_of_bar == 0 or image.shape[0] - top_of_bar < 0.01 * image.shape[0]:
+            break
+        # top_of_bar = bottom_of_bar - 2 if top_of_bar == 0 else top_of_bar
+        middle_of_bar = round(0.5 * (bottom_of_bar + top_of_bar))  # might not need this
 
         for col in range(start_col, image.shape[1]):
             # Find the right of the bar
-            if image[middle_of_bar, col] != image[middle_of_bar, col - 1]:
-                right_of_bar = col + 5
+            col_pixels = image[top_of_bar:bottom_of_bar, col]
+            if np.all(col_pixels == col_pixels[0]):
+                right_of_bar = col + int(0.01*image.shape[1])
+                print(f"right of bar is {right_of_bar}")
                 break
             else:
                 continue
-            # The bars always extend to the left edge of the cropped screenshot,
-            # so we'll just paint all the way to the left edge.
+            # There is no useful data to the left of the bars, so we'll just paint all the way to the left edge.
 
         box_color_to_paint = (255, 255, 255) if screenshot.is_light_mode else (0, 0, 0)
         cv2.rectangle(image, (left_of_bar, top_of_bar), (right_of_bar, bottom_of_bar),

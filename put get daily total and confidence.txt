@@ -1,0 +1,3 @@
+put "get daily total and confidence" into each branch of the "if" clause
+change if-elif to all ifs, in case each category happens to be in the screenshot
+feed the heading above and heading below into the 'get daily total and confidence' function, instead of having it be a couple of variables in the Screenshot object
