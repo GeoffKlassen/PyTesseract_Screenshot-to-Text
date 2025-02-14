@@ -413,6 +413,55 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False)
         return NO_NUMBER, NO_CONF
 
 
+def extract_app_info(screenshot, image, scale):
+    text = screenshot.text
+
+    _, app_info_scan_1 = extract_text_from_image(image, remove_chars="[^a-zA-Z0-9+é:.!,()'&-]+")
+
+    # paste the truncated text df stuff here
+    """Sometimes the cropped rescan misses app numbers that were found on the initial scan.
+                    Merge these app numbers from the initial scan into the rescan."""
+    # Select only numbers from the initial scan that have high confidence (above conf_limit)
+    # and that lie in the 'app info' cropped region
+    truncated_text_df = text[text['conf'] > 0.5]
+    truncated_text_df.loc[truncated_text_df.index, 'left'] = truncated_text_df['left'] - crop_left
+    truncated_text_df.loc[truncated_text_df.index, 'top'] = truncated_text_df['top'] - crop_top
+    truncated_text_df = truncated_text_df[(truncated_text_df['left'] > 0) &
+                                          (truncated_text_df['top'] > 0) &
+                                          (truncated_text_df['left'] + truncated_text_df[
+                                              'width'] < crop_right - crop_left) &
+                                          (truncated_text_df['top'] + truncated_text_df[
+                                              'height'] < crop_bottom - crop_top)]
+    # truncated_text_df = OCRScript_v3.merge_df_rows_by_line_num(truncated_text_df)
+    # Keep only the rows that contain only digits (a.k.a. notification counts or pickup counts)
+    truncated_text_df = truncated_text_df[truncated_text_df['text'].str.isdigit()]
+
+    print(f"\nApp info from initial scan, where conf > 0.5:")
+    print(truncated_text_df[['left', 'top', 'width', 'height', 'conf', 'text']])
+
+    columns_to_scale = ['left', 'top', 'width', 'height']
+    truncated_text_df[columns_to_scale] = truncated_text_df[columns_to_scale].apply(lambda x: x * scale).astype(int)
+    app_info_scan_1 = iOS.consolidate_overlapping_text(pd.concat([app_info_scan_1, truncated_text_df], ignore_index=True))
+    app_info_scan_1 = app_info_scan_1.sort_values(by=['top', 'left']).reset_index(drop=True)
+
+    image_missed_text = image.copy()
+    for i in app_info_scan_1.index:
+        if app_info_scan_1['conf'][i] < conf_limit:
+            continue
+        upper_left_corner = (app_info_scan_1['left'][i], app_info_scan_1['top'][i])
+        bottom_right_corner = (app_info_scan_1['left'][i] + app_info_scan_1['width'][i],
+                               app_info_scan_1['top'][i] + app_info_scan_1['height'][i])
+        bg_colour = (255, 255, 255) if is_light_mode else (0, 0, 0)
+        cv2.rectangle(image_missed_text, upper_left_corner, bottom_right_corner, bg_colour, -1)
+
+    _, app_info_scan_2 = extract_text_from_image(image_missed_text, remove_chars="[^a-zA-Z0-9+é:.!,()'&-]+")
+
+    app_info = pd.concat([app_info_scan_1, app_info_scan_2]).sort_values(by = ['top', 'left']).reset_index(drop=True)
+    app_info = iOS.consolidate_overlapping_text(app_info)
+
+    return app_info
+
+
 if __name__ == '__main__':
     # Read in the list of URLs for the appropriate Study (as specified in RuntimeValues.py)
     url_list = pd.DataFrame()
@@ -538,55 +587,77 @@ if __name__ == '__main__':
 
             current_screenshot.set_category_detected(dashboard_category)
 
-            # Get the daily total usage (if it's present in the screenshot)
-            daily_total, daily_total_conf = iOS.get_daily_total_and_confidence(current_screenshot, bw_image_scaled)
-            dtm = ""
+            # for category in 'categories to search for' loop with 'category' as the 3rd input to function
+            # if screentime is in the categories to search for ??
+            daily_total, daily_total_conf = iOS.get_daily_total_and_confidence(current_screenshot,
+                                                                               bw_image_scaled,
+                                                                               dashboard_category)
+            current_screenshot.set_daily_total(daily_total, daily_total_conf)
+            dt = "N/A" if daily_total_conf == NO_CONF else daily_total
 
             if dashboard_category == SCREENTIME:
+                # Get the daily total usage (if it's present in the screenshot)
+                daily_total_minutes = iOS.convert_text_time_to_minutes(daily_total)
+
+                dtm = (" (" + str(daily_total_minutes) + " minutes)") if daily_total_conf != NO_CONF else ""
+                print(f"Daily total {dashboard_category}: {dt}{dtm}")
+
+                current_screenshot.set_daily_total_minutes(daily_total_minutes)
                 heading_above_applist = MOST_USED_HEADING
                 heading_below_applist = PICKUPS_HEADING
 
-                daily_total_minutes = iOS.convert_text_time_to_minutes(daily_total)
-                current_screenshot.set_daily_total_minutes(daily_total_minutes)
-                dtm = (" (" + str(daily_total_minutes) + " minutes)") if daily_total_conf != NO_CONF else ""
-
             elif dashboard_category == PICKUPS:
-                heading_above_applist = FIRST_USED_AFTER_PICKUP_HEADING
-                heading_below_applist = NOTIFICATIONS_HEADING
 
                 daily_total_2nd_loc, daily_total_2nd_loc_conf = iOS.get_total_pickups_2nd_location(current_screenshot,
                                                                                                    bw_image_scaled)
                 print("Comparing both locations for total pickups:")
                 daily_total, daily_total_conf = choose_between_two_values(daily_total, daily_total_conf,
                                                                           daily_total_2nd_loc, daily_total_2nd_loc_conf)
+                current_screenshot.set_daily_total(daily_total, daily_total_conf)
+                print(f"Daily total {dashboard_category}: {dt}")
+
+                heading_above_applist = FIRST_USED_AFTER_PICKUP_HEADING
+                heading_below_applist = NOTIFICATIONS_HEADING
 
             elif dashboard_category == NOTIFICATIONS:
+                current_screenshot.set_daily_total(daily_total, daily_total_conf)
+                print(f"Daily total {dashboard_category}: {dt}")
+
                 heading_above_applist = HOURS_AXIS_HEADING
                 heading_below_applist = ''
 
             else:
                 heading_above_applist = ''
                 heading_below_applist = ''
-
-            dt = "N/A" if daily_total_conf == NO_CONF else daily_total
-            print(f"Daily total {dashboard_category}: {dt}{dtm}")
-
-
-            current_screenshot.set_daily_total(daily_total, daily_total_conf)
-
-            app_names = pd.DataFrame(columns=['app', 'app_conf'])
-            app_numbers = pd.DataFrame(columns=['number', 'number_conf'])
+                daily_total = NO_TEXT
+                daily_total_conf = NO_CONF
 
             # Crop image to app region
-            cropped_image = iOS.crop_image_to_app_region(current_screenshot, bw_image_scaled, heading_above_applist, heading_below_applist)
+            cropped_image, crop_top, crop_left, crop_bottom, crop_right = iOS.crop_image_to_app_area(current_screenshot, heading_above_applist, heading_below_applist)
+            app_area_coordinates = (crop_top, crop_left), (crop_bottom, crop_right)
+            current_screenshot.set_app_area_coordinates(app_area_coordinates)
 
-            # Perform pre-scan to remove bars and fragments of app icons
-            _, cropped_prescan_df = extract_text_from_image(cropped_image)
+            # Perform pre-scan to remove bars below app names
+            app_scale_factor = 0.75
+            scaled_cropped_image = cv2.resize(cropped_image, dsize=None, fx=app_scale_factor, fy=app_scale_factor, interpolation=cv2.INTER_AREA)
+            cropped_prescan_words, cropped_prescan_df = extract_text_from_image(scaled_cropped_image)
+            cropped_prescan_words = cropped_prescan_words.reset_index(drop=True)
+            cropped_image_no_bars = iOS.erase_bars_below_app_names(current_screenshot, cropped_prescan_words,
+                                                                   scaled_cropped_image)
 
-            if dashboard_category == SCREENTIME:
-                cropped_image_no_bars = iOS.erase_bars_below_app_names(current_screenshot, cropped_prescan_df, cropped_image)
-                if show_images:
-                    show_image(cropped_prescan_df, cropped_image_no_bars)
+            # Extract app info from cropped image
+            app_area_df = extract_app_info(current_screenshot, cropped_image_no_bars, app_scale_factor)
+            if show_images:
+                show_image(app_area_df, scaled_cropped_image)
+
+            # Divide the extracted app info into app names and their numbers
+            app_data = iOS.get_app_names_and_numbers(screenshot=current_screenshot,
+                                                     df=app_area_df,
+                                                     category=dashboard_category,
+                                                     max_apps=max_apps_per_category)
+            print("\nApp data found:")
+            print(app_data[['app', 'number']])
+            print(f"Daily total {dashboard_category}: {daily_total}")
 
             # Do initial scan for app data
 

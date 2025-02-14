@@ -11,6 +11,7 @@ import OCRScript_v3
 from RuntimeValues import *
 from ConvenienceVariables import *
 from OCRScript_v3 import extract_text_from_image, choose_between_two_values
+from collections import namedtuple
 
 """
     iOS-Specific dictionaries
@@ -402,9 +403,9 @@ def filter_time_or_number_text(text, conf, f):
     return text, conf
 
 
-def get_daily_total_and_confidence(screenshot, img):
+def get_daily_total_and_confidence(screenshot, img, category=None):
     df = screenshot.text.copy()
-    category = screenshot.category_detected
+    category = screenshot.category_detected if category is None else category
     headings_df = screenshot.headings_df
     rows_with_day_type = screenshot.rows_with_day_type
 
@@ -690,6 +691,95 @@ def get_total_pickups_2nd_location(screenshot, img):
     return total, total_conf
 
 
+def crop_image_to_app_area(screenshot, heading_above, heading_below):
+    # Determine the region of the screenshot that (likely) contains the list of the top n apps.
+    # Initialize the crop region -- the 'for' loop below trims it further
+    def crop_app_icons(img):
+        height, width = img.shape
+
+        start_row = 0
+        r = 0
+        for r in range(start_row, img.shape[0]):
+            # Get the current column
+            row_pixels = img[r, :]
+            # Check if all the pixels in the column are the same
+            if not np.all(row_pixels == row_pixels[0]):
+                break
+        c_top = r - int(0.02 * img.shape[0])
+        img = img[int(c_top):, :]
+        # Start from one-third of the width and move leftwards
+        start_col = width // 3
+
+        for c in range(start_col, -1, -1):
+            # Get the current column
+            column_pixels = img[:, c]
+            # Check if all the pixels in the column are the same
+            if np.all(column_pixels == column_pixels[0]):
+                break
+        c_left = max(0, c - int(0.01 * img.shape[1]))
+        c_right = img.shape[1] - c_left + int(0.075 * img.shape[1])
+        img = img[:, c_left:c_right]
+
+
+        return img, c_top, c_left, height, c_right
+
+    headings_df = screenshot.headings_df
+
+    crop_top = 0
+    crop_bottom = screenshot.height
+    crop_left = round(0.15 * screenshot.width)  # The app icons are typically within the leftmost 15% of the screenshot
+    crop_right = round(
+        0.87 * screenshot.width)  # Symbols (arrows, hourglass) typically appear in the rightmost 87% of the screenshot
+
+    buffer = 18  # A small number of pixels to expand the left edge of the crop rectangle, to increase the chance
+    # the crop edge is left of the app names
+    if not headings_df.empty:
+        leftmost_heading_index = headings_df['left'].idxmin()
+        crop_left = min(headings_df['left']) + round(0.1 * screenshot.width) - buffer if headings_df[HEADING_COLUMN][
+                                                                                             leftmost_heading_index] not in [
+                                                                                             DAY_OR_WEEK_HEADING,
+                                                                                             HOURS_AXIS_HEADING] else crop_left
+        crop_left = round(0.15 * screenshot.width) if crop_left > round(0.2 * screenshot.width) else crop_left
+        # The above line corrects for when left-aligned headings are not found (e.g., Date heading, or a partial
+        # 'hours' row (i.e. it thinks the left edge of the 'hours' row is further right than it actually is)).
+        for i in headings_df.index:
+            if headings_df[HEADING_COLUMN][i] == heading_above or \
+                    headings_df[HEADING_COLUMN][i] == DAY_OR_WEEK_HEADING and crop_bottom == screenshot.height:
+                crop_top = headings_df['top'][i] + headings_df['height'][i]
+            elif headings_df[HEADING_COLUMN][i] == heading_below:
+                crop_bottom = headings_df['top'][i]
+
+    if (headings_df.empty or
+            headings_df.iloc[-1][HEADING_COLUMN] in [SCREENTIME_HEADING, LIMITS_HEADING] or
+            screenshot.time_period == WEEK or
+            crop_top == 0 or
+            screenshot.category_submitted == SCREENTIME and ~headings_df[HEADING_COLUMN].str.contains(MOST_USED_HEADING).any() and
+            headings_df[HEADING_COLUMN].str.contains(FIRST_USED_AFTER_PICKUP_HEADING).any()):
+        # No relevant app data to extract if:
+        # there are no headings found, or
+        # the last heading found is 'SCREENTIME' or 'LIMITS', or
+        # the screenshot contains week-level data, or
+        # the screenshot is for screentime and
+        #   the 'MOST_USED' heading was not found (the heading for the screentime apps) and
+        #   the 'FIRST_USED_AFTER_PICKUP' heading was found (the heading for pickups apps)
+        print(
+            f"Heading above app list was not found. Geoff you should set all app-specific data to {NO_NUMBER} (conf = {NO_CONF}).")
+        # app_area_heading_not_found = True
+        # num_missed_app_values = 0
+
+    # Crop the image and apply a different monochrome threshold (improves chances of catching missed text)
+    cropped_grey_image = screenshot.grey_image[crop_top:crop_bottom, crop_left:crop_right]
+    # Create a new monochrome image with a different threshold to ensure the bars below the app names show up well.
+    if screenshot.is_light_mode:
+        _, cropped_filtered_image = cv2.threshold(cropped_grey_image, 220, 255, cv2.THRESH_BINARY)
+    else:
+        _, cropped_filtered_image = cv2.threshold(cropped_grey_image, 50, 180, cv2.THRESH_BINARY)
+
+    # cropped_filtered_image, c_top, c_left, c_bottom, c_right = crop_app_icons(cropped_filtered_image)
+
+    return cropped_filtered_image, crop_top, crop_left, crop_bottom, crop_right
+
+
 def erase_bars_below_app_names(screenshot, df, image):
     # Screentime and Notifications images have grey bars below the app names; the length of the bars
     # are proportional to the time/count for the app. This code erases those shapes to make the numbers
@@ -740,73 +830,162 @@ def erase_bars_below_app_names(screenshot, df, image):
         box_color_to_paint = (255, 255, 255) if screenshot.is_light_mode else (0, 0, 0)
         cv2.rectangle(image, (left_of_bar, top_of_bar), (right_of_bar, bottom_of_bar),
                       box_color_to_paint, -1)
+        cv2.rectangle(image, (0, 0), (df['left'][i] - int(0.01*image.shape[0]), image.shape[1]), box_color_to_paint, -1)
 
     return image
 
 
-def crop_image_to_app_region(screenshot, img, heading_above, heading_below):
-    # Determine the region of the screenshot that (likely) contains the list of the top n apps.
-    # Initialize the crop region -- the 'for' loop below trims it further
-    headings_df = screenshot.headings_df
-    l_pct = 0.15
-    r_pct = 0.87
+def consolidate_overlapping_text(df):
+    # For calculating overlap of two text boxes
+    Rectangle = namedtuple('Rectangle', 'xmin ymin xmax ymax')
 
-    crop_top = 0
-    crop_bottom = screenshot.height
-    crop_left = round(l_pct * screenshot.width)  # The app icons are typically within the leftmost 15% of the screenshot
-    crop_right = round(
-        r_pct * screenshot.width)  # Symbols (arrows, hourglass) typically appear in the rightmost 87% of the screenshot
-    buffer = 18  # A small number of pixels to expand the left edge of the crop rectangle, to increase the chance
-    # the crop edge is left of the app names
-    cropped_prescan_df = None
+    def calculate_overlap(rect_a, rect_b):
+        # Find the overlap in the x-axis
+        dx = min(rect_a.xmax, rect_b.xmax) - max(rect_a.xmin, rect_b.xmin)
+        # Find the overlap in the y-axis
+        dy = min(rect_a.ymax, rect_b.ymax) - max(rect_a.ymin, rect_b.ymin)
+        #
+        smallest_rect_area = min((rect_a.xmax - rect_a.xmin) * (rect_a.ymax - rect_a.ymin),
+                                 (rect_b.xmax - rect_b.xmin) * (rect_b.ymax - rect_b.ymin))
 
-    if not headings_df.empty:
-        leftmost_heading_index = headings_df['left'].idxmin()
-        crop_left = min(headings_df['left']) + round(0.1 * screenshot.width) - buffer if headings_df[HEADING_COLUMN][
-                                                                                             leftmost_heading_index] not in [
-                                                                                             DAY_OR_WEEK_HEADING,
-                                                                                             HOURS_AXIS_HEADING] else crop_left
-        crop_left = round(l_pct * screenshot.width) if crop_left > round(0.2 * screenshot.width) else crop_left
-        # The above line corrects for when left-aligned headings are not found (e.g., Date heading, or a partial
-        # 'hours' row (i.e. it thinks the left edge of the 'hours' row is further right than it actually is)).
-        for i in headings_df.index:
-            if headings_df[HEADING_COLUMN][i] == heading_above or \
-                    headings_df[HEADING_COLUMN][i] == DAY_OR_WEEK_HEADING and crop_bottom == screenshot.height:
-                crop_top = headings_df['top'][i] + headings_df['height'][i]
-            elif headings_df[HEADING_COLUMN][i] == heading_below:
-                crop_bottom = headings_df['top'][i]
+        # If there is an overlap in both x and y, calculate the area
+        if (dx >= 0) and (dy >= 0):
+            return dx * dy / smallest_rect_area
+        else:
+            return 0  # No overlap
 
-    if (headings_df.empty or
-            headings_df.iloc[-1][HEADING_COLUMN] in [SCREENTIME_HEADING, LIMITS_HEADING] or
-            screenshot.time_period == WEEK or
-            crop_top == 0 or
-            screenshot.category_submitted == SCREENTIME and ~headings_df[HEADING_COLUMN].str.contains(MOST_USED_HEADING).any() and
-            headings_df[HEADING_COLUMN].str.contains(FIRST_USED_AFTER_PICKUP_HEADING).any()):
-        # No relevant app data to extract if:
-        # there are no headings found, or
-        # the last heading found is 'SCREENTIME' or 'LIMITS', or
-        # the screenshot contains week-level data, or
-        # the screenshot is for screentime and
-        #   the 'MOST_USED' heading was not found (the heading for the screentime apps) and
-        #   the 'FIRST_USED_AFTER_PICKUP' heading was found (the heading for pickups apps)
-        print(
-            f"Heading above app list was not found. Setting all app-specific data to {NO_NUMBER} (conf = {NO_CONF}).")
-        crop_left = round(l_pct * screenshot.width)
-        crop_right = round(r_pct * screenshot.width)
-        # empty_rows = [{'app': NO_TEXT, 'app_conf': NO_CONF}] * number_of_apps_to_log
-        # app_names = app_names._append(empty_rows, ignore_index=True)
-        # empty_rows = [{'number': NO_NUMBER, 'number_conf': NO_CONF}] * number_of_apps_to_log
-        # app_numbers = app_numbers._append(empty_rows, ignore_index=True)
-        # app_area_heading_not_found = True
-        # num_missed_app_values = 0
+    # This section checks if two text values physically overlap;
+    # if there is enough overlap, it decides which word to consider the 'correct' word.
+    rows_to_drop = []
+    for i in df.index:
+        if i == 0:
+            continue
+        current_left = df['left'][i]
+        current_right = df['left'][i] + df['width'][i]
+        current_top = df['top'][i]
+        current_bottom = df['top'][i] + df['height'][i]
+        prev_left = df['left'][i - 1]
+        prev_right = df['left'][i - 1] + df['width'][i - 1]
+        prev_top = df['top'][i - 1]
+        prev_bottom = df['top'][i - 1] + df['height'][i - 1]
 
-    # Crop the image and apply a different monochrome threshold (improves chances of catching missed text)
-    cropped_grey_image = screenshot.grey_image[crop_top:crop_bottom, crop_left:crop_right]
-    if screenshot.is_light_mode:
-        _, cropped_filtered_image = cv2.threshold(cropped_grey_image, 220, 255, cv2.THRESH_BINARY)
-    else:
-        _, cropped_filtered_image = cv2.threshold(cropped_grey_image, 50, 180, cv2.THRESH_BINARY)
-    return cropped_filtered_image
+        current_textbox = Rectangle(current_left, current_top, current_right, current_bottom)
+        prev_textbox = Rectangle(prev_left, prev_top, prev_right, prev_bottom)
+
+        current_num_digits = len(re.findall(r'\d', df['text'][i]))
+        prev_num_digits = len(re.findall(r'\d', df['text'][i - 1]))
+
+        if calculate_overlap(current_textbox, prev_textbox) > 0.3:
+            # If two text boxes overlap by at least 30%, consider them to be two readings of the same text.
+            # print(f"Comparing {df['text'][i]} to {df['text'][i - 1]}:")
+            if re.search(misread_time_format, df.loc[i, 'text']) and not re.search(misread_time_format, df.loc[i - 1, 'text']):
+                # print('debug 1')
+                rows_to_drop.append(i - 1)
+            elif not re.search(misread_time_format, df.loc[i, 'text']) and re.search(misread_time_format, df.loc[i - 1, 'text']):
+                # print("debug 2")
+                rows_to_drop.append(i)
+            elif current_num_digits > prev_num_digits:
+                # print('debug 3')
+                rows_to_drop.append(i - 1)
+            elif current_num_digits < prev_num_digits:
+                # print("debug 4")
+                rows_to_drop.append(i)
+            elif len(str(df['text'][i - 1])) <= 2 < len(str(df['text'][i])):
+                rows_to_drop.append(i - 1)
+            elif len(str(df['text'][i])) <= 2 < len(str(df['text'][i - 1])):
+                rows_to_drop.append(i)
+            elif df['conf'][i - 1] > df['conf'][i]:
+                if df['text'][i - 1] == 'min':
+                    # print('debug 5')
+                    rows_to_drop.append(i - 1)
+                else:
+                    # print('debug 6')
+                    rows_to_drop.append(i)
+            else:
+                if df['text'][i] == 'min':
+                    # print('debug 7')
+                    rows_to_drop.append(i)
+                else:
+                    # print('debug 8')
+                    rows_to_drop.append(i - 1)
+
+    if 'level_0' in df.columns:
+        df.drop(columns=['level_0'], inplace=True)
+
+    merged_df = df.drop(index=rows_to_drop).reset_index()
+
+    # consolidated_df = merge_df_rows_by_height(merged_df)
+
+    return merged_df
+
+
+def get_app_names_and_numbers(screenshot, df, category, max_apps):
+    app_names = pd.DataFrame(columns=['app', 'app_conf'])
+    app_numbers = pd.DataFrame(columns=['number', 'number_conf'])
+    empty_name_row = pd.DataFrame({'app': [NO_TEXT], 'app_conf': [NO_CONF]})
+    empty_number_row = pd.DataFrame({'number': [NO_TEXT], 'number_conf': [NO_CONF]}) if category == SCREENTIME else (
+                       pd.DataFrame({'number': [NO_NUMBER], 'number_conf': [NO_CONF]}))
+    text = screenshot.text
+    (crop_top, crop_left), (crop_bottom, crop_right) = screenshot.app_area_coordinates
+
+    with (warnings.catch_warnings()):
+        warnings.simplefilter('ignore')
+        
+        # This section determines whether each row in the final app info df is an app name or a number/time
+        # and separates them.
+        prev_row = ''
+        num_missed_app_values = 0
+        for i in df.index:
+            row_text = df['text'][i]
+            row_conf = round(df['conf'][i], 4)
+            row_height = df['height'][i]
+            if (len(str(row_text)) >= 3 or re.match(r'[xX]{1,2}', str(row_text))) and \
+                    not re.match(time_or_number_format, str(row_text), re.IGNORECASE) and \
+                    row_height > 0.75 * df[
+                'height'].mean():  # if current row text is app name
+                if prev_row == 'name':  # two app names in a row
+                    if len(app_names) <= max_apps:
+                        num_missed_app_values += 1
+                    app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
+                new_name_row = pd.DataFrame({'app': [row_text], 'app_conf': [row_conf]})
+                app_names = pd.concat([app_names, new_name_row], ignore_index=True)
+                prev_row = 'name'
+            elif (category == SCREENTIME and re.match(time_format, str(row_text), re.IGNORECASE) or
+                  category != SCREENTIME and re.match(number_format, str(row_text), re.IGNORECASE)):
+                # if current row text is number
+                regex_format = misread_time_format if category == SCREENTIME else misread_number_format
+                row_text, row_conf = filter_time_or_number_text(row_text, row_conf, f=regex_format)
+                if prev_row != 'name':  # two app numbers in a row, or first datum is a number
+                    if len(app_names) < max_apps:
+                        num_missed_app_values += 1
+                    app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
+                new_number_row = pd.DataFrame({'number': [row_text], 'number_conf': [row_conf]})
+                app_numbers = pd.concat([app_numbers, new_number_row], ignore_index=True)
+                prev_row = 'number'
+            else:  # row is neither a valid app name nor a number, so discard it
+                pass
+
+        # Making sure each list is the right length (fill any missing values with NO_TEXT/NO_NUMBER and NO_CONF)
+        while app_names.shape[0] < max_apps:
+            app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
+        while app_numbers.shape[0] < max_apps:
+            app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
+
+        if category == SCREENTIME and app_numbers['number'][0] == screenshot.daily_total and app_numbers['number'][
+            0] != NO_NUMBER:
+            print(f"Daily total {category} matches first app time: {app_numbers['number'][0]}")
+            print(f"Resetting daily total {category} to {NO_NUMBER}.")
+            screenshot.set_daily_total(NO_TEXT)
+            screenshot.set_daily_total_minutes(NO_NUMBER, NO_CONF)
+
+    # Sometimes tesseract misreads (Italian) "Foto" as "mele"/"melee" or misreads ".AI" as ".Al"
+    app_names['app'] = app_names['app'].replace({r'^melee$|^mele$': 'Foto'}, regex=True)
+    app_names['app'] = app_names['app'].replace({r'.Al': '.AI'}, regex=True)
+    
+    top_n_app_names_and_numbers = pd.concat(
+        [app_names.head(max_apps), app_numbers.head(max_apps)], axis=1)
+
+    return top_n_app_names_and_numbers
 
 
 def main():

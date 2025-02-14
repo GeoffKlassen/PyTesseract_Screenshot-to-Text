@@ -80,12 +80,14 @@ study_happyb2_0 = {NAME: "HappyB2.0",
                    DIRECTORY: f'C:\\Users\\{pc_user}\\OneDrive - University of Saskatchewan\\Grad Studies\\HappyB 2.0',
                    DEFAULT_LANGUAGE: ENG,
                    SURVEY_LIST: [happyb2_baseline_survey, happyb2_daily_survey_ios, happyb2_daily_survey_android],
-                   CATEGORIES: [SCREENTIME, PICKUPS, NOTIFICATIONS]}
+                   CATEGORIES: [SCREENTIME, PICKUPS, NOTIFICATIONS],
+                   MAX_APPS: 3}
 
 study_bch = {NAME: "BCH",
              DIRECTORY: f'C:\\Users\\{pc_user}\\OneDrive - University of Saskatchewan\\Grad Studies\\Boston Childrens Hospital',
              DEFAULT_LANGUAGE: ENG,
              SURVEY_LIST: [bch_survey],
-             CATEGORIES: [SCREENTIME]}
+             CATEGORIES: [SCREENTIME],
+             MAX_APPS: 8}
 
 studies = [study_happyb2_0, study_bch]

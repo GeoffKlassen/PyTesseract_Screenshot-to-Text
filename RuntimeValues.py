@@ -22,6 +22,7 @@ if study_to_analyze in studies:
     default_language = study_to_analyze['Default Language']
     survey_list = study_to_analyze['Survey List']
     categories_included = study_to_analyze['Categories']
+    max_apps_per_category = study_to_analyze['Maximum Apps per Category']
 
 else:
 
@@ -38,6 +39,7 @@ else:
     # survey_list = [happyb2_baseline_survey, happyb2_daily_survey]     # For HappyB2.0
     survey_list = [bch_survey]  # For Boston Children's Hospital
     categories_included = [SCREENTIME]
+    max_apps_per_category = 8  # The
 
 dir_for_downloaded_images = f"Saved Images\\{study_to_analyze['Name']}"  # Where to store downloaded images (a sub-folder within the CWD)
 use_downloaded_images = True  # If False, local copies of images are not used (all images are downloaded at runtime).
@@ -50,9 +52,8 @@ passw = "Phi1*618ah"
 show_images = True  # If True, images of the screenshots will be shown during runtime (mostly for debugging).
 
 conf_limit = 80
-
 # Location of PyTesseract on local drive
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Users\gbk546\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'  # At U of S
 
-test_lower_bound = 90
+test_lower_bound = 92
 test_upper_bound = 100

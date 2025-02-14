@@ -32,6 +32,7 @@ class Screenshot:
         self.daily_total = None
         self.daily_total_conf = None
         self.daily_total_minutes = None
+        self.app_area_coordinates = ((None, None), (None, None))
 
 
     def __str__(self):
@@ -80,3 +81,6 @@ class Screenshot:
 
     def set_is_light_mode(self, tf):
         self.is_light_mode = tf
+
+    def set_app_area_coordinates(self, coordinates):
+        self.app_area_coordinates = coordinates

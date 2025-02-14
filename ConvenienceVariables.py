@@ -70,6 +70,7 @@ DIRECTORY = 'Directory'
 DEFAULT_LANGUAGE = 'Default Language'
 SURVEY_LIST = 'Survey List'
 CATEGORIES = 'Categories'
+MAX_APPS = 'Maximum Apps per Category'
 
 """
     Survey attributes
