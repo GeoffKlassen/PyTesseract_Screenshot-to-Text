@@ -123,6 +123,7 @@ def get_date_in_screenshot(screenshot):
     lang = get_best_language(screenshot)
     # Different languages display dates in different formats. Create the correct regex pattern for the date.
     date_pattern = get_date_regex(lang)
+
     try:
         # Pull out the first row of df where the text contains the date regex
         with warnings.catch_warnings():
@@ -269,9 +270,10 @@ def get_headings(screenshot):
     for i in df.index:
         row_text = df['text'][i]
         error_margin = round(np.log(len(str(row_text))))
-
         if day_type_rows is not None and i in day_type_rows.index:
             df.loc[i, HEADING_COLUMN] = DAY_OR_WEEK_HEADING
+        elif re.match(screenshot.date_format, row_text, re.IGNORECASE):
+            df.loc[i, HEADING_COLUMN] = DATE_HEADING
         elif min(levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_SCREEN_TIME[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = SCREENTIME_HEADING
         elif min(levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_LIMITATIONS[lang]) <= error_margin:
@@ -486,7 +488,7 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
                 row_text = df.loc[i]['text']
                 row_conf = round(df.loc[i]['conf'], 4)  # 4 decimal points of precision for the confidence value
 
-                if re.search(value_pattern, row_text):
+                if len(re.findall(value_pattern, row_text)) == 1:
                     daily_total_1st_scan, daily_total_1st_scan_conf = filter_time_or_number_text(row_text, row_conf, value_pattern)
                     break
 
@@ -530,15 +532,15 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
     if rescan_df.shape[0] > 0:
         for i in rescan_df.index:
             # Skip rows that are more than 20% away from the left edge of the screenshot.
-            if rescan_df.loc[i]['left'] > 0.2 * scale * screenshot.width:
+            if rescan_df.loc[i]['left'] > 0.2 * scale * screenshot.width or (not headings_df.empty and rescan_df.loc[i]['height'] < (min(headings_df['height'])*scale)):
                 continue
             row_text = rescan_df.loc[i]['text']
             row_conf = round(rescan_df.loc[i]['conf'], 4)  # 4 decimal points of precision for the confidence value
             # row_text = filter_time_or_number_text(row_text)
             # if 1 <= len(re.findall(value_pattern, row_text, re.IGNORECASE)) <= 2 and rescan_df.loc[i]['height'] > 0.01 * screenshot.height:
-            if (re.search(value_pattern, row_text, re.IGNORECASE) and
-                    rescan_df.loc[i]['height'] > 0.01 * screenshot.height) and \
-                    len(re.findall(r'\b(?:AM|PM)', row_text, re.IGNORECASE)) <= 1:
+            if len(re.findall(value_pattern, row_text)) == 1 and \
+                    rescan_df.loc[i]['height'] > 0.01 * screenshot.height and \
+                    len(re.findall(r'AM|PM', row_text, re.IGNORECASE)) <= 1:
                 # The row text contains a (misread) value, and
                 # the height of that value's textbox is above a minimum threshold, and
                 # that value is not an 'hours' row (Sometimes after cropping the image, the hours row is included
@@ -744,7 +746,7 @@ def crop_image_to_app_area(screenshot, heading_above, heading_below):
         # 'hours' row (i.e. it thinks the left edge of the 'hours' row is further right than it actually is)).
         for i in headings_df.index:
             if headings_df[HEADING_COLUMN][i] == heading_above or \
-                    headings_df[HEADING_COLUMN][i] == DAY_OR_WEEK_HEADING and crop_bottom == screenshot.height:
+                    headings_df[HEADING_COLUMN][i] in [DAY_OR_WEEK_HEADING, DATE_HEADING] and crop_bottom == screenshot.height:
                 crop_top = headings_df['top'][i] + headings_df['height'][i]
             elif headings_df[HEADING_COLUMN][i] == heading_below:
                 crop_bottom = headings_df['top'][i]
@@ -788,15 +790,14 @@ def erase_bars_below_app_names(screenshot, df, image):
     # load_and_process_image removes these.)
     height = image.shape[0]
     width = image.shape[1]
-
     for i in df.index:
         row_text, top, left, bottom = df['text'][i],   df['top'][i],   df['left'][i],   df['top'][i] + df['height'][i]
         prev_bottom = df['top'][i - 1] + df['height'][i - 1] if i > 0 else 0
-        if i > 0 and (top < prev_bottom + 0.02 * height or
+        if i > 0 and (top < prev_bottom + 0.01 * height or
                       left > 0.1 * width or
                       re.match(time_or_number_format, row_text)): # or height - (top + df['height'][i]) < 0.02 *
             # Skip row if either:
-            #   the textbox is too close (vertically) to the textbox above it, or
+            #   the textbox is too close (vertically) to the previous textbox, or
             #   the textbox is too far from the left edge of the cropped image, or
             #   the text in the textbox is a time/number
             continue
@@ -807,8 +808,11 @@ def erase_bars_below_app_names(screenshot, df, image):
         bottom_of_bar = height
         left_of_bar = 0
         right_of_bar = 0
+        max_height = min([height, bottom + int(df['height'][i] * 1.5)])
+
+        #debug
         # Iterate through rows starting from start_row
-        for row in range(start_row, height):
+        for row in range(start_row, max_height):
             # Find the top of the bar
             if top_of_bar == 0 and image[row, start_col] != image[start_row, start_col]:
                 top_of_bar = row - 2
@@ -821,7 +825,7 @@ def erase_bars_below_app_names(screenshot, df, image):
                 break
             else:
                 continue
-        if top_of_bar == 0 or height - top_of_bar < 0.01 * height:
+        if height - top_of_bar < 0.01 * height:
             break
         for col in range(start_col, width):
             # Find the right of the bar
@@ -836,7 +840,7 @@ def erase_bars_below_app_names(screenshot, df, image):
         box_color_to_paint = (255, 255, 255) if screenshot.is_light_mode else (0, 0, 0)
         cv2.rectangle(image, (left_of_bar, top_of_bar), (right_of_bar, bottom_of_bar),
                       box_color_to_paint, -1)
-        cv2.rectangle(image, (0, 0), (left - int(0.01*height), width), box_color_to_paint, -1)
+        cv2.rectangle(image, (0, 0), (left - int(0.01*height), height), box_color_to_paint, -1)
 
     return image
 
@@ -956,8 +960,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
                 new_name_row = pd.DataFrame({'app': [row_text], 'app_conf': [row_conf]})
                 app_names = pd.concat([app_names, new_name_row], ignore_index=True)
                 prev_row = 'name'
-            elif (category == SCREENTIME and re.match(time_format, str(row_text), re.IGNORECASE) or
-                  category != SCREENTIME and re.match(number_format, str(row_text), re.IGNORECASE)):
+            elif (category == SCREENTIME and re.match(misread_time_format, str(row_text), re.IGNORECASE) or
+                  category != SCREENTIME and re.match(misread_number_format, str(row_text), re.IGNORECASE)):
                 # if current row text is number
                 regex_format = misread_time_format if category == SCREENTIME else misread_number_format
                 row_text, row_conf = filter_time_or_number_text(row_text, row_conf, f=regex_format)

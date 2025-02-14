@@ -547,6 +547,7 @@ if __name__ == '__main__':
         if language_was_detected:
             current_screenshot.set_language(image_language)
             current_participant.set_language(image_language)
+            current_screenshot.set_date_format(iOS.get_date_regex(image_language))
 
         if study_to_analyze[CATEGORIES].__len__() == 1:
             # If the study we're analyzing only asked for one category of screenshot,
@@ -555,11 +556,14 @@ if __name__ == '__main__':
         else:
             dashboard_category = None
 
+
+        """ Here, the phone OS determines which branch of code we run to extract daily total and app-level data"""
+
         if current_screenshot.device_os == ANDROID:
             Android.main()
 
             # use functions from AndroidFunctions.py
-            # Return the extracted data
+            # End up with a dataframe app_data[['app', 'number']]
 
         elif current_screenshot.device_os == IOS:
             """Execute the procedure for extracting data from an iOS screenshot"""
@@ -646,19 +650,19 @@ if __name__ == '__main__':
             current_screenshot.set_app_area_coordinates(app_area_coordinates)
 
             # Perform pre-scan to remove bars below app names
+            cropped_prescan_words, cropped_prescan_df = extract_text_from_image(cropped_image)
+            cropped_prescan_words = cropped_prescan_words.reset_index(drop=True)
+            cropped_image_no_bars = iOS.erase_bars_below_app_names(screenshot=current_screenshot,
+                                                                   df=cropped_prescan_words,
+                                                                   image=cropped_image)
             scaled_cropped_image = cv2.resize(cropped_image,
                                               dsize=None,
                                               fx=app_area_scale_factor,
                                               fy=app_area_scale_factor,
                                               interpolation=cv2.INTER_AREA)
-            cropped_prescan_words, cropped_prescan_df = extract_text_from_image(scaled_cropped_image)
-            cropped_prescan_words = cropped_prescan_words.reset_index(drop=True)
-            cropped_image_no_bars = iOS.erase_bars_below_app_names(screenshot=current_screenshot,
-                                                                   df=cropped_prescan_words,
-                                                                   image=scaled_cropped_image)
 
             # Extract app info from cropped image
-            app_area_df = extract_app_info(current_screenshot, cropped_image_no_bars, app_area_scale_factor)
+            app_area_df = extract_app_info(current_screenshot, scaled_cropped_image, app_area_scale_factor)
             if show_images:
                 show_image(app_area_df, scaled_cropped_image)
 
@@ -671,14 +675,8 @@ if __name__ == '__main__':
             print(app_data[['app', 'number']])
             print(f"Daily total {dashboard_category}: {daily_total}")
 
-            # Do initial scan for app data
 
-            # Remove hi-conf data from initial scan for app data
+        # For both android and iOS screenshots, we can now store the app-level data in the Screenshot object.
 
-            # Do secondary scan for app data
-
-            # Merge the two scans into one
-
-            # Organize the data into 'app names' and 'app numbers'
-
-            # Return the extracted data
+        # And also give it to the Participant object, checking to see if data already exists for that day & category
+        #   (if it does, run the function (within Participant?) to determine how to merge the two sets of data together)

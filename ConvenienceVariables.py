@@ -21,6 +21,7 @@ FIRST_USED_AFTER_PICKUP_HEADING = 'first used after pickup'
 NOTIFICATIONS_HEADING = NOTIFICATIONS
 HOURS_AXIS_HEADING = 'hours row'
 DAY_OR_WEEK_HEADING = 'day or week'
+DATE_HEADING = 'date'
 
 """
     Values to use when data is missing or not found
@@ -82,7 +83,7 @@ NOTIFY_COLS = 'notifications'
 URL_COLUMNS = 'urls'
 
 # misread_time_format = r'^[\d|t]+\s?[hn]$|^[\d|t]+\s?[hn]\s?[\d|tA]+\s?(min|m)$|^.{0,2}\s?[0-9AIt]+\s?(min|m)$|\d+\s?s$'
-misread_time_format = r'\b[12T]?[0-9toAQ]\s?[hn]\s?[1-5tA]?[0-9tA]\s?mi?n?\b|\b[12T]?[0-9to]\s?[hn]\b|\b[1-5tA]?[0-9tA]\s?mi?n?\b|\b\d{1,2}\s?s\b'
+misread_time_format = r'\b[12T]?[0-9toAQ]\s?[hn]\s?[1-5tA]?[0-9tA]\s?mi?n?\b|\b[12T]?[0-9toA]\s?[hn]\b|\b[1-5tA]?[0-9itA]\s?mi?n?\b|\b\d{1,2}\s?s\b'
 misread_number_format = r'\b[0-9A]+\b'
 misread_time_or_number_format = '|'.join([misread_time_format, misread_number_format])
 

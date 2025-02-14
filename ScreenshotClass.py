@@ -22,6 +22,7 @@ class Screenshot:
         self.is_light_mode = None
         self.scale_factor = None
         self.language = None
+        self.date_format = None
         self.grey_image = None
         self.date_detected = None
         self.category_detected = None
@@ -84,3 +85,6 @@ class Screenshot:
 
     def set_app_area_coordinates(self, coordinates):
         self.app_area_coordinates = coordinates
+
+    def set_date_format(self, fmt):
+        self.date_format = fmt
