@@ -698,6 +698,7 @@ def crop_image_to_app_area(screenshot, heading_above, heading_below):
     # Initialize the crop region -- the 'for' loop below trims it further
 
     headings_df = screenshot.headings_df
+    text_df = screenshot.text
 
     crop_top = 0
     crop_bottom = screenshot.height
@@ -707,9 +708,9 @@ def crop_image_to_app_area(screenshot, heading_above, heading_below):
 
     buffer = 18  # A small number of pixels to expand the left edge of the crop rectangle, to increase the chance
     # the crop edge is left of the app names
-    if not headings_df.empty:
-        leftmost_heading_index = headings_df['left'].idxmin()
-        crop_left = min(headings_df['left']) + round(0.1 * screenshot.width) - buffer if headings_df[HEADING_COLUMN][
+    if not headings_df.empty and not (headings_df[headings_df['left'] > 0]).empty:
+        leftmost_heading_index = headings_df[headings_df['left'] > 0]['left'].idxmin()
+        crop_left = min(headings_df['left']) + round(0.09 * screenshot.width) if headings_df[HEADING_COLUMN][
                                                                                              leftmost_heading_index] not in [
                                                                                              DAY_OR_WEEK_HEADING,
                                                                                              HOURS_AXIS_HEADING] else crop_left
@@ -736,8 +737,8 @@ def crop_image_to_app_area(screenshot, heading_above, heading_below):
         # the screenshot is for screentime and
         #   the 'MOST_USED' heading was not found (the heading for the screentime apps) and
         #   the 'FIRST_USED_AFTER_PICKUP' heading was found (the heading for pickups apps)
-        print(
-            f"Heading above app list was not found. Geoff you should set all app-specific data to {NO_NUMBER} (conf = {NO_CONF}).")
+        print(f"Heading above app list was not found.")
+        return screenshot.grey_image, None, None, None, None
         # app_area_heading_not_found = True
         # num_missed_app_values = 0
 
@@ -761,36 +762,32 @@ def erase_bars_below_app_names(screenshot, df, image):
     # (Pickups images have the same bars, but they are coloured, so the filtering steps in
     # load_and_process_image removes these.)
     background_colour = WHITE if screenshot.is_light_mode else BLACK
+    image_copy = image.copy()
 
     def find_and_erase_bar_and_icon(r, c, h_max):
         top_of_bar = 0
         bottom_of_bar = image_height
         left_of_bar = 0
         right_of_bar = 0
-        image_copy = image.copy()
         # debug
         # Iterate through rows starting from start_row
-        for row in range(start_row, h_max):
+        for row in range(start_row, min([image_height, start_row + int(1.5*height)])):
             # Find the top of the bar
-            if top_of_bar == 0 and image[row, c] != image[r, c]:
+            if image[row, c] != image[r, c]:
                 top_of_bar = row - 2
-                image_copy = image.copy()
-                if image_height - top_of_bar < 0.01 * image_height:
-                    break
-                continue
+                break
+        cv2.rectangle(image, (0, top - int(0.5 * height)), (left - 2, bottom + int(1.5 * height)), background_colour,
+                      -1)
+        if top_of_bar == 0 or image_height - top_of_bar < 0.01 * image_height:
+            return
             # Find the bottom of the bar
-            elif top_of_bar > 0 and image[row, c] == image[r, c]:
+        for row in range(top_of_bar + 2, min([image_height, top_of_bar + 2 + height])):
+            if top_of_bar > 0 and image[row, c] == image[r, c]:
                 bottom_of_bar = row + 2
                 break
             else:
                 continue
-        cv2.rectangle(image_copy, (c, top_of_bar), (c + 2, top_of_bar + 2), (128, 128, 128), 6)
-        cv2.rectangle(image, (0, top - int(0.5*height)), (left - 2, bottom + int(1.5*height)), background_colour, -1)
-        cv2.imshow(f"{row_text}", image_copy)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-        if image_height - top_of_bar < 0.01 * image_height:
-            return
+        bottom_of_bar = top_of_bar + max_height if bottom_of_bar == image_height else bottom_of_bar
         for col in range(start_col, image_width):
             # Find the right of the bar
             col_pixels = image[top_of_bar:bottom_of_bar, col]
@@ -813,16 +810,19 @@ def erase_bars_below_app_names(screenshot, df, image):
 
     if show_images:
         OCRScript_v3.show_image(df, image)
-    app_icons_erased = False
     image_height = image.shape[0]
     image_width = image.shape[1]
-    distance_between_apps = 0
     for i in df.index:
-        row_text, top, left, bottom, height = df['text'][i],   df['top'][i],   df['left'][i],   df['top'][i] + df['height'][i], df['height'][i]
+        row_text, top, left, bottom, height = df['text'][i],   df['top'][i],   df['left'][i],   df['top'][i] + df['height'][i],   df['height'][i]
         prev_bottom = df['top'][i - 1] + df['height'][i - 1] if i > 0 else 0
-        if i > 0 and (top < prev_bottom + 0.01 * image_height or
-                      left > 0.1 * image_width or
-                      re.match(time_or_number_format, row_text)):  # or image_height - (top + df['height'][i]) < 0.02 *
+        if i == 0 and df.shape[0] > 1 and max([df['left'][0], df['left'][1]]) < 0.1 * image_width and \
+                abs(df['top'][1] - bottom) < 1.5*df['height'][1] and \
+                not re.search(misread_time_or_number_format, df['text'][1]):
+            cv2.rectangle(image, (0, top), (image_width, bottom), background_colour, -1)
+            continue
+        elif i > 0 and (top < prev_bottom + 0.01 * image_height or
+                        left > 0.1 * image_width or
+                        re.match(time_or_number_format, row_text)):  # or image_height - (top + df['height'][i]) < 0.02 *
             # Skip row if either:
             #   the textbox is too close (vertically) to the previous textbox, or
             #   the textbox is too far from the left edge of the cropped image, or
@@ -831,10 +831,8 @@ def erase_bars_below_app_names(screenshot, df, image):
         start_row = bottom + round(0.01 * image_width)
         start_col = left + round(0.01 * image_width)
         max_height = min([image_height, bottom + int(df['height'][i]*1.5)])
-        find_and_erase_bar_and_icon(start_row, start_col, max_height)
-
-        left_of_last_app = left
-        bottom_of_last_app = bottom
+        if start_row < max_height:
+            find_and_erase_bar_and_icon(start_row, start_col, max_height)
 
     return image
 
@@ -929,35 +927,38 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
     empty_name_row = pd.DataFrame({'app': [NO_TEXT], 'app_conf': [NO_CONF]})
     empty_number_row = pd.DataFrame({'number': [NO_TEXT], 'number_conf': [NO_CONF]}) if category == SCREENTIME else (
                        pd.DataFrame({'number': [NO_NUMBER], 'number_conf': [NO_CONF]}))
-    text = screenshot.text
-    (crop_top, crop_left), (crop_bottom, crop_right) = screenshot.app_area_coordinates
 
     with (warnings.catch_warnings()):
         warnings.simplefilter('ignore')
         
         # This section determines whether each row in the final app info df is an app name or a number/time
         # and separates them.
+        regex_format = misread_time_format if category == SCREENTIME else misread_number_format
         prev_row = ''
+        prev_row_top = -1
         num_missed_app_values = 0
         for i in df.index:
             row_text = df['text'][i]
             row_conf = round(df['conf'][i], 4)
             row_height = df['height'][i]
             if (len(str(row_text)) >= 3 or re.match(r'[xX]{1,2}', str(row_text))) and \
-                    not re.match(time_or_number_format, str(row_text), re.IGNORECASE) and \
-                    row_height > 0.75 * df[
-                'height'].mean():  # if current row text is app name
+                    not re.match(regex_format, str(row_text), re.IGNORECASE) and \
+                    row_height > 0.75 * df['height'].mean():  # if current row text is app name
                 if prev_row == 'name':  # two app names in a row
                     if len(app_names) <= max_apps:
                         num_missed_app_values += 1
                     app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
+                elif prev_row == 'number' and prev_row_top >= 0 and df['top'][i] - prev_row_top > 2.5*df['height'][i]:
+                    print(f"Suspected missing app between '{prev_app_name}' and '{row_text}'. Adding a blank row.")
+                    app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
+                    app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
                 new_name_row = pd.DataFrame({'app': [row_text], 'app_conf': [row_conf]})
                 app_names = pd.concat([app_names, new_name_row], ignore_index=True)
                 prev_row = 'name'
+                prev_app_name = row_text
             elif (category == SCREENTIME and re.match(misread_time_format, str(row_text), re.IGNORECASE) or
                   category != SCREENTIME and re.match(misread_number_format, str(row_text), re.IGNORECASE)):
                 # if current row text is number
-                regex_format = misread_time_format if category == SCREENTIME else misread_number_format
                 row_text, row_conf = filter_time_or_number_text(row_text, row_conf, f=regex_format)
                 if prev_row != 'name':  # two app numbers in a row, or first datum is a number
                     if len(app_names) < max_apps:
@@ -968,6 +969,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
                 prev_row = 'number'
             else:  # row is neither a valid app name nor a number, so discard it
                 pass
+            prev_row_top = df['top'][i]
+            prev_row_text = row_text
 
         # Making sure each list is the right length (fill any missing values with NO_TEXT/NO_NUMBER and NO_CONF)
         while app_names.shape[0] < max_apps:

@@ -89,7 +89,10 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
                 if save_downloaded_images:
                     img.save(img_local_path)
                     print(f"Image saved to '{dir_for_downloaded_images}\\{screenshot.device_os}\\{screenshot.filename}'.")
-                # _adjust_size(img)   # TODO verify if img properly adjusted.
+                    img = Image.open(img_local_path)
+                else:
+                    img.save(img_temp_path)
+                    img = Image.open(img_temp_path)
                 img_array = np.array(img, dtype='uint8')
                 return img_array
             else:
@@ -133,6 +136,7 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
         if not os.path.exists(f"{dir_for_downloaded_images}\\{screenshot.device_os}"):
             os.makedirs(f"{dir_for_downloaded_images}\\{screenshot.device_os}")
     img_local_path = os.path.join(dir_for_downloaded_images, screenshot.device_os, screenshot.filename)
+    img_temp_path = os.path.join(dir_for_downloaded_images, screenshot.device_os, "temp.jpg")
 
     if use_downloaded_images:
         if os.path.exists(img_local_path):
@@ -161,7 +165,6 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
         # IMPORTANT: Looks like the best threshold value for a light mode image is 206. # GK: 230 makes text thicker,
         # but also makes the 'thermometer' shaped bars (below each app name) more likely to show up
         (_, bw_img) = cv2.threshold(grey_img, white_threshold, 255, cv2.THRESH_BINARY)
-        return grey_img, bw_img
     else:
         # Settings for dark mode.
         (_, bw_img) = cv2.threshold(grey_img, black_threshold, 180, cv2.THRESH_BINARY)
@@ -294,8 +297,9 @@ def show_image(df, img, draw_boxes=True):
 
     scaled_img = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
     cv2.imshow("Text found in image", scaled_img)
-    if cv2.waitKey(5000) & 0xFF == ord('q'):
-        pass
+    # if cv2.waitKey(1000) & 0xFF == ord('q'):
+    #     pass
+    cv2.waitKey(0)
     cv2.destroyAllWindows()
 
 
@@ -557,12 +561,11 @@ if __name__ == '__main__':
         else:
             dashboard_category = None
 
-
-        """ Here, the phone OS determines which branch of code we run to extract daily total and app-level data"""
+        """ Here, the phone OS determines which branch of code we run to extract daily total and app-level data """
 
         if current_screenshot.device_os == ANDROID:
             Android.main()
-
+            app_data = None  # Temporary until the android code is in place
             # use functions from AndroidFunctions.py
             # End up with a dataframe app_data[['app', 'number']]
 
@@ -647,38 +650,49 @@ if __name__ == '__main__':
 
             # Crop image to app region
             cropped_image, crop_top, crop_left, crop_bottom, crop_right = iOS.crop_image_to_app_area(current_screenshot, heading_above_applist, heading_below_applist)
-            cropped_image = cv2.GaussianBlur(cropped_image, ksize=(3, 3), sigmaX=0)
-            app_area_coordinates = (crop_top, crop_left), (crop_bottom, crop_right)
-            current_screenshot.set_app_area_coordinates(app_area_coordinates)
+            if all(crops is None for crops in (crop_top, crop_left, crop_bottom, crop_right)):
+                print(f"Setting all app-specific data to N/A.")
+                app_data = pd.DataFrame({
+                    'app': [NO_TEXT] * max_apps_per_category,
+                    'app_conf': [NO_CONF] * max_apps_per_category,
+                    'number': [NO_TEXT if dashboard_category == SCREENTIME else NO_NUMBER] * max_apps_per_category,
+                    'number_conf': [NO_CONF] * max_apps_per_category
+                })
+                #  here you also need to store the data in the screenshot object and participant object
+            else:
 
-            # Perform pre-scan to remove bars below app names
-            cropped_prescan_words, cropped_prescan_df = extract_text_from_image(cropped_image)
-            cropped_prescan_words = cropped_prescan_words.reset_index(drop=True)
-            cropped_image_no_bars = iOS.erase_bars_below_app_names(screenshot=current_screenshot,
-                                                                   df=cropped_prescan_words,
-                                                                   image=cropped_image)
-            scaled_cropped_image = cv2.resize(cropped_image,
-                                              dsize=None,
-                                              fx=app_area_scale_factor,
-                                              fy=app_area_scale_factor,
-                                              interpolation=cv2.INTER_AREA)
+                cropped_image = cv2.GaussianBlur(cropped_image, ksize=(3, 3), sigmaX=0)
 
-            # Extract app info from cropped image
-            app_area_df = extract_app_info(current_screenshot, scaled_cropped_image, app_area_scale_factor)
-            if show_images:
-                show_image(app_area_df, scaled_cropped_image)
+                # Perform pre-scan to remove bars below app names
+                cropped_prescan_words, cropped_prescan_df = extract_text_from_image(cropped_image)
+                cropped_prescan_words = cropped_prescan_words.reset_index(drop=True)
+                cropped_image_no_bars = iOS.erase_bars_below_app_names(screenshot=current_screenshot,
+                                                                       df=cropped_prescan_words,
+                                                                       image=cropped_image)
+                scaled_cropped_image = cv2.resize(cropped_image,
+                                                  dsize=None,
+                                                  fx=app_area_scale_factor,
+                                                  fy=app_area_scale_factor,
+                                                  interpolation=cv2.INTER_AREA)
 
-            # Divide the extracted app info into app names and their numbers
-            app_data = iOS.get_app_names_and_numbers(screenshot=current_screenshot,
-                                                     df=app_area_df,
-                                                     category=dashboard_category,
-                                                     max_apps=max_apps_per_category)
-            print("\nApp data found:")
-            print(app_data[['app', 'number']])
-            print(f"Daily total {dashboard_category}: {daily_total}")
+                # Extract app info from cropped image
+                app_area_df = extract_app_info(current_screenshot, scaled_cropped_image, app_area_scale_factor)
+                if show_images:
+                    show_image(app_area_df, scaled_cropped_image)
 
-
-        # For both android and iOS screenshots, we can now store the app-level data in the Screenshot object.
-
+                # Divide the extracted app info into app names and their numbers
+                app_data = iOS.get_app_names_and_numbers(screenshot=current_screenshot,
+                                                         df=app_area_df,
+                                                         category=dashboard_category,
+                                                         max_apps=max_apps_per_category)
+                print("\nApp data found:")
+                print(app_data[['app', 'number']])
+                print(f"Daily total {dashboard_category}: {daily_total}")
+        else:
+            print("Operating System not detected.")
+            app_data = None
+            # For both android and iOS screenshots, we can now store the app-level data in the Screenshot object.
+        current_screenshot.set_app_data(app_data)
+        current_participant.add_screenshot(current_screenshot)
         # And also give it to the Participant object, checking to see if data already exists for that day & category
         #   (if it does, run the function (within Participant?) to determine how to merge the two sets of data together)

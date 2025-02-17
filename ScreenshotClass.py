@@ -33,8 +33,10 @@ class Screenshot:
         self.daily_total = None
         self.daily_total_conf = None
         self.daily_total_minutes = None
-        self.app_area_coordinates = ((None, None), (None, None))
-
+        self.app_data = None
+        self.screentime_heading_found = None
+        self.pickups_heading_found = None
+        self.notifications_heading_found = None
 
     def __str__(self):
         s_user_id = f"User ID: {self.user_id}".ljust(22)
@@ -69,6 +71,18 @@ class Screenshot:
 
     def set_headings(self, df):
         self.headings_df = df
+        if self.category_detected == SCREENTIME:
+            self.screentime_heading_found = True if (self.category_detected is not None and
+                                                     SCREENTIME in df[HEADING_COLUMN]) else False
+            print("I did the screentime thing")
+        elif self.category_detected == PICKUPS:
+            self.pickups_heading_found = True if (self.category_detected is not None and
+                                                  PICKUPS in df[HEADING_COLUMN]) else False
+        elif self.category_detected == NOTIFICATIONS:
+            self.notifications_heading_found = True if (self.category_detected is not None and
+                                                        NOTIFICATIONS in df[HEADING_COLUMN]) else False
+        else:
+            pass
 
     def set_daily_total(self, value, conf=NO_CONF):
         self.daily_total = value
@@ -77,14 +91,14 @@ class Screenshot:
     def set_scale_factor(self, scale):
         self.scale_factor = scale
 
-    def set_daily_total_minutes(self, mins):
-        self.daily_total_minutes = mins
+    def set_daily_total_minutes(self, minutes):
+        self.daily_total_minutes = minutes
 
     def set_is_light_mode(self, tf):
         self.is_light_mode = tf
 
-    def set_app_area_coordinates(self, coordinates):
-        self.app_area_coordinates = coordinates
-
     def set_date_format(self, fmt):
         self.date_format = fmt
+
+    def set_app_data(self, data):
+        self.app_data = data
