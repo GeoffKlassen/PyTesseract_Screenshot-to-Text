@@ -696,34 +696,6 @@ def get_total_pickups_2nd_location(screenshot, img):
 def crop_image_to_app_area(screenshot, heading_above, heading_below):
     # Determine the region of the screenshot that (likely) contains the list of the top n apps.
     # Initialize the crop region -- the 'for' loop below trims it further
-    def crop_app_icons(img):
-        height, width = img.shape
-
-        start_row = 0
-        r = 0
-        for r in range(start_row, img.shape[0]):
-            # Get the current column
-            row_pixels = img[r, :]
-            # Check if all the pixels in the column are the same
-            if not np.all(row_pixels == row_pixels[0]):
-                break
-        c_top = r - int(0.02 * img.shape[0])
-        img = img[int(c_top):, :]
-        # Start from one-third of the width and move leftwards
-        start_col = width // 3
-
-        for c in range(start_col, -1, -1):
-            # Get the current column
-            column_pixels = img[:, c]
-            # Check if all the pixels in the column are the same
-            if np.all(column_pixels == column_pixels[0]):
-                break
-        c_left = max(0, c - int(0.01 * img.shape[1]))
-        c_right = img.shape[1] - c_left + int(0.075 * img.shape[1])
-        img = img[:, c_left:c_right]
-
-
-        return img, c_top, c_left, height, c_right
 
     headings_df = screenshot.headings_df
 
@@ -788,59 +760,81 @@ def erase_bars_below_app_names(screenshot, df, image):
     # easier to read.
     # (Pickups images have the same bars, but they are coloured, so the filtering steps in
     # load_and_process_image removes these.)
-    height = image.shape[0]
-    width = image.shape[1]
+    background_colour = WHITE if screenshot.is_light_mode else BLACK
+
+    def find_and_erase_bar_and_icon(r, c, h_max):
+        top_of_bar = 0
+        bottom_of_bar = image_height
+        left_of_bar = 0
+        right_of_bar = 0
+        image_copy = image.copy()
+        # debug
+        # Iterate through rows starting from start_row
+        for row in range(start_row, h_max):
+            # Find the top of the bar
+            if top_of_bar == 0 and image[row, c] != image[r, c]:
+                top_of_bar = row - 2
+                image_copy = image.copy()
+                if image_height - top_of_bar < 0.01 * image_height:
+                    break
+                continue
+            # Find the bottom of the bar
+            elif top_of_bar > 0 and image[row, c] == image[r, c]:
+                bottom_of_bar = row + 2
+                break
+            else:
+                continue
+        cv2.rectangle(image_copy, (c, top_of_bar), (c + 2, top_of_bar + 2), (128, 128, 128), 6)
+        cv2.rectangle(image, (0, top - int(0.5*height)), (left - 2, bottom + int(1.5*height)), background_colour, -1)
+        cv2.imshow(f"{row_text}", image_copy)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        if image_height - top_of_bar < 0.01 * image_height:
+            return
+        for col in range(start_col, image_width):
+            # Find the right of the bar
+            col_pixels = image[top_of_bar:bottom_of_bar, col]
+            if np.all(col_pixels == col_pixels[0]):
+                right_of_bar = col + int(0.01 * image_width)
+                break
+            else:
+                continue
+        for col in range(start_col, 0, -1):
+            col_pixels = image[top_of_bar:bottom_of_bar, col]
+            if np.all(col_pixels == col_pixels[0]):
+                left_of_bar = col - int(0.01 * image_width)
+                break
+            else:
+                continue
+
+        cv2.rectangle(image, (left_of_bar, top_of_bar), (right_of_bar, bottom_of_bar),
+                      background_colour, -1)
+        return
+
+    if show_images:
+        OCRScript_v3.show_image(df, image)
+    app_icons_erased = False
+    image_height = image.shape[0]
+    image_width = image.shape[1]
+    distance_between_apps = 0
     for i in df.index:
-        row_text, top, left, bottom = df['text'][i],   df['top'][i],   df['left'][i],   df['top'][i] + df['height'][i]
+        row_text, top, left, bottom, height = df['text'][i],   df['top'][i],   df['left'][i],   df['top'][i] + df['height'][i], df['height'][i]
         prev_bottom = df['top'][i - 1] + df['height'][i - 1] if i > 0 else 0
-        if i > 0 and (top < prev_bottom + 0.01 * height or
-                      left > 0.1 * width or
-                      re.match(time_or_number_format, row_text)): # or height - (top + df['height'][i]) < 0.02 *
+        if i > 0 and (top < prev_bottom + 0.01 * image_height or
+                      left > 0.1 * image_width or
+                      re.match(time_or_number_format, row_text)):  # or image_height - (top + df['height'][i]) < 0.02 *
             # Skip row if either:
             #   the textbox is too close (vertically) to the previous textbox, or
             #   the textbox is too far from the left edge of the cropped image, or
             #   the text in the textbox is a time/number
             continue
-        start_row = bottom + round(0.01 * width)
-        start_col = left + round(0.01 * width)
+        start_row = bottom + round(0.01 * image_width)
+        start_col = left + round(0.01 * image_width)
+        max_height = min([image_height, bottom + int(df['height'][i]*1.5)])
+        find_and_erase_bar_and_icon(start_row, start_col, max_height)
 
-        top_of_bar = 0
-        bottom_of_bar = height
-        left_of_bar = 0
-        right_of_bar = 0
-        max_height = min([height, bottom + int(df['height'][i] * 1.5)])
-
-        #debug
-        # Iterate through rows starting from start_row
-        for row in range(start_row, max_height):
-            # Find the top of the bar
-            if top_of_bar == 0 and image[row, start_col] != image[start_row, start_col]:
-                top_of_bar = row - 2
-                if height - top_of_bar < 0.01 * height:
-                    break
-                continue
-            # Find the bottom of the bar
-            elif top_of_bar > 0 and image[row, start_col] == image[start_row, start_col]:
-                bottom_of_bar = row + 2
-                break
-            else:
-                continue
-        if height - top_of_bar < 0.01 * height:
-            break
-        for col in range(start_col, width):
-            # Find the right of the bar
-            col_pixels = image[top_of_bar:bottom_of_bar, col]
-            if np.all(col_pixels == col_pixels[0]):
-                right_of_bar = col + int(0.01*width)
-                break
-            else:
-                continue
-            # There is no useful data to the left of the bars, so we'll just paint all the way to the left edge.
-
-        box_color_to_paint = (255, 255, 255) if screenshot.is_light_mode else (0, 0, 0)
-        cv2.rectangle(image, (left_of_bar, top_of_bar), (right_of_bar, bottom_of_bar),
-                      box_color_to_paint, -1)
-        cv2.rectangle(image, (0, 0), (left - int(0.01*height), height), box_color_to_paint, -1)
+        left_of_last_app = left
+        bottom_of_last_app = bottom
 
     return image
 
@@ -985,8 +979,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
             0] != NO_NUMBER:
             print(f"Daily total {category} matches first app time: {app_numbers['number'][0]}")
             print(f"Resetting daily total {category} to {NO_NUMBER}.")
-            screenshot.set_daily_total(NO_TEXT)
-            screenshot.set_daily_total_minutes(NO_NUMBER, NO_CONF)
+            screenshot.set_daily_total(NO_TEXT, NO_CONF)
+            screenshot.set_daily_total_minutes(NO_NUMBER)
 
     # Sometimes tesseract misreads (Italian) "Foto" as "mele"/"melee" or misreads ".AI" as ".Al"
     app_names['app'] = app_names['app'].replace({r'^melee$|^mele$': 'Foto'}, regex=True)

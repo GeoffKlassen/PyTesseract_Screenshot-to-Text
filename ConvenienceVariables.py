@@ -96,3 +96,5 @@ time_format = r'^\d+h$|^\d+h\s?\d+(m|min)$|^\d+(m|min)$|^\d+s$'
 number_format = r'^\d+$'
 time_or_number_format = '|'.join([time_format, number_format])
 
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)

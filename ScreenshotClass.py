@@ -70,7 +70,7 @@ class Screenshot:
     def set_headings(self, df):
         self.headings_df = df
 
-    def set_daily_total(self, value, conf):
+    def set_daily_total(self, value, conf=NO_CONF):
         self.daily_total = value
         self.daily_total_conf = conf
 

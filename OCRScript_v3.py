@@ -294,7 +294,8 @@ def show_image(df, img, draw_boxes=True):
 
     scaled_img = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
     cv2.imshow("Text found in image", scaled_img)
-    cv2.waitKey(0)
+    if cv2.waitKey(5000) & 0xFF == ord('q'):
+        pass
     cv2.destroyAllWindows()
 
 
@@ -368,7 +369,7 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False)
     value_format = misread_number_format if value_is_number else misread_time_format
     format_name = 'number' if value_is_number else 'time'
 
-    print(f"Comparing scan 1: {t1} {c1}  vs 2: {t2} {c2}  ——  ", end="")
+    print(f"Comparing scan 1: {t1} {c1}\n       vs scan 2: {t2} {c2}  ——  ", end='')
     if conf1 != NO_CONF and conf2 != NO_CONF:
         if bool(re.search(value_format, text1)) and bool(re.search(value_format, text2)) and text1 != text2:
             if text1 in text2:
@@ -436,7 +437,7 @@ def extract_app_info(screenshot, image, scale):
     # Keep only the rows that contain only digits (a.k.a. notification counts or pickup counts)
     truncated_text_df = truncated_text_df[truncated_text_df['text'].str.isdigit()]
 
-    print(f"\nApp info from initial scan, where conf > 0.5:")
+    print(f"\nApp numbers from initial scan, where conf > 0.5:")
     print(truncated_text_df[['left', 'top', 'width', 'height', 'conf', 'text']])
 
     columns_to_scale = ['left', 'top', 'width', 'height']
@@ -646,6 +647,7 @@ if __name__ == '__main__':
 
             # Crop image to app region
             cropped_image, crop_top, crop_left, crop_bottom, crop_right = iOS.crop_image_to_app_area(current_screenshot, heading_above_applist, heading_below_applist)
+            cropped_image = cv2.GaussianBlur(cropped_image, ksize=(3, 3), sigmaX=0)
             app_area_coordinates = (crop_top, crop_left), (crop_bottom, crop_right)
             current_screenshot.set_app_area_coordinates(app_area_coordinates)
 
