@@ -983,8 +983,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
                 prev_row_type = 'name'
                 prev_app_name = row_text
                 prev_app_height = row_height
-            elif (category == SCREENTIME and re.match(misread_time_format, str(row_text), re.IGNORECASE) or
-                  category != SCREENTIME and re.match(misread_number_format, str(row_text), re.IGNORECASE)):
+            elif (category == SCREENTIME and re.search(misread_time_format, str(row_text), re.IGNORECASE) or  # used to be re.match -- revert if re.search causes issues
+                  category != SCREENTIME and re.search(misread_number_format, str(row_text), re.IGNORECASE)):  # used to be re.match -- revert if re.search causes issues
                 # if current row text is number
                 row_text, row_conf = filter_time_or_number_text(row_text, row_conf, f=regex_format)
                 if prev_row_type != 'name':  # two app numbers in a row, or first datum is a number
@@ -1018,7 +1018,3 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
         [app_names.head(max_apps), app_numbers.head(max_apps)], axis=1)
 
     return top_n_app_names_and_numbers
-
-
-def main():
-    print("I am now in iOSFunctions.py")
