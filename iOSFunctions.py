@@ -762,22 +762,22 @@ def erase_bars_below_app_names(screenshot, df, image):
     # (Pickups images have the same bars, but they are coloured, so the filtering steps in
     # load_and_process_image removes these.)
     background_colour = WHITE if screenshot.is_light_mode else BLACK
-    image_copy = image.copy()
+    top_left_coordinates = []
 
-    def find_and_erase_bar_and_icon(r, c, h_max):
+    def find_and_erase_bar_and_icon(r, c, h_max, erase_icon=True):
         top_of_bar = 0
         bottom_of_bar = image_height
         left_of_bar = 0
         right_of_bar = 0
         # debug
         # Iterate through rows starting from start_row
-        for row in range(start_row, min([image_height, start_row + int(1.5*height)])):
+        for row in range(r, min([image_height, r + h_max])):
             # Find the top of the bar
             if image[row, c] != image[r, c]:
                 top_of_bar = row - 2
                 break
-        cv2.rectangle(image, (0, top - int(0.5 * height)), (left - 2, bottom + int(1.5 * height)), background_colour,
-                      -1)
+        if erase_icon:
+            cv2.rectangle(image, (0, top - int(0.5 * height)), (left - 2, bottom + h_max), background_colour, -1)
         if top_of_bar == 0 or image_height - top_of_bar < 0.01 * image_height:
             return
             # Find the bottom of the bar
@@ -785,27 +785,22 @@ def erase_bars_below_app_names(screenshot, df, image):
             if top_of_bar > 0 and image[row, c] == image[r, c]:
                 bottom_of_bar = row + 2
                 break
-            else:
-                continue
-        bottom_of_bar = top_of_bar + max_height if bottom_of_bar == image_height else bottom_of_bar
-        for col in range(start_col, image_width):
+        bottom_of_bar = top_of_bar + h_max if bottom_of_bar == image_height else bottom_of_bar
+        for col in range(c, image_width):
             # Find the right of the bar
             col_pixels = image[top_of_bar:bottom_of_bar, col]
             if np.all(col_pixels == col_pixels[0]):
                 right_of_bar = col + int(0.01 * image_width)
                 break
-            else:
-                continue
-        for col in range(start_col, 0, -1):
+        for col in range(c, 0, -1):
             col_pixels = image[top_of_bar:bottom_of_bar, col]
             if np.all(col_pixels == col_pixels[0]):
                 left_of_bar = col - int(0.01 * image_width)
                 break
-            else:
-                continue
 
         cv2.rectangle(image, (left_of_bar, top_of_bar), (right_of_bar, bottom_of_bar),
                       background_colour, -1)
+        top_left_coordinates.append([left_of_bar, top_of_bar, bottom_of_bar - top_of_bar])
         return
 
     if show_images:
@@ -832,7 +827,32 @@ def erase_bars_below_app_names(screenshot, df, image):
         start_col = left + round(0.01 * image_width)
         max_height = min([image_height, bottom + int(df['height'][i]*1.5)])
         if start_row < max_height:
-            find_and_erase_bar_and_icon(start_row, start_col, max_height)
+            find_and_erase_bar_and_icon(start_row, start_col, h_max=int(1.5*height))
+
+    # Sometimes pytesseract doesn't read an app name, but we'd still like to have the bar below it erased.
+    # This section determines the pixel spacing between two successive bars and, if any of the gaps between found bars
+    # is large enough, it seeks out the missed bar and erases it.
+    median_bar_height = int(np.median([coord[2] for coord in top_left_coordinates]))
+    # print("The top left coordinates are")
+    # print(top_left_coordinates)
+    average_left = sum(coord[0] for coord in top_left_coordinates) / len(top_left_coordinates)
+    filtered_coordinates = [coord for coord in top_left_coordinates if abs(coord[0] - average_left) <= 0.01*image_width]
+    # print("The filtered left coordinates are:")
+    # print(filtered_coordinates)
+    top_coords = [coord[1] for coord in filtered_coordinates]
+    differences = [abs(top_coords[i] - top_coords[i - 1]) for i in range(1, len(top_coords))]
+    smallest_difference = min(differences)
+    # print(f"of the differences in {differences} the smallest is {smallest_difference}")
+    prev_top = -1
+    for i, top_left in enumerate(filtered_coordinates):
+        # print(f"top_left[1] = {top_left[1]}    smallest_difference = {smallest_difference}   prev_top = {prev_top}   0.01*image_width = {int(0.01*image_width)}   median bar height = {median_bar_height}")
+        if (i == 0 and top_left[1] - smallest_difference > 0) or \
+                (i > 0 and top_left[1] - prev_top > 1.5*smallest_difference):
+            find_and_erase_bar_and_icon(top_left[1] - smallest_difference - int(0.005*image_height),
+                                        top_left[0] + int(0.015*image_width),
+                                        median_bar_height,
+                                        erase_icon=False)
+        prev_top = top_left[1]
 
     return image
 
@@ -922,9 +942,9 @@ def consolidate_overlapping_text(df):
 
 
 def get_app_names_and_numbers(screenshot, df, category, max_apps):
-    app_names = pd.DataFrame(columns=['app', 'app_conf'])
+    app_names = pd.DataFrame(columns=['name', 'name_conf'])
     app_numbers = pd.DataFrame(columns=['number', 'number_conf'])
-    empty_name_row = pd.DataFrame({'app': [NO_TEXT], 'app_conf': [NO_CONF]})
+    empty_name_row = pd.DataFrame({'name': [NO_TEXT], 'name_conf': [NO_CONF]})
     empty_number_row = pd.DataFrame({'number': [NO_TEXT], 'number_conf': [NO_CONF]}) if category == SCREENTIME else (
                        pd.DataFrame({'number': [NO_NUMBER], 'number_conf': [NO_CONF]}))
 
@@ -934,8 +954,10 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
         # This section determines whether each row in the final app info df is an app name or a number/time
         # and separates them.
         regex_format = misread_time_format if category == SCREENTIME else misread_number_format
-        prev_row = ''
-        prev_row_top = -1
+        prev_row_type = ''
+        prev_app_top = -1
+        prev_app_height = -1
+        prev_row_height = -1
         num_missed_app_values = 0
         for i in df.index:
             row_text = df['text'][i]
@@ -944,34 +966,36 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
             if (len(str(row_text)) >= 3 or re.match(r'[xX]{1,2}', str(row_text))) and \
                     not re.match(regex_format, str(row_text), re.IGNORECASE) and \
                     row_height > 0.75 * df['height'].mean():  # if current row text is app name
-                if prev_row == 'name':  # two app names in a row
+                if prev_row_type == 'name':  # two app names in a row
                     if len(app_names) <= max_apps:
                         num_missed_app_values += 1
                     app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
-                elif prev_row == 'number' and prev_row_top >= 0 and df['top'][i] - prev_row_top > 2.5*df['height'][i]:
+                elif prev_row_type == 'number' and prev_app_top >= 0 and \
+                        df['top'][i] - prev_row_height > 3*np.median([row_height, prev_app_height]):
+
+                    print(f"{df['top'][i]} - {prev_app_top} > 4*max({row_height}, {prev_app_height}) ?")
                     print(f"Suspected missing app between '{prev_app_name}' and '{row_text}'. Adding a blank row.")
                     app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
                     app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
-                new_name_row = pd.DataFrame({'app': [row_text], 'app_conf': [row_conf]})
+                new_name_row = pd.DataFrame({'name': [row_text], 'name_conf': [row_conf]})
                 app_names = pd.concat([app_names, new_name_row], ignore_index=True)
-                prev_row = 'name'
+                prev_row_type = 'name'
                 prev_app_name = row_text
+                prev_app_height = row_height
             elif (category == SCREENTIME and re.match(misread_time_format, str(row_text), re.IGNORECASE) or
                   category != SCREENTIME and re.match(misread_number_format, str(row_text), re.IGNORECASE)):
                 # if current row text is number
                 row_text, row_conf = filter_time_or_number_text(row_text, row_conf, f=regex_format)
-                if prev_row != 'name':  # two app numbers in a row, or first datum is a number
+                if prev_row_type != 'name':  # two app numbers in a row, or first datum is a number
                     if len(app_names) < max_apps:
                         num_missed_app_values += 1
                     app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
                 new_number_row = pd.DataFrame({'number': [row_text], 'number_conf': [row_conf]})
                 app_numbers = pd.concat([app_numbers, new_number_row], ignore_index=True)
-                prev_row = 'number'
+                prev_row_type = 'number'
             else:  # row is neither a valid app name nor a number, so discard it
                 pass
-            prev_row_top = df['top'][i]
-            prev_row_text = row_text
-
+            prev_row_height = row_height
         # Making sure each list is the right length (fill any missing values with NO_TEXT/NO_NUMBER and NO_CONF)
         while app_names.shape[0] < max_apps:
             app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
@@ -986,8 +1010,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
             screenshot.set_daily_total_minutes(NO_NUMBER)
 
     # Sometimes tesseract misreads (Italian) "Foto" as "mele"/"melee" or misreads ".AI" as ".Al"
-    app_names['app'] = app_names['app'].replace({r'^melee$|^mele$': 'Foto'}, regex=True)
-    app_names['app'] = app_names['app'].replace({r'.Al': '.AI'}, regex=True)
+    app_names['name'] = app_names['name'].replace({r'^melee$|^mele$': 'Foto'}, regex=True)
+    app_names['name'] = app_names['name'].replace({r'.Al': '.AI'}, regex=True)
     
     top_n_app_names_and_numbers = pd.concat(
         [app_names.head(max_apps), app_numbers.head(max_apps)], axis=1)

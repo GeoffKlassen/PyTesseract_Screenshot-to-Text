@@ -60,17 +60,15 @@ class Screenshot:
     def set_category_detected(self, cat):
         self.category_detected = cat
         df = self.headings_df
-        print("I will check for category")
         if self.category_detected == SCREENTIME:
             self.screentime_subheading_found = True if (self.category_detected is not None and
-                                                        SCREENTIME in df[HEADING_COLUMN]) else False
-            print("I did the screentime thing")
+                                                        MOST_USED_HEADING in df[HEADING_COLUMN].values) else False
         elif self.category_detected == PICKUPS:
             self.pickups_subheading_found = True if (self.category_detected is not None and
-                                                     PICKUPS in df[HEADING_COLUMN]) else False
+                                                     FIRST_USED_AFTER_PICKUP_HEADING in df[HEADING_COLUMN].values) else False
         elif self.category_detected == NOTIFICATIONS:
             self.notifications_subheading_found = True if (self.category_detected is not None and
-                                                           NOTIFICATIONS in df[HEADING_COLUMN]) else False
+                                                           HOURS_AXIS_HEADING in df[HEADING_COLUMN].values) else False
         else:
             pass
 

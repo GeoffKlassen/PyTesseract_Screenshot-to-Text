@@ -686,7 +686,7 @@ if __name__ == '__main__':
                                                          category=dashboard_category,
                                                          max_apps=max_apps_per_category)
                 print("\nApp data found:")
-                print(app_data[['app', 'number']])
+                print(app_data[['name', 'number']])
                 print(f"Daily total {dashboard_category}: {daily_total}")
         else:
             print("Operating System not detected.")
