@@ -1,4 +1,5 @@
 import AndroidFunctions as Android
+import iOSFunctions
 import iOSFunctions as iOS
 from RuntimeValues import *
 from ScreenshotClass import Screenshot
@@ -461,7 +462,7 @@ def extract_app_info(screenshot, image, scale):
 
     _, app_info_scan_2 = extract_text_from_image(image_missed_text, remove_chars="[^a-zA-Z0-9+é:.!,()'&-]+")
 
-    app_info = pd.concat([app_info_scan_1, app_info_scan_2]).sort_values(by = ['top', 'left']).reset_index(drop=True)
+    app_info = pd.concat([app_info_scan_1, app_info_scan_2])
     app_info = iOS.consolidate_overlapping_text(app_info)
 
     return app_info
@@ -679,10 +680,18 @@ if __name__ == '__main__':
                 app_area_df = extract_app_info(current_screenshot, scaled_cropped_image, app_area_scale_factor)
                 if show_images:
                     show_image(app_area_df, scaled_cropped_image)
-
+                confident_text_from_prescan = cropped_prescan_df[cropped_prescan_df['conf'] > 80]
+                columns_to_scale = ['left', 'top', 'width', 'height']
+                confident_text_from_prescan.loc[:, columns_to_scale] = \
+                    confident_text_from_prescan.loc[:, columns_to_scale].apply(lambda x: x * app_area_scale_factor).astype(int)
+                app_area_2_df = iOSFunctions.consolidate_overlapping_text(
+                    pd.concat([app_area_df, confident_text_from_prescan], ignore_index=True))
                 # Divide the extracted app info into app names and their numbers
+                if show_images:
+                    show_image(app_area_2_df, scaled_cropped_image)
+
                 app_data = iOS.get_app_names_and_numbers(screenshot=current_screenshot,
-                                                         df=app_area_df,
+                                                         df=app_area_2_df,
                                                          category=dashboard_category,
                                                          max_apps=max_apps_per_category)
                 print("\nApp data found:")

@@ -876,6 +876,7 @@ def consolidate_overlapping_text(df):
         else:
             return 0  # No overlap
 
+    df = df.sort_values(by=['top', 'left']).reset_index(drop=True)
     # This section checks if two text values physically overlap;
     # if there is enough overlap, it decides which word to consider the 'correct' word.
     rows_to_drop = []
