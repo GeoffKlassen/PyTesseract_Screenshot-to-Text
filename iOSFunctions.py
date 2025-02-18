@@ -380,14 +380,25 @@ def get_dashboard_category(screenshot):
 
 
 def filter_time_or_number_text(text, conf, f):
+    """
+    Takes in a time/number value that (potentially) has misread characters and swaps out the misread characters for the
+    correct ones.
+    :param text: The time/number value to check for misread characters
+    :param conf: The confidence value of the time/number value
+    :param f: The value format to search for in 'text' (misread_time_format or misread_number_format)
+    :return: The corrected value string and original confidence. If there is no text, or no substring matches format f, returns (NO_TEXT, NO_CONF).
+    """
     if str(text) == NO_TEXT:
         return NO_TEXT, NO_CONF
 
+    # Check if 'text' contains any substring that matches the desired format
     fmt = re.compile(f, re.IGNORECASE)
     matches = re.findall(fmt, text)
     if matches:
+        # If yes, take the longest such match
         text = str(max(matches, key=len))
     else:
+        # If no, return the 'no data' values
         return NO_TEXT, NO_CONF
 
     # Replace common misread characters (e.g. pytesseract sometimes misreads '1h' as 'Th'/'th').
@@ -406,6 +417,13 @@ def filter_time_or_number_text(text, conf, f):
 
 
 def get_daily_total_and_confidence(screenshot, img, category=None):
+    """
+    Finds the daily total (and its confidence) from the given image.
+    :param screenshot: The screenshot object for the given image.
+    :param img: The image to search for a daily total (black-and-white format).
+    :param category: The type of daily total to search for (i.e. screentime, pickups, or notifications).
+    :return: The best match for the daily total (and its confidence). If no daily total is found, returns (NO_TEXT, NO_CONF).
+    """
     df = screenshot.text.copy()
     category = screenshot.category_detected if category is None else category
     headings_df = screenshot.headings_df
@@ -536,8 +554,6 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
                 continue
             row_text = rescan_df.loc[i]['text']
             row_conf = round(rescan_df.loc[i]['conf'], 4)  # 4 decimal points of precision for the confidence value
-            # row_text = filter_time_or_number_text(row_text)
-            # if 1 <= len(re.findall(value_pattern, row_text, re.IGNORECASE)) <= 2 and rescan_df.loc[i]['height'] > 0.01 * screenshot.height:
             if len(re.findall(value_pattern, row_text)) == 1 and \
                     rescan_df.loc[i]['height'] > 0.01 * screenshot.height and \
                     len(re.findall(r'AM|PM', row_text, re.IGNORECASE)) <= 1:
@@ -562,7 +578,8 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
 
 def convert_text_time_to_minutes(time_as_string):
     """
-        For Screentime screenshots, coverts the daily total (String) into a number of minutes (int).
+        For Screentime screenshots, coverts the daily total usage time (String) into a number of minutes (int).
+        :param time_as_string: The length of time to convert, in proper format (no misread characters), e.g. 1h 23min
         :return: (int) The daily total time converted to minutes
     """
     if str(time_as_string) == NO_TEXT:
@@ -662,7 +679,7 @@ def get_total_pickups_2nd_location(screenshot, img):
     crop_right = screenshot.width
     cropped_image = img[crop_top:crop_bottom, crop_left:crop_right]
 
-    scale_factor = 0.5  # pytesseract sometimes fails to read oversize text.
+    scale_factor = 0.5  # pytesseract sometimes fails to read oversize text. Scale the image down for the rescan.
     scaled_cropped_image = cv2.resize(cropped_image, None,
                                       fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_AREA)
     rescan_words, rescan_df = extract_text_from_image(scaled_cropped_image)
@@ -670,6 +687,7 @@ def get_total_pickups_2nd_location(screenshot, img):
     if show_images:
         OCRScript_v3.show_image(rescan_words, scaled_cropped_image)
 
+    # Initialize the 2nd scan values
     total_pickups_2nd_scan = NO_NUMBER
     total_pickups_2nd_scan_conf = NO_CONF
 
@@ -694,6 +712,13 @@ def get_total_pickups_2nd_location(screenshot, img):
 
 
 def crop_image_to_app_area(screenshot, heading_above, heading_below):
+    """
+    Determines the region of the screenshot to search for the top app-specific data.
+    :param screenshot: The screenshot object to use (contains headings_df, image height, image width, time period, etc.)
+    :param heading_above: The heading that should appear directly above the app-specific data.
+    :param heading_below: The heading that should appear directly below the app-specific data.
+    :return: The cropped image, and the coordinates of the cropped image within the original image.
+    """
     # Determine the region of the screenshot that (likely) contains the list of the top n apps.
     # Initialize the crop region -- the 'for' loop below trims it further
 
@@ -750,61 +775,88 @@ def crop_image_to_app_area(screenshot, heading_above, heading_below):
     else:
         _, cropped_filtered_image = cv2.threshold(cropped_grey_image, 50, 180, cv2.THRESH_BINARY)
 
-    # cropped_filtered_image, c_top, c_left, c_bottom, c_right = crop_app_icons(cropped_filtered_image)
-
     return cropped_filtered_image, crop_top, crop_left, crop_bottom, crop_right
 
 
-def erase_bars_below_app_names(screenshot, df, image):
-    # Screentime and Notifications images have grey bars below the app names; the length of the bars
-    # are proportional to the time/count for the app. This code erases those shapes to make the numbers
-    # easier to read.
-    # (Pickups images have the same bars, but they are coloured, so the filtering steps in
-    # load_and_process_image removes these.)
+def erase_value_bars_and_icons(screenshot, df, image):
+    """
+    Erases the oval-shape value bars that appear below the app names, and erases the app icon (fragments) that appear
+    left of the app names.
+
+    Screentime and Notifications images have grey bars below the app names; the lengths of the bars
+    are proportional to the time/count for the app. This function draws black/white boxes over those shapes so the bars
+    can't get read as text. (Pickups images have the same bars, but they are coloured, so the filtering steps in
+    load_and_process_image removes these.)
+
+    :param screenshot: The screenshot object for the given df (contains is_light_mode)
+    :param df: The prescan text to use for finding app names
+    :param image: The cropped app-area image to draw boxes on (to cover up the bars and app icons)
+    :return: The image with bars and app icons removed.
+    """
     background_colour = WHITE if screenshot.is_light_mode else BLACK
     top_left_coordinates = []
 
     def find_and_erase_bar_and_icon(r, c, h_max, erase_icon=True):
+        """
+        Searches below a given starting coordinate for a solid black/white object (i.e. a value bar) and draws a box
+        overtop of it. If erase_icon=True, it also draws a box to the left of the app name to cover up the app icon.
+        :param r: The row to start searching from
+        :param c: The column to start searching from
+        :param h_max: The maximum distance from r to search (if the search reaches this limit, it stops searching (so it doesn't accidentally erase data text)
+        :param erase_icon: Whether to draw a box to the left of the app text (to erase the app icon)
+        :return: None
+        """
         top_of_bar = 0
         bottom_of_bar = image_height
         left_of_bar = 0
         right_of_bar = 0
-        # debug
-        # Iterate through rows starting from start_row
+
+        if erase_icon:
+            # These values are from the scope of the parent function
+            cv2.rectangle(image, (0, top - int(0.5 * height)), (left - 2, bottom + h_max), background_colour, -1)
+
+        # Find the top of the bar
         for row in range(r, min([image_height, r + h_max])):
-            # Find the top of the bar
             if image[row, c] != image[r, c]:
                 top_of_bar = row - 2
                 break
-        if erase_icon:
-            cv2.rectangle(image, (0, top - int(0.5 * height)), (left - 2, bottom + h_max), background_colour, -1)
         if top_of_bar == 0 or image_height - top_of_bar < 0.01 * image_height:
+            # Couldn't find the top of the bar, or the top of the bar is too close to the bottom of the cropped image
             return
-            # Find the bottom of the bar
+
+        # Find the bottom of the bar
         for row in range(top_of_bar + 2, min([image_height, top_of_bar + 2 + height])):
             if top_of_bar > 0 and image[row, c] == image[r, c]:
                 bottom_of_bar = row + 2
                 break
+        # Default bar height in case the bottom of the bar was not found
         bottom_of_bar = top_of_bar + h_max if bottom_of_bar == image_height else bottom_of_bar
+
         for col in range(c, image_width):
             # Find the right of the bar
             col_pixels = image[top_of_bar:bottom_of_bar, col]
             if np.all(col_pixels == col_pixels[0]):
                 right_of_bar = col + int(0.01 * image_width)
                 break
+
         for col in range(c, 0, -1):
+            # Find the left of the bar
             col_pixels = image[top_of_bar:bottom_of_bar, col]
             if np.all(col_pixels == col_pixels[0]):
                 left_of_bar = col - int(0.01 * image_width)
                 break
 
+        # Draw a background-coloured rectangle overtop of the value bar
         cv2.rectangle(image, (left_of_bar, top_of_bar), (right_of_bar, bottom_of_bar),
                       background_colour, -1)
+
+        # For use in finding missed value bars later
         top_left_coordinates.append([left_of_bar, top_of_bar, bottom_of_bar - top_of_bar])
         return
 
     if show_images:
         OCRScript_v3.show_image(df, image)
+
     image_height = image.shape[0]
     image_width = image.shape[1]
     for i in df.index:
@@ -830,7 +882,7 @@ def erase_bars_below_app_names(screenshot, df, image):
             find_and_erase_bar_and_icon(start_row, start_col, h_max=int(1.5*height))
 
     # Sometimes pytesseract doesn't read an app name, but we'd still like to have the bar below it erased.
-    # This section determines the pixel spacing between two successive bars and, if any of the gaps between found bars
+    # This section determines the pixel spacing between two successive bars and, if any of the gaps between found-bars
     # is large enough, it seeks out the missed bar and erases it.
     median_bar_height = int(np.median([coord[2] for coord in top_left_coordinates]))
     # print("The top left coordinates are")
@@ -845,7 +897,6 @@ def erase_bars_below_app_names(screenshot, df, image):
     # print(f"of the differences in {differences} the smallest is {smallest_difference}")
     prev_top = -1
     for i, top_left in enumerate(filtered_coordinates):
-        # print(f"top_left[1] = {top_left[1]}    smallest_difference = {smallest_difference}   prev_top = {prev_top}   0.01*image_width = {int(0.01*image_width)}   median bar height = {median_bar_height}")
         if (i == 0 and top_left[1] - smallest_difference > 0) or \
                 (i > 0 and top_left[1] - prev_top > 1.5*smallest_difference):
             find_and_erase_bar_and_icon(top_left[1] - smallest_difference - int(0.005*image_height),
@@ -858,10 +909,24 @@ def erase_bars_below_app_names(screenshot, df, image):
 
 
 def consolidate_overlapping_text(df):
+    """
+    Determines if two rows in df visually overlap by a significant margin; if they do, picks the best row and discards
+    the other. Used for merging two scans from pytesseract into one, because pytesseract sometimes misses text in a
+    scan that it found in the pre-scan.
+    :param df: The dataframe to look for overlapping text (a concatenation of two dataframes from two separate scans)
+    :return: The same dataframe, but any pair of rows with text that overlap is consolidated to a single row
+    """
+
     # For calculating overlap of two text boxes
     Rectangle = namedtuple('Rectangle', 'xmin ymin xmax ymax')
 
     def calculate_overlap(rect_a, rect_b):
+        """
+        Determines the proportion of how much two text boxes overlap.
+        :param rect_a: the first text box (coordinates)
+        :param rect_b: the second text box (coordinates)
+        :return: The proportion of overlap between the two rectangles
+        """
         # Find the overlap in the x-axis
         dx = min(rect_a.xmax, rect_b.xmax) - max(rect_a.xmin, rect_b.xmin)
         # Find the overlap in the y-axis
@@ -900,18 +965,14 @@ def consolidate_overlapping_text(df):
 
         if calculate_overlap(current_textbox, prev_textbox) > 0.3:
             # If two text boxes overlap by at least 30%, consider them to be two readings of the same text.
-            # print(f"Comparing {df['text'][i]} to {df['text'][i - 1]}:")
+            # This if-block determines which row of text to keep, and which to discard.
             if re.search(misread_time_format, df.loc[i, 'text']) and not re.search(misread_time_format, df.loc[i - 1, 'text']):
-                # print('debug 1')
                 rows_to_drop.append(i - 1)
             elif not re.search(misread_time_format, df.loc[i, 'text']) and re.search(misread_time_format, df.loc[i - 1, 'text']):
-                # print("debug 2")
                 rows_to_drop.append(i)
             elif current_num_digits > prev_num_digits:
-                # print('debug 3')
                 rows_to_drop.append(i - 1)
             elif current_num_digits < prev_num_digits:
-                # print("debug 4")
                 rows_to_drop.append(i)
             elif len(str(df['text'][i - 1])) <= 2 < len(str(df['text'][i])):
                 rows_to_drop.append(i - 1)
@@ -919,17 +980,13 @@ def consolidate_overlapping_text(df):
                 rows_to_drop.append(i)
             elif df['conf'][i - 1] > df['conf'][i]:
                 if df['text'][i - 1] == 'min':
-                    # print('debug 5')
                     rows_to_drop.append(i - 1)
                 else:
-                    # print('debug 6')
                     rows_to_drop.append(i)
             else:
                 if df['text'][i] == 'min':
-                    # print('debug 7')
                     rows_to_drop.append(i)
                 else:
-                    # print('debug 8')
                     rows_to_drop.append(i - 1)
 
     if 'level_0' in df.columns:
@@ -937,12 +994,18 @@ def consolidate_overlapping_text(df):
 
     merged_df = df.drop(index=rows_to_drop).reset_index()
 
-    # consolidated_df = merge_df_rows_by_height(merged_df)
-
     return merged_df
 
 
 def get_app_names_and_numbers(screenshot, df, category, max_apps):
+    """
+    Extracts the app-specific information from the given dataframe for the given screenshot.
+    :param screenshot: The screenshot object which the app data is for
+    :param df: The dataframe of text to search for app names and app values (times/numbers)
+    :param category: The category of data to search for (i.e. screentime, pickukps, notifications)
+    :param max_apps: The maximum number of apps to search for
+    :return: A dataframe of length max_apps, with app names and numbers, and their respective confidence values.
+    """
     app_names = pd.DataFrame(columns=['name', 'name_conf'])
     app_numbers = pd.DataFrame(columns=['number', 'number_conf'])
     empty_name_row = pd.DataFrame({'name': [NO_TEXT], 'name_conf': [NO_CONF]})

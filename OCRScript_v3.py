@@ -667,7 +667,7 @@ if __name__ == '__main__':
                 # Perform pre-scan to remove bars below app names
                 cropped_prescan_words, cropped_prescan_df = extract_text_from_image(cropped_image)
                 cropped_prescan_words = cropped_prescan_words.reset_index(drop=True)
-                cropped_image_no_bars = iOS.erase_bars_below_app_names(screenshot=current_screenshot,
+                cropped_image_no_bars = iOS.erase_value_bars_and_icons(screenshot=current_screenshot,
                                                                        df=cropped_prescan_words,
                                                                        image=cropped_image)
                 scaled_cropped_image = cv2.resize(cropped_image,
