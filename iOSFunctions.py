@@ -10,7 +10,7 @@ import cv2
 import OCRScript_v3
 from RuntimeValues import *
 from ConvenienceVariables import *
-from OCRScript_v3 import extract_text_from_image, choose_between_two_values
+# from OCRScript_v3 import extract_text_from_image, choose_between_two_values
 from collections import namedtuple
 
 """
@@ -165,29 +165,6 @@ def get_date_in_screenshot(screenshot):
     return None
 
 
-def levenshtein_distance(s1, s2):
-    """
-    Determines the number of character insertions/deletions/substitutions required to transform s1 into s2.
-    :param s1: (String) One of the strings
-    :param s2: (String) The other string
-    :return: (int) The distance between s1 and s2.
-    """
-    if len(s1) < len(s2):
-        return levenshtein_distance(s2, s1)
-
-    distances = range(len(s1) + 1)
-    for index2, char2 in enumerate(s2):
-        new_distances = [index2 + 1]
-        for index1, char1 in enumerate(s1):
-            if char1 == char2:
-                new_distances.append(distances[index1])
-            else:
-                new_distances.append(1 + min((distances[index1], distances[index1 + 1], new_distances[-1])))
-        distances = new_distances
-
-    return distances[-1]
-
-
 def get_day_type_in_screenshot(screenshot):
     """
     Determines whether the given screenshot contains daily data (today, yesterday, weekday) or weekly data.
@@ -209,7 +186,7 @@ def get_day_type_in_screenshot(screenshot):
         warnings.simplefilter('ignore')
         rows_with_yesterday = df[(df['text'].apply(
             # Row contains yesterday, and (1) also contains date or (2) the next row contains a date
-            lambda x: min(levenshtein_distance(row_word, key)
+            lambda x: min(OCRScript_v3.levenshtein_distance(row_word, key)
                           for row_word in str.split(x)
                           for key in KEYWORDS_FOR_YESTERDAY[lang])) <= moe_yesterday) &
                                  ((df['text'].str.contains(date_pattern, case=False)) |
@@ -217,7 +194,7 @@ def get_day_type_in_screenshot(screenshot):
         # rows_with_yesterday.drop(columns=['next_text'], inplace=True)
         rows_with_today = df[(df['text'].apply(
             # Row contains today, and (1) also contains date, or (2) the next row contains a date
-            lambda x: min(levenshtein_distance(row_word, key)
+            lambda x: min(OCRScript_v3.levenshtein_distance(row_word, key)
                           for row_word in str.split(x)
                           for key in KEYWORDS_FOR_TODAY[lang])) <= moe_today) &
                              ((df['text'].str.contains(date_pattern, case=False)) |
@@ -226,7 +203,7 @@ def get_day_type_in_screenshot(screenshot):
 
         rows_with_weekday = df[(df['text'].apply(
             # Row contains name of weekday, and (1) also contains date, or (2) the next row contains a date
-            lambda x: min(levenshtein_distance(str.split(x)[0], key)
+            lambda x: min(OCRScript_v3.levenshtein_distance(str.split(x)[0], key)
                           for key in KEYWORDS_FOR_WEEKDAY_NAMES[lang])) <= moe_weekday) &
                                ((df['text'].str.contains(date_pattern, case=False)) |
                                 (df['next_text'].str.contains(date_pattern, case=False)))]
@@ -234,7 +211,7 @@ def get_day_type_in_screenshot(screenshot):
 
         rows_with_week_keyword = df[(df['text'].apply(
             # Row contains one of the keywords for a week-format screenshot (e.g. Daily Average)
-            lambda x: min(levenshtein_distance(x, key) for key in KEYWORDS_FOR_WEEK[lang])) <= moe_week_keyword)]
+            lambda x: min(OCRScript_v3.levenshtein_distance(x, key) for key in KEYWORDS_FOR_WEEK[lang])) <= moe_week_keyword)]
         # rows_with_week_keyword.drop(columns=['next_text'], inplace=True)
 
     if rows_with_yesterday.shape[0] > 0:
@@ -274,21 +251,21 @@ def get_headings(screenshot):
             df.loc[i, HEADING_COLUMN] = DAY_OR_WEEK_HEADING
         elif re.match(screenshot.date_format, row_text, re.IGNORECASE):
             df.loc[i, HEADING_COLUMN] = DATE_HEADING
-        elif min(levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_SCREEN_TIME[lang]) <= error_margin:
+        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_SCREEN_TIME[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = SCREENTIME_HEADING
-        elif min(levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_LIMITATIONS[lang]) <= error_margin:
+        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_LIMITATIONS[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = LIMITS_HEADING
-        elif min(levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_MOST_USED[lang]) <= error_margin:
+        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_MOST_USED[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = MOST_USED_HEADING
-        elif min(levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_PICKUPS[lang]) <= error_margin:
+        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_PICKUPS[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = PICKUPS_HEADING
-        elif min(levenshtein_distance(row_text, keyword) for keyword in
+        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
                  KEYWORDS_FOR_FIRST_PICKUP[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = FIRST_PICKUP_HEADING
-        elif min(levenshtein_distance(row_text, keyword) for keyword in
+        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
                  KEYWORDS_FOR_FIRST_USED_AFTER_PICKUP[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = FIRST_USED_AFTER_PICKUP_HEADING
-        elif min(levenshtein_distance(row_text, keyword) for keyword in
+        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
                  KEYWORDS_FOR_NOTIFICATIONS[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = NOTIFICATIONS_HEADING
         elif re.search('|'.join(KEYWORDS_FOR_HOURS_AXIS), row_text):  # or re.search(r'^0\s.*12|6\s.*18$', row_text):
@@ -535,9 +512,9 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
     scaled_cropped_image = cv2.GaussianBlur(scaled_cropped_image, kernel_size, 0)
 
     if category == SCREENTIME:
-        _, rescan_df = extract_text_from_image(scaled_cropped_image)
+        _, rescan_df = OCRScript_v3.extract_text_from_image(scaled_cropped_image)
     else:
-        _, rescan_df = extract_text_from_image(scaled_cropped_image, cmd_config=r'--oem 3 --psm 6 outputbase digits')
+        _, rescan_df = OCRScript_v3.extract_text_from_image(scaled_cropped_image, cmd_config=r'--oem 3 --psm 6 outputbase digits')
 
     # For debugging.
     if show_images:
@@ -570,8 +547,8 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
     if daily_total_2nd_scan_conf != NO_CONF:
         print(f"Total {category}, 2nd scan: {daily_total_2nd_scan} (conf = {daily_total_2nd_scan_conf})")
 
-    daily_tot, daily_tot_conf = choose_between_two_values(daily_total_1st_scan, daily_total_1st_scan_conf,
-                                                          daily_total_2nd_scan, daily_total_2nd_scan_conf)
+    daily_tot, daily_tot_conf = OCRScript_v3.choose_between_two_values(daily_total_1st_scan, daily_total_1st_scan_conf,
+                                                                       daily_total_2nd_scan, daily_total_2nd_scan_conf)
 
     return daily_tot, daily_tot_conf
 
@@ -682,7 +659,7 @@ def get_total_pickups_2nd_location(screenshot, img):
     scale_factor = 0.5  # pytesseract sometimes fails to read oversize text. Scale the image down for the rescan.
     scaled_cropped_image = cv2.resize(cropped_image, None,
                                       fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_AREA)
-    rescan_words, rescan_df = extract_text_from_image(scaled_cropped_image)
+    rescan_words, rescan_df = OCRScript_v3.extract_text_from_image(scaled_cropped_image)
 
     if show_images:
         OCRScript_v3.show_image(rescan_words, scaled_cropped_image)
@@ -703,9 +680,9 @@ def get_total_pickups_2nd_location(screenshot, img):
             total_pickups_2nd_scan = NO_NUMBER
             total_pickups_2nd_scan_conf = NO_CONF
 
-    total, total_conf = choose_between_two_values(total_pickups_1st_scan, total_pickups_1st_scan_conf,
-                                                  total_pickups_2nd_scan, total_pickups_2nd_scan_conf,
-                                                  value_is_number=True)
+    total, total_conf = OCRScript_v3.choose_between_two_values(total_pickups_1st_scan, total_pickups_1st_scan_conf,
+                                                               total_pickups_2nd_scan, total_pickups_2nd_scan_conf,
+                                                               value_is_number=True)
 
     print(f"Total pickups, 2nd location: {total} (conf = {total_conf}).")
     return total, total_conf
@@ -809,7 +786,7 @@ def erase_value_bars_and_icons(screenshot, df, image):
         top_of_bar = 0
         bottom_of_bar = image_height
         left_of_bar = 0
-        right_of_bar = 0
+        right_of_bar = image_width
 
         if erase_icon:
             # These values are from the scope of the parent function
@@ -845,13 +822,14 @@ def erase_value_bars_and_icons(screenshot, df, image):
             if np.all(col_pixels == col_pixels[0]):
                 left_of_bar = col - int(0.01 * image_width)
                 break
+        if right_of_bar < image_width:
+            # Draw a background-coloured rectangle overtop of the value bar
+            cv2.rectangle(image, (left_of_bar, top_of_bar), (right_of_bar, bottom_of_bar),
+                          background_colour, -1)
 
-        # Draw a background-coloured rectangle overtop of the value bar
-        cv2.rectangle(image, (left_of_bar, top_of_bar), (right_of_bar, bottom_of_bar),
-                      background_colour, -1)
+            # For use in finding missed value bars later
+            top_left_coordinates.append([left_of_bar, top_of_bar, bottom_of_bar - top_of_bar])
 
-        # For use in finding missed value bars later
-        top_left_coordinates.append([left_of_bar, top_of_bar, bottom_of_bar - top_of_bar])
         return
 
     if show_images:
@@ -881,29 +859,32 @@ def erase_value_bars_and_icons(screenshot, df, image):
         if start_row < max_height:
             find_and_erase_bar_and_icon(start_row, start_col, h_max=int(1.5*height))
 
-    # Sometimes pytesseract doesn't read an app name, but we'd still like to have the bar below it erased.
-    # This section determines the pixel spacing between two successive bars and, if any of the gaps between found-bars
-    # is large enough, it seeks out the missed bar and erases it.
-    median_bar_height = int(np.median([coord[2] for coord in top_left_coordinates]))
-    # print("The top left coordinates are")
-    # print(top_left_coordinates)
-    average_left = sum(coord[0] for coord in top_left_coordinates) / len(top_left_coordinates)
-    filtered_coordinates = [coord for coord in top_left_coordinates if abs(coord[0] - average_left) <= 0.01*image_width]
-    # print("The filtered left coordinates are:")
-    # print(filtered_coordinates)
-    top_coords = [coord[1] for coord in filtered_coordinates]
-    differences = [abs(top_coords[i] - top_coords[i - 1]) for i in range(1, len(top_coords))]
-    smallest_difference = min(differences)
-    # print(f"of the differences in {differences} the smallest is {smallest_difference}")
-    prev_top = -1
-    for i, top_left in enumerate(filtered_coordinates):
-        if (i == 0 and top_left[1] - smallest_difference > 0) or \
-                (i > 0 and top_left[1] - prev_top > 1.5*smallest_difference):
-            find_and_erase_bar_and_icon(top_left[1] - smallest_difference - int(0.005*image_height),
-                                        top_left[0] + int(0.015*image_width),
-                                        median_bar_height,
-                                        erase_icon=False)
-        prev_top = top_left[1]
+    if top_left_coordinates:
+        # Sometimes pytesseract doesn't read an app name, but we'd still like to have the bar below it erased.
+        # This section determines the pixel spacing between two successive bars and, if any of the gaps between found-bars
+        # is large enough, it seeks out the missed bar and erases it.
+        median_bar_height = int(np.median([coord[2] for coord in top_left_coordinates]))
+        # print("The top left coordinates are")
+        # print(top_left_coordinates)
+        average_left = sum(coord[0] for coord in top_left_coordinates) / len(top_left_coordinates)
+        filtered_coordinates = [coord for coord in top_left_coordinates if abs(coord[0] - average_left) <= 0.01*image_width]
+        # print("The filtered left coordinates are:")
+        # print(filtered_coordinates)
+        top_coords = [coord[1] for coord in filtered_coordinates]
+        differences = [abs(top_coords[i] - top_coords[i - 1]) for i in range(1, len(top_coords))]
+        smallest_difference = min(differences)
+        # print(f"of the differences in {differences} the smallest is {smallest_difference}")
+        prev_top = -1
+        for i, top_left in enumerate(filtered_coordinates):
+            # cv2.rectangle(image, (top_left[0], top_left[1]),  (top_left[0] + 5, top_left[1] + 5), BROWN, -1)
+            # OCRScript_v3.show_image(df, image)
+            if (i == 0 and top_left[1] - smallest_difference > 0) or \
+                    (i > 0 and top_left[1] - prev_top > 1.5*smallest_difference):
+                find_and_erase_bar_and_icon(top_left[1] - smallest_difference - int(0.005*image_height),
+                                            top_left[0] + int(0.015*image_width),
+                                            median_bar_height,
+                                            erase_icon=False)
+            prev_top = top_left[1]
 
     return image
 

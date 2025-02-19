@@ -87,10 +87,11 @@ misread_time_format = r'\b[12T]?[0-9toAQ]\s?[hn]\s?[1-5tA]?[0-9tA]\s?mi?n?\b|\b[
 misread_number_format = r'\b[0-9A]+\b'
 misread_time_or_number_format = '|'.join([misread_time_format, misread_number_format])
 
-misread_hr_format = r'\b[0-9to]{1,2}\s?[hn]\b'
-misread_hrmin_format = r'\b[0-9to]{1,2}\s?[hn]\s?[0-9tA]{1,2}\s?(min|m))\b'
-misread_min_format = r'\b[0-9AIt]{1,2}\s?mi?n?)\b'
-misread_sec_format = r'\b\d{1,2}\s?s\b'
+# I don't think these are necessary
+# misread_hr_format = r'\b[0-9to]{1,2}\s?[hn]\b'
+# misread_hrmin_format = r'\b[0-9to]{1,2}\s?[hn]\s?[0-9tA]{1,2}\s?(min|m))\b'
+# misread_min_format = r'\b[0-9AIt]{1,2}\s?mi?n?)\b'
+# misread_sec_format = r'\b\d{1,2}\s?s\b'
 
 time_format = r'^\d+h$|^\d+h\s?\d+(m|min)$|^\d+(m|min)$|^\d+s$'
 number_format = r'^\d+$'
@@ -98,3 +99,4 @@ time_or_number_format = '|'.join([time_format, number_format])
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
+BROWN = (165, 165, 165)  # Not used as a pixel colour, just used as a shorthand for the colour name

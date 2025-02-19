@@ -1,5 +1,4 @@
 import AndroidFunctions as Android
-import iOSFunctions
 import iOSFunctions as iOS
 from RuntimeValues import *
 from ScreenshotClass import Screenshot
@@ -155,22 +154,61 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
         return image, image
     # check if image is in lightmode or dark mode
     threshold = 127  # Halfway between 0 and 255
-    is_light_mode = np.mean(image) > threshold
+    brown_bg_threshold = 160
+    white_bg_threshold = 170
+    average_pixel_colour = np.mean(image)
+    if average_pixel_colour > white_bg_threshold:
+        bg_colour = WHITE
+    elif average_pixel_colour < brown_bg_threshold:
+        bg_colour = BLACK
+    else:
+        bg_colour = BROWN
 
-    remove_color_blocks_from_image(image, is_light_mode)
+    remove_color_blocks_from_image(image, (bg_colour == WHITE))
 
     grey_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)  # To gray scale.
-    if is_light_mode:
+    if bg_colour == WHITE:
         # threshold arguments: image, threshold value, default to use if value > threshold. type of threshold to apply.
         #       for last argument: can be cv2.THRESH_BINARY or cv2.THRESH_OTSU
         # IMPORTANT: Looks like the best threshold value for a light mode image is 206. # GK: 230 makes text thicker,
         # but also makes the 'thermometer' shaped bars (below each app name) more likely to show up
-        (_, bw_img) = cv2.threshold(grey_img, white_threshold, 255, cv2.THRESH_BINARY)
-    else:
+        bw_threshold = white_threshold if screenshot.device_os == IOS else 200
+        max_value = 255
+    elif bg_colour == BLACK:
         # Settings for dark mode.
-        (_, bw_img) = cv2.threshold(grey_img, black_threshold, 180, cv2.THRESH_BINARY)
+        bw_threshold = black_threshold if screenshot.device_os == ANDROID else 70
+        max_value = 180
+    else:
+        # Settings for 'brown' mode.
+        bw_threshold = 140
+        max_value = 255
+
+    (_, bw_img) = cv2.threshold(grey_img, bw_threshold, max_value, cv2.THRESH_BINARY)
 
     return grey_img, bw_img
+
+
+def levenshtein_distance(s1, s2):
+    """
+    Determines the number of character insertions/deletions/substitutions required to transform s1 into s2.
+    :param s1: (String) One of the strings
+    :param s2: (String) The other string
+    :return: (int) The distance between s1 and s2.
+    """
+    if len(s1) < len(s2):
+        return levenshtein_distance(s2, s1)
+
+    distances = range(len(s1) + 1)
+    for index2, char2 in enumerate(s2):
+        new_distances = [index2 + 1]
+        for index1, char1 in enumerate(s1):
+            if char1 == char2:
+                new_distances.append(distances[index1])
+            else:
+                new_distances.append(1 + min((distances[index1], distances[index1 + 1], new_distances[-1])))
+        distances = new_distances
+
+    return distances[-1]
 
 
 def merge_df_rows_by_height(df):
@@ -502,6 +540,10 @@ if __name__ == '__main__':
                                         date=url_list[RESPONSE_DATE][index],
                                         category=url_list[IMG_RESPONSE_TYPE][index])
 
+        """ FOR ANDROID TESTING: SKIP iOS IMAGES"""
+        # if current_screenshot.device_os == IOS:
+        #     continue
+
         # Add the current screenshot to the list of all screenshots
         screenshots.append(current_screenshot)
         # Download the image (if not using local images) or open the local image
@@ -568,6 +610,28 @@ if __name__ == '__main__':
             Android.main()
             app_data = None  # Temporary until the android code is in place
             # use functions from AndroidFunctions.py
+            if Android.screenshot_contains_unrelated_data(current_screenshot):
+
+                app_data = None
+                # Set screenshot info to NONE and continue
+
+
+            # Determine if the screenshot contains unrelated data -- if so, skip it
+            # Determine date and day in screenshot
+            # Get headings from text_df
+            # Determine the version of Android
+            # Determine which type of data is visible on screen
+            #   Might be able to systematically search for all 3 kinds of data
+            # Extract the daily total (and confidence)
+            # Crop the image to the app-specific region
+            # Extract app-specific data
+            # Sort the app-specific data into app names and app usage numbers
+            # Collect some review-oriented statistics on the screenshot
+            # Put the data from the screenshot into the current screenshot's collection
+            # Put the data from the screenshot into the master CSV for all screenshots
+            # Check if data already exist for this user & date
+            #   If so, determine how to combine the existing data and current data so they fit together properly
+
             # End up with a dataframe app_data[['app', 'number']]
 
         elif current_screenshot.device_os == IOS:
@@ -664,8 +728,15 @@ if __name__ == '__main__':
 
                 cropped_image = cv2.GaussianBlur(cropped_image, ksize=(3, 3), sigmaX=0)
 
-                # Perform pre-scan to remove bars below app names
-                cropped_prescan_words, cropped_prescan_df = extract_text_from_image(cropped_image)
+                # Perform pre-scan to remove value bars below app names and fragments of app icons left of app names
+                cropped_prescan_words, cropped_prescan_df = extract_text_from_image(cropped_image,
+                                                                                    remove_chars="[^a-zA-Z0-9+é:.!,()'&-]+")
+
+
+
+
+
+
                 cropped_prescan_words = cropped_prescan_words.reset_index(drop=True)
                 cropped_image_no_bars = iOS.erase_value_bars_and_icons(screenshot=current_screenshot,
                                                                        df=cropped_prescan_words,
@@ -680,11 +751,13 @@ if __name__ == '__main__':
                 app_area_df = extract_app_info(current_screenshot, scaled_cropped_image, app_area_scale_factor)
                 if show_images:
                     show_image(app_area_df, scaled_cropped_image)
-                confident_text_from_prescan = cropped_prescan_df[cropped_prescan_df['conf'] > 80]
+                value_format = misread_time_format if dashboard_category == SCREENTIME else misread_number_format
+                confident_text_from_prescan = cropped_prescan_df[(cropped_prescan_df['conf'] > 80) |
+                                                                 (cropped_prescan_df['text'].str.fullmatch(value_format) & cropped_prescan_df['conf'] > 50)]
                 columns_to_scale = ['left', 'top', 'width', 'height']
                 confident_text_from_prescan.loc[:, columns_to_scale] = \
                     confident_text_from_prescan.loc[:, columns_to_scale].apply(lambda x: x * app_area_scale_factor).astype(int)
-                app_area_2_df = iOSFunctions.consolidate_overlapping_text(
+                app_area_2_df = iOS.consolidate_overlapping_text(
                     pd.concat([app_area_df, confident_text_from_prescan], ignore_index=True))
                 # Divide the extracted app info into app names and their numbers
                 if show_images:

@@ -1,5 +1,7 @@
 """This file contains Android-specific dictionaries, functions, and variables."""
+import numpy as np
 
+import OCRScript_v3
 from ConvenienceVariables import *
 
 """
@@ -27,128 +29,152 @@ TIME_FORMATS = [r'^[01ilLT]?[0-9aAilLStT]\s?hhh\s?[0-5aAilLT]?[0-9aAilLStT]\s?mm
 # Sometimes pytesseract mistakes digits for A, I, L, S, or T (e.g.  A = 4,   I/L/T = 1,   S = 5)
 # Including these letters in the regex ensures that times with a misread digit still match a time format.
 
-KEYWORDS_FOR_HOURS = {'ita': ['ore', 'ora'],
-                      'eng': ['hours', 'hour'],
-                      'ger': ['Stunden', 'Stunde'],
-                      'fra': ['heures', 'heure']}
-KEYWORDS_FOR_MINUTES = {'ita': ['minuti', 'minuto'],
-                        'eng': ['minutes', 'minute'],
-                        'ger': ['Minuten', 'Minute'],
-                        'fra': ['minutes', 'minute']}
-KEYWORD_FOR_HR = {'ita': 'h e',
-                  'eng': 'hr',
-                  'ger': 'Std',
-                  'fra': 'h et'}
-KEYWORD_FOR_MIN = {'ita': 'min',
-                   'eng': 'min',
-                   'ger': 'Min',
-                   'fra': 'min'}
+KEYWORDS_FOR_HOURS = {ITA: ['ore', 'ora'],
+                      ENG: ['hours', 'hour'],
+                      GER: ['Stunden', 'Stunde'],
+                      FRA: ['heures', 'heure']}
+KEYWORDS_FOR_MINUTES = {ITA: ['minuti', 'minuto'],
+                        ENG: ['minutes', 'minute'],
+                        GER: ['Minuten', 'Minute'],
+                        FRA: ['minutes', 'minute']}
+KEYWORD_FOR_HR = {ITA: 'h e',
+                  ENG: 'hr',
+                  GER: 'Std',
+                  FRA: 'h et'}
+KEYWORD_FOR_MIN = {ITA: 'min',
+                   ENG: 'min',
+                   GER: 'Min',
+                   FRA: 'min'}
 H = 'h'
 MIN = '(mi?n?)'
 
-KEYWORDS_FOR_2018_SCREENTIME = {'ita': ['DURATA SCHERMO', 'DURATA SCHERMO Altro'],
-                                'eng': ['TODO FILL THIS IN'],
-                                'ger': ['TODO FILL THIS IN'],
-                                'fra': ['TODO FILL THIS IN']}
-KEYWORDS_FOR_2018_MOST_USED = {'ita': ['UTILIZZO APP'],
-                               'eng': ['TODO FILL THIS IN'],
-                               'ger': ['TODO FILL THIS IN'],
-                               'fra': ['TODO FILL THIS IN']}
-KEYWORDS_FOR_2018_UNLOCKS = {'ita': ['SBLOCCHI'],
-                             'eng': ['TODO FILL THIS IN'],
-                             'ger': ['TODO FILL THIS IN'],
-                             'fra': ['TODO FILL THIS IN']}
+KEYWORDS_FOR_2018_SCREENTIME = {ITA: ['DURATA SCHERMO', 'DURATA SCHERMO Altro'],
+                                ENG: ['TODO FILL THIS IN'],
+                                GER: ['TODO FILL THIS IN'],
+                                FRA: ['TODO FILL THIS IN']}
+KEYWORDS_FOR_2018_MOST_USED = {ITA: ['UTILIZZO APP'],
+                               ENG: ['TODO FILL THIS IN'],
+                               GER: ['TODO FILL THIS IN'],
+                               FRA: ['TODO FILL THIS IN']}
+KEYWORDS_FOR_2018_UNLOCKS = {ITA: ['SBLOCCHI'],
+                             ENG: ['TODO FILL THIS IN'],
+                             GER: ['TODO FILL THIS IN'],
+                             FRA: ['TODO FILL THIS IN']}
 
-KEYWORDS_FOR_SCREEN_TIME = {'ita': ['Tempo di utilizzo', 'Tempo di utilizzo dello schermo',
+KEYWORDS_FOR_SCREEN_TIME = {ITA: ['Tempo di utilizzo', 'Tempo di utilizzo dello schermo',
                                     'DURATA SCHERMO', 'DURATA SCHERMO Altro'],
-                            'eng': ['Screen time'],
-                            'ger': ['TODO: FILL THIS IN'],  # TODO Fill this in
-                            'fra': ['Temps dutilisation des écrans', 'Temps decran']}
+                            ENG: ['Screen time'],
+                            GER: ['TODO: FILL THIS IN'],  # TODO Fill this in
+                            FRA: ['Temps dutilisation des écrans', 'Temps decran']}
 # Actual phrases are "Temps d'utilisation des ecrans" and "Temps d'ecran"
-KEYWORDS_FOR_MOST_USED_APPS = {'ita': ['Applicazioni piu utilizzate', 'UTILIZZO APP', 'Applicazioni utilizzate'],
-                               'eng': ['Most used apps'],
-                               'ger': ['Geratenutzungsdauer'],
-                               'fra': ['Applications les plus', 'Applications les plus utilisees']}
-KEYWORDS_FOR_NOTIFICATIONS_RECEIVED = {'ita': ['Notifiche ricevute'],
-                                       'eng': ['Notifications received'],
-                                       'ger': ['TODO FILL THIS IN'],  # TODO Fill this in
-                                       'fra': ['TODO FILL THIS IN']}  # TODO Fill this in
-KEYWORDS_FOR_MOST_NOTIFICATIONS = {'ita': ['Piu notifiche'],
-                                   'eng': ['Most notifications'],
-                                   'ger': ['TODO FILL THIS IN'],  # TODO Fill this in
-                                   'fra': ['Notifications les plus nombreuses', 'Notifications les', 'plus nombreuses']}
-KEYWORDS_FOR_TIMES_OPENED = {'ita': ['Numero di aperture', 'Sblocchi', 'SBLOCCHI'],
-                             'eng': ['Times opened', 'Unlocks'],
-                             'ger': ['Wie oft geoffnet'],  # TODO Fill this in
-                             'fra': ['Nombre douvertures']}  # Actual phrase is Nombre d'ouvertures
-KEYWORDS_FOR_VIEW_MORE = {'ita': ['Visualizza altro'],
-                          'eng': ['View more', 'View all'],
-                          'ger': ['TODO FILL THIS IN'],
-                          'fra': ['Afficher plus']}
+KEYWORDS_FOR_MOST_USED_APPS = {ITA: ['Applicazioni piu utilizzate', 'UTILIZZO APP', 'Applicazioni utilizzate'],
+                               ENG: ['Most used apps'],
+                               GER: ['Geratenutzungsdauer'],
+                               FRA: ['Applications les plus', 'Applications les plus utilisees']}
+KEYWORDS_FOR_NOTIFICATIONS_RECEIVED = {ITA: ['Notifiche ricevute'],
+                                       ENG: ['Notifications received'],
+                                       GER: ['TODO FILL THIS IN'],  # TODO Fill this in
+                                       FRA: ['TODO FILL THIS IN']}  # TODO Fill this in
+KEYWORDS_FOR_MOST_NOTIFICATIONS = {ITA: ['Piu notifiche'],
+                                   ENG: ['Most notifications'],
+                                   GER: ['TODO FILL THIS IN'],  # TODO Fill this in
+                                   FRA: ['Notifications les plus nombreuses', 'Notifications les', 'plus nombreuses']}
+KEYWORDS_FOR_TIMES_OPENED = {ITA: ['Numero di aperture', 'Sblocchi', 'SBLOCCHI'],
+                             ENG: ['Times opened', 'Unlocks'],
+                             GER: ['Wie oft geoffnet'],  # TODO Fill this in
+                             FRA: ['Nombre douvertures']}  # Actual phrase is Nombre d'ouvertures
+KEYWORDS_FOR_VIEW_MORE = {ITA: ['Visualizza altro'],
+                          ENG: ['View more', 'View all'],
+                          GER: ['TODO FILL THIS IN'],
+                          FRA: ['Afficher plus']}
 
-GOOGLE_SCREENTIME_FORMATS = {'ita': ['# ora', '# h e # min', '# minuti', '1 minuto', 'Meno di 1 minuto'],
-                             'eng': ['# hours', '# hr # min', '# minutes', '1 minute', 'Less than 1 minute'],
-                             'ger': ['# Stunde', '# Std # Min', '# Minuten', '1 Minute', 'Weniger als 1 Minute'],
-                             'fra': ['# heures', '# h et # min', '# minutes', '1 minute', 'Moins de 1 minute']}
-GOOGLE_NOTIFICATIONS_FORMATS = {'ita': ['# notifiche'],
-                                'eng': ['# notifications', '# notification'],
-                                'ger': ['# Benachrichtigungen'],
-                                'fra': ['# notifications', '# notification']}
-GOOGLE_UNLOCKS_FORMATS = {'ita': ['# sblocchi', '# aperture'],
-                          'eng': ['# unlocks', 'Opened # times'],
-                          'ger': ['# Entsperrungen', '# Mal geoffnet'],
-                          'fra': ['Déverrouillé # fois', 'Ouverte # fois']}
-SAMSUNG_NOTIFICATIONS_FORMATS = {'ita': ['# notifiche ricevute', "# ricevute"],
-                                 'eng': ['# notifications', '# notification', '# received'],
+GOOGLE_SCREENTIME_FORMATS = {ITA: ['# ora', '# h e # min', '# minuti', '1 minuto', 'Meno di 1 minuto'],
+                             ENG: ['# hours', '# hr # min', '# minutes', '1 minute', 'Less than 1 minute'],
+                             GER: ['# Stunde', '# Std # Min', '# Minuten', '1 Minute', 'Weniger als 1 Minute'],
+                             FRA: ['# heures', '# h et # min', '# minutes', '1 minute', 'Moins de 1 minute']}
+GOOGLE_NOTIFICATIONS_FORMATS = {ITA: ['# notifiche'],
+                                ENG: ['# notifications', '# notification'],
+                                GER: ['# Benachrichtigungen'],
+                                FRA: ['# notifications', '# notification']}
+GOOGLE_UNLOCKS_FORMATS = {ITA: ['# sblocchi', '# aperture'],
+                          ENG: ['# unlocks', 'Opened # times'],
+                          GER: ['# Entsperrungen', '# Mal geoffnet'],
+                          FRA: ['Déverrouillé # fois', 'Ouverte # fois']}
+SAMSUNG_NOTIFICATIONS_FORMATS = {ITA: ['# notifiche ricevute', "# ricevute"],
+                                 ENG: ['# notifications', '# notification', '# received'],
                                  # TODO Should this include '# notifications received'?
-                                 'ger': ['# Benachrichtigungen'],  # TODO Make sure this is correct
-                                 'fra': ['# notifications', '# notification']}  # TODO Fill this in
-SAMSUNG_UNLOCKS_FORMAT = {'ita': ['# volte', '# in totale'],
-                          'eng': ['# times'],
-                          'ger': [''],  # TODO Fill this in
-                          'fra': ['']}  # TODO Fill this in
+                                 GER: ['# Benachrichtigungen'],  # TODO Make sure this is correct
+                                 FRA: ['# notifications', '# notification']}  # TODO Fill this in
+SAMSUNG_UNLOCKS_FORMAT = {ITA: ['# volte', '# in totale'],
+                          ENG: ['# times'],
+                          GER: [''],  # TODO Fill this in
+                          FRA: ['']}  # TODO Fill this in
 
-# YOU_CAN_SET_DAILY_TIMERS = {'ita': 'Imposta i timer per le app',
-#                             'eng': 'You can set daily timers',
-#                             'ger': 'Timer fur Apps einrichten',
-#                             'fra': ''}  # TODO Fill this in
+# YOU_CAN_SET_DAILY_TIMERS = {ITA: 'Imposta i timer per le app',
+#                             ENG: 'You can set daily timers',
+#                             GER: 'Timer fur Apps einrichten',
+#                             FRA: ''}  # TODO Fill this in
 # "You can set daily timers" is a tip box that appears in the Google version of Dashboard, until a user clears it.
 
-REST_OF_THE_DAY = {'ita': 'giornata',  # full phrase is 'resto della giornata' but 'giornata' is sometimes its own line
-                   'eng': 'rest of the day',
-                   'ger': 'Rest des Tages pausiert',
-                   'fra': ''}
+REST_OF_THE_DAY = {ITA: 'giornata',  # full phrase is 'resto della giornata' but 'giornata' is sometimes its own line
+                   ENG: 'rest of the day',
+                   GER: 'Rest des Tages pausiert',
+                   FRA: ''}
 # "rest of the day" is the last text in the dialogue box for "You can set daily timers".
 
-SHOW_SITES_YOU_VISIT = {'ita': 'Mostra i siti visitati',
-                        'eng': 'Show sites that you visit',  # TODO: used to be 'Show sites you visit' for HappyB - check if this is the correct phrase
-                        'ger': 'Besuchte Websites anzeigen',
-                        'fra': ''}  # TODO Fill this in
+SHOW_SITES_YOU_VISIT = {ITA: 'Mostra i siti visitati',
+                        ENG: 'Show sites that you visit',  # TODO: used to be 'Show sites you visit' for HappyB - check if this is the correct phrase
+                        GER: 'Besuchte Websites anzeigen',
+                        FRA: ''}  # TODO Fill this in
 # "Show sites you visit" can appear in the Google version of Dashboard, under the Chrome app (if it's in the app list).
 # Thus, it can be mistaken for an app name, so we need to ignore it.
 
-KEYWORDS_FOR_UNRELATED_SCREENSHOTS = {'ita': ['USO BATTERIA', 'Benessere digitale'],
-                                      'eng': ['BATTERY USE', 'BATTERY USAGE', 'Digital wellbeing'],
-                                      'ger': ['TODO FILL THIS IN'],
-                                      'fra': ['TODO FILL THIS IN']}
+KEYWORDS_FOR_UNRELATED_SCREENSHOTS = {ITA: ['USO BATTERIA', 'Benessere digitale'],
+                                      ENG: ['BATTERY USE', 'BATTERY USAGE', 'Digital wellbeing'],
+                                      GER: ['TODO FILL THIS IN'],
+                                      FRA: ['TODO FILL THIS IN']}
 # Some screenshots show only Battery Usage info; these screenshots do not contain any of the requested info.
+SCREENTIME = 'screentime'
+UNLOCKS = 'unlocks'
+NOTIFICATIONS = 'notifications'
 
-# Determine if the screenshot contains unrelated data -- if so, skip it
-# Determine date and day in screenshot
-# Get headings from text_df
-# Determine the version of Android
-# Determine which type of data is visible on screen
-#   Might be able to systematically search for all 3 kinds of data
-# Extract the daily total (and confidence)
-# Crop the image to the app-specific region
-# Extract app-specific data
-# Sort the app-specific data into app names and app usage numbers
-# Collect some review-oriented statistics on the screenshot
-# Put the data from the screenshot into the current screenshot's collection
-# Put the data from the screenshot into the master CSV for all screenshots
-# Check if data already exist for this user & date
-#   If so, determine how to combine the existing data and current data so they fit together properly
+HEADING_COLUMN = 'heading'
+SCREENTIME_HEADING = SCREENTIME
+TOTAL_SCREENTIME = 'total screentime'
+# LIMITS_HEADING = 'limits'
+MOST_USED_HEADING = 'most used'
+NOTIFICATIONS_HEADING = NOTIFICATIONS
+TOTAL_NOTIFICATIONS = 'total notifications'
+MOST_NOTIFICATIONS_HEADING = 'most notifications'
+UNLOCKS_HEADING = UNLOCKS
+TOTAL_UNLOCKS = 'total unlocks'
+DAY_NAME_HEADING = 'day name'
+DATE_HEADING = 'date'
+VIEW_MORE_HEADING = 'view more'
 
+OLD_SCREENTIME_HEADING = '2018 screentime'
+OLD_MOST_USED_HEADING = '2018 most used'
+OLD_UNLOCKS_HEADING = '2018 unlocks'
+
+GOOGLE = 'google'
+_2018 = '2018'
+SAMSUNG_2021 = 'samsung 2021'
+SAMSUNG_2024 = 'samsung 2024'
+
+
+def screenshot_contains_unrelated_data(ss):
+    text_df = ss.text
+    img_lang = ss.language
+    print(KEYWORDS_FOR_UNRELATED_SCREENSHOTS[img_lang])
+    moe = int(np.log(min(len(k) for k in KEYWORDS_FOR_UNRELATED_SCREENSHOTS[img_lang]))) + 1  # margin of error for text
+    #          (number of characters two strings can differ by and still be considered the same text)
+    if any(text_df['text'].apply(lambda x: min(OCRScript_v3.levenshtein_distance(x[0:len(key)], key)
+                                               for key in KEYWORDS_FOR_UNRELATED_SCREENSHOTS[img_lang])) < moe):
+        print("Unrelated screenshot")
+        # One of the rows of text_df starts with one of the keywords for unrelated screenshots
+        return True
+    print("Screenshot is indeed relevant. Hooray!")
+    return False
 
 def main():
     print("I am now in AndroidFunctions.py")
