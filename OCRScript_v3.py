@@ -740,6 +740,14 @@ if __name__ == '__main__':
     # If the study we're analyzing only asked for one category of screenshot,
     # then we can ignore looking for the other categories.
 
+    # Initialize an empty dataframe of app data
+    empty_app_data = pd.DataFrame({
+        'name': [NO_TEXT] * max_apps_per_category,
+        'name_conf': [NO_CONF] * max_apps_per_category,
+        'number': [NO_TEXT if study_category == SCREENTIME else NO_NUMBER] * max_apps_per_category,
+        'number_conf': [NO_CONF] * max_apps_per_category
+    })
+
     # Cycle through the images, creating a screenshot object for each one
     screenshots = []
     participants = []
@@ -762,11 +770,12 @@ if __name__ == '__main__':
                                         category=url_list[IMG_RESPONSE_TYPE][index])
 
         """ FOR ANDROID TESTING: SKIP iOS IMAGES"""
-        # if current_screenshot.device_os == IOS:
-        #     continue
+        if current_screenshot.device_os == IOS:
+            continue
 
         # Add the current screenshot to the list of all screenshots
         screenshots.append(current_screenshot)
+        # Download the image (if not using local images) or open the local image
         # Download the image (if not using local images) or open the local image
         grey_image, bw_image = load_and_process_image(current_screenshot, white_threshold=220)  # 226
         is_light_mode = True if np.mean(grey_image) > 170 else False
@@ -804,19 +813,12 @@ if __name__ == '__main__':
         if show_images:
             show_image(text_df, bw_image_scaled, draw_boxes=True)
 
-        # Initialize an empty dataframe of app data
-        empty_app_data = pd.DataFrame({
-            'app': [NO_TEXT] * max_apps_per_category,
-            'app_conf': [NO_CONF] * max_apps_per_category,
-            'number': [NO_NUMBER] * max_apps_per_category,
-            'number_conf': [NO_CONF] * max_apps_per_category
-        })
-
         if text_df.shape[0] == 0:
             print(f"No text found.  Setting {current_screenshot.category_submitted} values to N/A.")
             current_screenshot.set_daily_total(NO_TEXT)
             if current_screenshot.category_submitted == SCREENTIME:
                 current_screenshot.set_daily_total_minutes(NO_NUMBER)
+            current_screenshot.set_app_data(empty_app_data)
             current_participant.add_screenshot(current_screenshot)
             continue
 
@@ -824,10 +826,10 @@ if __name__ == '__main__':
 
         # Get the language of the image, and assign that language to the screenshot & user (if a language was detected)
         image_language, language_was_detected = determine_language_of_image(current_participant, text_df)
+        current_screenshot.set_language(image_language)
+        current_screenshot.set_date_format(get_date_regex(image_language))
         if language_was_detected:
-            current_screenshot.set_language(image_language)
             current_participant.set_language(image_language)
-            current_screenshot.set_date_format(get_date_regex(image_language))
 
         # Determine the date in the screenshot
         date_in_screenshot, rows_with_date = get_date_in_screenshot(current_screenshot)
@@ -839,14 +841,6 @@ if __name__ == '__main__':
         if day_type is not None:
             current_screenshot.set_time_period(day_type)
             current_screenshot.set_rows_with_day_type(rows_with_day_type)
-
-        # Initialize an empty dataframe of app data
-        empty_app_data = pd.DataFrame({
-            'name': [NO_TEXT] * max_apps_per_category,
-            'name_conf': [NO_CONF] * max_apps_per_category,
-            'number': [NO_TEXT if study_category == SCREENTIME else NO_NUMBER] * max_apps_per_category,
-            'number_conf': [NO_CONF] * max_apps_per_category
-        })
 
         """ Here, the phone OS determines which branch of code we run to extract daily total and app-level data. """
 
@@ -895,6 +889,10 @@ if __name__ == '__main__':
             if dashboard_category_detected:
                 current_screenshot.set_category_detected(dashboard_category)
 
+            daily_total, daily_total_conf = Android.get_daily_total_and_confidence(screenshot=current_screenshot,
+                                                                                   image=bw_image_scaled,
+                                                                                   heading=dashboard_category)
+            print(f"Daily total and confidence: {daily_total} {daily_total_conf}")
             # Extract the daily total (and confidence)
             # Crop the image to the app-specific region
             # Extract app-specific data

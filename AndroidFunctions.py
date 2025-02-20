@@ -1,9 +1,14 @@
 """This file contains Android-specific dictionaries, functions, and variables."""
+import cv2
 import numpy as np
 import re
+
+import pandas as pd
+
 import OCRScript_v3
 from ConvenienceVariables import *
 from LanguageDictionaries import *
+from RuntimeValues import *
 
 """
     Android-Specific dictionaries
@@ -411,6 +416,140 @@ def get_dashboard_category(screenshot):
     print(f"Setting category to '{category_found}'.")
 
     return category_found
+
+
+def filter_time_text(text, conf, hr_f, min_f):
+    print(f"text coming in: {text}")
+    if str(text) == NO_TEXT:
+        return NO_TEXT, NO_CONF
+
+    def replace_misread_digit(misread, actual, s):
+        # Replaces a 'misread' digit with the 'actual' digit, but only if it is followed by a time word/character
+        # (hours or minutes) in the relevant language
+        pattern = re.compile(''.join([misread, r"(?=[0-9tails]?\s?(", hr_f, "|", min_f, "))"]), flags=re.IGNORECASE)
+        filtered_str = re.sub(pattern, actual, s)
+
+        return filtered_str
+
+    # Replace common misread characters (e.g. pytesseract sometimes misreads '1h' as 'Th'/'th').
+    text = replace_misread_digit('(t|T)', '1', text)
+    text = replace_misread_digit('(a|A)', '4', text)
+    text = replace_misread_digit('(i|I)', '1', text)
+    text = replace_misread_digit('(l|L)', '1', text)
+    text = replace_misread_digit('(s|S)', '5', text)
+    text = replace_misread_digit('(o|O)', '0', text)
+    print(f'text going out: {text}')
+
+    return text, conf
+
+
+def get_daily_total_and_confidence(screenshot, image, heading):
+    df = screenshot.text
+    headings_df = screenshot.headings_df
+    android_version = screenshot.android_version
+    img_lang = screenshot.language
+    total_heading = "total " + heading
+    day_rows = screenshot.rows_with_day_type
+    date_rows = screenshot.rows_with_date
+
+    def rescan_cropped_area(img, c_top, c_bottom, c_left, c_right):
+        cropped_image = img[c_top:c_bottom, c_left:c_right]
+        scale = 0.5  # Pytesseract sometimes fails to read very large text; scale down the cropped region
+        scaled_cropped_image = cv2.resize(cropped_image, None,
+                                          fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+        _, rescan_df = OCRScript_v3.extract_text_from_image(scaled_cropped_image)
+
+        if show_images:
+            OCRScript_v3.show_image(rescan_df, scaled_cropped_image)
+
+        return rescan_df
+
+    if any(headings_df[HEADING_COLUMN] == total_heading):
+        total_value_row = headings_df[headings_df[HEADING_COLUMN] == total_heading].iloc[0]
+        total_value_1st_scan = total_value_row['text']
+        total_value_1st_scan_conf = round(total_value_row['conf'], 4)
+        print(f"Initial scan: {total_value_1st_scan} (conf = {total_value_1st_scan_conf})")
+
+        crop_top = max(0, total_value_row['top'] - int(0.05 * screenshot.width))
+        crop_bottom = min(total_value_row['top'] + total_value_row['height'] + int(0.025 * screenshot.width), screenshot.height)
+        crop_left = max(0, total_value_row['left'] - int(0.05 * screenshot.width))
+        crop_right = min(total_value_row['left'] + total_value_row['width'] + int(0.05 * screenshot.width), screenshot.width)
+
+        cropped_scan = rescan_cropped_area(image, crop_top, crop_bottom, crop_left, crop_right)
+    elif android_version == GOOGLE and not (day_rows.empty or date_rows.empty):
+        total_value_1st_scan = NO_TEXT
+        total_value_1st_scan_conf = NO_CONF
+
+        rows_below_total = pd.concat([day_rows, date_rows], ignore_index=True)
+        rows_below_total = rows_below_total.sort_index()
+        row_below_total = rows_below_total.iloc[0]
+        crop_top = row_below_total['top'] - (4 * row_below_total['height'])
+        crop_bottom = row_below_total['top']
+        crop_left = 0
+        crop_right = screenshot.width
+
+        cropped_scan = rescan_cropped_area(image, crop_top, crop_bottom, crop_left, crop_right)
+
+    elif android_version == SAMSUNG_2021 and not headings_df[headings_df[HEADING_COLUMN] == heading].empty:
+        total_value_1st_scan = NO_TEXT
+        total_value_1st_scan_conf = NO_CONF
+
+        row_above_total = headings_df[headings_df[HEADING_COLUMN] == heading].iloc[0]
+        crop_top = row_above_total['top'] + (3 * row_above_total['height'])
+        crop_bottom = crop_top + (6 * row_above_total['height'])
+        crop_left = 0
+        crop_right = screenshot.width
+
+        cropped_scan = rescan_cropped_area(image, crop_top, crop_bottom, crop_left, crop_right)
+
+    elif android_version == _2018 and not headings_df[headings_df[HEADING_COLUMN] == heading].empty:
+        total_value_1st_scan = NO_TEXT
+        total_value_1st_scan_conf = NO_CONF
+
+        row_above_total = headings_df[headings_df[HEADING_COLUMN] == heading].iloc[0]
+        crop_top = row_above_total['top'] + (2 * row_above_total['height'])
+        crop_bottom = crop_top + (4 * row_above_total['height'])
+        crop_left = 0
+        crop_right = int(0.5 * screenshot.width)
+
+        cropped_scan = rescan_cropped_area(image, crop_top, crop_bottom, crop_left, crop_right)
+    else:
+        # Since Samsung 2024 version has no headings, it is not possible to select a suitable crop area
+        # to rescan for totals when the desired 'total' row is not found
+        total_value_1st_scan = NO_TEXT
+        total_value_1st_scan_conf = NO_CONF
+        cropped_scan = df.drop(df.index)
+
+    if not cropped_scan.empty:
+        total_value_2nd_scan = cropped_scan.iloc[0]['text']
+        total_value_2nd_scan_conf = round(cropped_scan.iloc[0]['conf'], 4)
+        print(f"Cropped scan: {total_value_2nd_scan} (conf = {total_value_2nd_scan_conf})")
+    else:
+        print(f"Total {heading} not found on 2nd scan.")
+        total_value_2nd_scan = NO_TEXT
+        total_value_2nd_scan_conf = NO_CONF
+
+    total_value, total_conf = OCRScript_v3.choose_between_two_values(total_value_1st_scan, total_value_1st_scan_conf,
+                                                                     total_value_2nd_scan, total_value_2nd_scan_conf)
+    total_value = str(total_value)
+
+    if screenshot.category_detected != SCREENTIME:
+        try:
+            total_value_filtered = re.findall(r'-?\d+', total_value)[0]  # TODO why the - symbol?
+        except IndexError:
+            total_value_filtered = str.split(total_value)[0]
+    else:
+        if android_version == GOOGLE:
+            hours_format = '|'.join([('|'.join(KEYWORDS_FOR_HOURS[img_lang])), KEYWORD_FOR_HR[img_lang]]).replace(" ",
+                                                                                                                  r"\s?")
+            minutes_format = '|'.join([('|'.join(KEYWORDS_FOR_MINUTES[img_lang])), KEYWORD_FOR_MIN[img_lang]])
+        else:
+            hours_format = H
+            minutes_format = MIN
+        total_value_filtered, total_conf = filter_time_text(total_value, total_conf,
+                                                            hours_format, minutes_format)
+
+    return total_value_filtered, total_conf
 
 
 def main():

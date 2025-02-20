@@ -13,7 +13,7 @@ from LanguageDictionaries import *
 """
 
 
-study_to_analyze = studies[0]
+study_to_analyze = studies[1]
 # Use studies[0] for the HappyB2.0 study
 # Use studies[1] for the BCH study
 
@@ -49,7 +49,7 @@ save_downloaded_images = True  # If True, images downloaded at runtime are saved
 user = "geoff.klassen@usask.ca"
 passw = "Phi1*618ah"
 
-show_images = False  # If True, images of the screenshots will be shown during runtime (mostly for debugging).
+show_images = True  # If True, images of the screenshots will be shown during runtime (mostly for debugging).
 
 app_area_scale_factor = 0.75  # In addition to the screenshot_scale_factor, this is how much to scale the cropped image
                               # when searching for app-level data
