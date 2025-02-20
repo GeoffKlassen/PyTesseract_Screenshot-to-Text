@@ -838,6 +838,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
     empty_name_row = pd.DataFrame({'name': [NO_TEXT], 'name_conf': [NO_CONF]})
     empty_number_row = pd.DataFrame({'number': [NO_TEXT], 'number_conf': [NO_CONF]}) if category == SCREENTIME else (
                        pd.DataFrame({'number': [NO_NUMBER], 'number_conf': [NO_CONF]}))
+    value_format = misread_time_format if category == SCREENTIME else misread_number_format
 
     with (warnings.catch_warnings()):
         warnings.simplefilter('ignore')
@@ -851,7 +852,11 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
         prev_row_height = -1
         num_missed_app_values = 0
         for i in df.index:
-            row_text = df['text'][i]
+            cleaned_text = re.sub(r'\W+', '', df['text'][i])
+            if re.match(value_format, cleaned_text, re.IGNORECASE):
+                row_text = cleaned_text
+            else:
+                row_text = df['text'][i]
             row_conf = round(df['conf'][i], 4)
             row_height = df['height'][i]
             if (len(str(row_text)) >= 3 or re.match(r'[xX]{1,2}', str(row_text))) and \

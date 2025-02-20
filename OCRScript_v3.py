@@ -634,6 +634,13 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False)
 
 
 def extract_app_info(screenshot, image, scale):
+    """
+
+    :param screenshot:
+    :param image:
+    :param scale:
+    :return:
+    """
     text = screenshot.text
 
     _, app_info_scan_1 = extract_text_from_image(image, remove_chars="[^a-zA-Z0-9+é:.!,()'&-]+")
@@ -682,29 +689,28 @@ def extract_app_info(screenshot, image, scale):
     return app_info
 
 
-def get_dashboard_category(screenshot, study_cat):
+def get_dashboard_category(screenshot):
     """
 
     :param screenshot:
-    :param study_cat
     :return:
     """
     device_os = screenshot.device_os
     heads_df = screenshot.headings_df
     # Get the category of data that is visible in the screenshot (Screen time, pickups, or notifications)
-    if study_cat is not None:
+    if study_category is not None:
         # The category is normally 'None' at this point, but if the current study only requested one category
         # of screenshot, then we don't want to look for data from other categories.
-        print(f"{study_to_analyze['Name']} study only requested screenshots of {study_cat} data.  "
-              f"Category set to '{study_cat}'.")
+        print(f"{study_to_analyze['Name']} study only requested screenshots of {study_category} data.  "
+              f"Category set to '{study_category}'.")
         category_detected = True
-        category = study_cat
+        category = study_category
     elif not heads_df.empty:
         category = iOS.get_dashboard_category(screenshot) if device_os == IOS else \
             Android.get_dashboard_category(screenshot)
         if category is None:
             category_detected = False
-            category = study_cat
+            category = study_category
         else:
             category_detected = True
 
@@ -730,6 +736,10 @@ if __name__ == '__main__':
     num_urls = url_list.shape[0]
     print(f'Total URLs from all surveys: {num_urls}')
 
+    study_category = study_to_analyze[CATEGORIES][0] if study_to_analyze[CATEGORIES].__len__() == 1 else None
+    # If the study we're analyzing only asked for one category of screenshot,
+    # then we can ignore looking for the other categories.
+
     # Cycle through the images, creating a screenshot object for each one
     screenshots = []
     participants = []
@@ -752,8 +762,8 @@ if __name__ == '__main__':
                                         category=url_list[IMG_RESPONSE_TYPE][index])
 
         """ FOR ANDROID TESTING: SKIP iOS IMAGES"""
-        if current_screenshot.device_os == IOS:
-            continue
+        # if current_screenshot.device_os == IOS:
+        #     continue
 
         # Add the current screenshot to the list of all screenshots
         screenshots.append(current_screenshot)
@@ -819,14 +829,6 @@ if __name__ == '__main__':
             current_participant.set_language(image_language)
             current_screenshot.set_date_format(get_date_regex(image_language))
 
-        if study_to_analyze[CATEGORIES].__len__() == 1:
-            # If the study we're analyzing only asked for one category of screenshot,
-            # then we can ignore looking for the other categories.
-            study_category = study_to_analyze[CATEGORIES][0]
-            current_screenshot.set_category_detected(study_category)
-        else:
-            study_category = None
-
         # Determine the date in the screenshot
         date_in_screenshot, rows_with_date = get_date_in_screenshot(current_screenshot)
         current_screenshot.set_date_detected(date_in_screenshot)
@@ -840,8 +842,8 @@ if __name__ == '__main__':
 
         # Initialize an empty dataframe of app data
         empty_app_data = pd.DataFrame({
-            'app': [NO_TEXT] * max_apps_per_category,
-            'app_conf': [NO_CONF] * max_apps_per_category,
+            'name': [NO_TEXT] * max_apps_per_category,
+            'name_conf': [NO_CONF] * max_apps_per_category,
             'number': [NO_TEXT if study_category == SCREENTIME else NO_NUMBER] * max_apps_per_category,
             'number_conf': [NO_CONF] * max_apps_per_category
         })
@@ -889,12 +891,10 @@ if __name__ == '__main__':
             android_version = Android.get_android_version(current_screenshot)
             current_screenshot.set_android_version(android_version)
 
-            dashboard_category, dashboard_category_detected = get_dashboard_category(current_screenshot, study_category)
+            dashboard_category, dashboard_category_detected = get_dashboard_category(current_screenshot)
             if dashboard_category_detected:
                 current_screenshot.set_category_detected(dashboard_category)
 
-            # Determine which type of data is visible on screen
-            #   Might be able to systematically search for all 3 kinds of data
             # Extract the daily total (and confidence)
             # Crop the image to the app-specific region
             # Extract app-specific data
@@ -970,13 +970,8 @@ if __name__ == '__main__':
             cropped_image, crop_top, crop_left, crop_bottom, crop_right = iOS.crop_image_to_app_area(current_screenshot, heading_above_applist, heading_below_applist)
             if all(crops is None for crops in (crop_top, crop_left, crop_bottom, crop_right)):
                 print(f"Setting all app-specific data to N/A.")
-                app_data = pd.DataFrame({
-                    'app': [NO_TEXT] * max_apps_per_category,
-                    'app_conf': [NO_CONF] * max_apps_per_category,
-                    'number': [NO_TEXT if dashboard_category == SCREENTIME else NO_NUMBER] * max_apps_per_category,
-                    'number_conf': [NO_CONF] * max_apps_per_category
-                })
-                #  here you also need to store the data in the screenshot object and participant object
+                current_screenshot.set_app_data(empty_app_data)
+
             else:
 
                 cropped_image = cv2.GaussianBlur(cropped_image, ksize=(3, 3), sigmaX=0)
@@ -984,7 +979,9 @@ if __name__ == '__main__':
                 # Perform pre-scan to remove value bars below app names and fragments of app icons left of app names
                 cropped_prescan_words, cropped_prescan_df = extract_text_from_image(cropped_image,
                                                                                     remove_chars="[^a-zA-Z0-9+é:.!,()'&-]+")
-
+                cropped_prescan_words['text'] = cropped_prescan_words['text'].astype(str)
+                cropped_prescan_df['text'] = cropped_prescan_df['text'].astype(str)
+                cropped_prescan_words = cropped_prescan_words[cropped_prescan_words['text'].str.fullmatch(r'[a-zA-Z0-9]+', na=False)]
 
 
 
@@ -1024,8 +1021,8 @@ if __name__ == '__main__':
                 print(app_data[['name', 'number']])
                 print(f"Daily total {dashboard_category}: {daily_total}")
 
-            # For both android and iOS screenshots, we can now store the app-level data in the Screenshot object.
-            current_screenshot.set_app_data(app_data)
+                current_screenshot.set_app_data(app_data)
+
             current_participant.add_screenshot(current_screenshot)
             # And also give it to the Participant object, checking to see if data already exists for that day & category
             #   (if it does, run the function (within Participant?) to determine how to merge the two sets of data together)
