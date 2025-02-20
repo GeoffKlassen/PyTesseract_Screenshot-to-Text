@@ -52,6 +52,7 @@ UNKNOWN = 'Unknown'
 """
 TODAY = 'today'
 YESTERDAY = 'yesterday'
+DAY_BEFORE_YESTERDAY = 'day before yesterday'
 DAY_OF_THE_WEEK = 'weekday'
 WEEK = 'week'
 

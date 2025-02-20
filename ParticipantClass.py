@@ -55,10 +55,17 @@ class Participant:
         else:
             subheading_found_in_ss = False
 
-        if ss.date_detected is None or ss.time_period in [ConvenienceVariables.WEEK, ConvenienceVariables.TODAY]:
-            print("Date not detected, or screenshot does not contain data for 'yesterday'. "
-                  "Screenshot data will be skipped.")
+        if ss.date_detected is None:
+            print("Date not detected. Screenshot data will not be added to participant's temporal data.")
             return
+        elif ss.time_period in [ConvenienceVariables.WEEK, ConvenienceVariables.TODAY]:
+            print("Screenshot does not contain data for 'yesterday'. "
+                  "Screenshot data will not be added to participant's temporal data.")
+            return
+        elif category is None:
+            print("Category not detected. Screenshot data will not be added to participant's temporal data.")
+            return
+
         try:
             date_index = self.usage_data[self.usage_data['date'] == ss.date_detected].index[0]
         except IndexError:
@@ -67,7 +74,7 @@ class Participant:
         print(f'Was the subheading found? {subheading_found_in_ss}')
 
         if self.usage_data[f'{category}_subheading_found'][date_index] == EMPTY_CELL:
-            print("Adding current_screenshot data to participant user_data.")
+            print("Adding data from current screenshot to user data in participant.")
             self.usage_data.loc[date_index, 'participant_id'] = self.user_id
             self.usage_data.loc[date_index, 'date'] = ss.date_detected
             self.usage_data.loc[date_index, f'{category}_subheading_found'] = subheading_found_in_ss

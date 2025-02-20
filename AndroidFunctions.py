@@ -1,8 +1,9 @@
 """This file contains Android-specific dictionaries, functions, and variables."""
 import numpy as np
-
+import re
 import OCRScript_v3
 from ConvenienceVariables import *
+from LanguageDictionaries import *
 
 """
     Android-Specific dictionaries
@@ -37,6 +38,8 @@ KEYWORDS_FOR_MINUTES = {ITA: ['minuti', 'minuto'],
                         ENG: ['minutes', 'minute'],
                         GER: ['Minuten', 'Minute'],
                         FRA: ['minutes', 'minute']}
+# Long format for time words
+
 KEYWORD_FOR_HR = {ITA: 'h e',
                   ENG: 'hr',
                   GER: 'Std',
@@ -45,6 +48,8 @@ KEYWORD_FOR_MIN = {ITA: 'min',
                    ENG: 'min',
                    GER: 'Min',
                    FRA: 'min'}
+# Short format for time words
+
 H = 'h'
 MIN = '(mi?n?)'
 
@@ -156,25 +161,194 @@ OLD_SCREENTIME_HEADING = '2018 screentime'
 OLD_MOST_USED_HEADING = '2018 most used'
 OLD_UNLOCKS_HEADING = '2018 unlocks'
 
-GOOGLE = 'google'
+GOOGLE = 'Google'
 _2018 = '2018'
-SAMSUNG_2021 = 'samsung 2021'
-SAMSUNG_2024 = 'samsung 2024'
+SAMSUNG_2021 = 'Samsung 2021'
+SAMSUNG_2024 = 'Samsung 2024'
 
 
 def screenshot_contains_unrelated_data(ss):
     text_df = ss.text
-    img_lang = ss.language
-    print(KEYWORDS_FOR_UNRELATED_SCREENSHOTS[img_lang])
-    moe = int(np.log(min(len(k) for k in KEYWORDS_FOR_UNRELATED_SCREENSHOTS[img_lang]))) + 1  # margin of error for text
-    #          (number of characters two strings can differ by and still be considered the same text)
+    lang = ss.language
+    moe = int(np.log(min(len(k) for k in KEYWORDS_FOR_UNRELATED_SCREENSHOTS[lang]))) + 1
+    # margin of error for text (number of characters two strings can differ by and still be considered the same text)
+    
     if any(text_df['text'].apply(lambda x: min(OCRScript_v3.levenshtein_distance(x[0:len(key)], key)
-                                               for key in KEYWORDS_FOR_UNRELATED_SCREENSHOTS[img_lang])) < moe):
+                                               for key in KEYWORDS_FOR_UNRELATED_SCREENSHOTS[lang])) < moe):
         print("Unrelated screenshot")
         # One of the rows of text_df starts with one of the keywords for unrelated screenshots
         return True
     print("Screenshot is indeed relevant. Hooray!")
     return False
+
+
+def get_time_formats_in_lang(lang):
+    short_format = re.sub('HHH|hhh', H, re.sub('MMM|mmm', MIN, '|'.join(TIME_FORMATS)))
+
+    long_format = re.sub('hhh', KEYWORD_FOR_HR[lang], '|'.join(TIME_FORMATS))
+    long_format = re.sub('mmm', KEYWORD_FOR_MIN[lang], long_format)
+    long_format = re.sub('HHH', "(" + '|'.join(KEYWORDS_FOR_HOURS[lang]) + ")", long_format)
+    long_format = re.sub('MMM', "(" + '|'.join(KEYWORDS_FOR_MINUTES[lang]) + ")", long_format)
+    long_format = long_format.replace(" ", r"\s?")
+    long_format = "(" + long_format + ")"
+
+    return short_format, long_format
+
+
+def get_headings(screenshot, time_fmt_short):
+    """
+    Finds the rows of text within the given screenshot that contain key headings ("SCREENTIME", "MOST USED", etc.)
+    :param screenshot: The screenshot to search for headings
+    :param time_fmt_short: A regex of the abbreviated time format for the relevant language (e.g. 1h 23m)
+    :return: A df that contains only the rows with headings from the text within the screenshot (if none, an empty df)
+    """
+    df = screenshot.text
+    lang = screenshot.language
+    df[HEADING_COLUMN] = None
+    dates_df = screenshot.rows_with_date
+
+    if lang is None:
+        print("Language not detected; cannot get headings from screenshot.")
+        return df
+
+    # Compile a list of all the 'day' keywords for the current language ('Yesterday', 'Today', etc.)
+    day_types = [day for _dict in [KEYWORDS_FOR_TODAY, KEYWORDS_FOR_YESTERDAY, KEYWORDS_FOR_DAY_BEFORE_YESTERDAY]
+                 for day in _dict.get(lang, [])]
+
+    for i in df.index:
+        row_text = df['text'][i]
+
+        # Replace numbers with '#' symbol for matching with total screentime/notifications/unlocks formats
+        row_text_filtered = re.sub(r'\d+', '#', row_text).replace(' ', '')
+
+        row_text_contains_digits = bool(re.search(r'\d+', row_text))
+        centre_of_row = int(df['left'][i] + 0.5 * df['width'][i])
+        moe = round(np.log(len(str(row_text))))
+        # margin of error (number of characters two strings can differ by and still be considered the same text)
+
+        if min(OCRScript_v3.levenshtein_distance(row_text, day) for day in day_types) <= moe:
+            # Row contains a day name
+            df.loc[i, HEADING_COLUMN] = DAY_NAME_HEADING
+        elif re.search(screenshot.date_format, row_text, re.IGNORECASE):
+            # Row contains date text
+            df.loc[i, HEADING_COLUMN] = DATE_HEADING
+        # elif dates_df is not None and i in dates_df.index:  # If this isn't needed, you can get rid of dates_df
+        #     df.loc[i, HEADING_COLUMN] = DATE_HEADING
+        elif min(OCRScript_v3.levenshtein_distance(row_text, key)
+                 for key in KEYWORDS_FOR_SCREEN_TIME[lang]) <= moe:
+            # Row contains 'Screen time'
+            df.loc[i, HEADING_COLUMN] = SCREENTIME_HEADING
+        elif min(OCRScript_v3.levenshtein_distance(row_text, key)
+            # Row contains 'Most used'
+                 for key in KEYWORDS_FOR_MOST_USED_APPS[lang]) <= moe:
+            df.loc[i, HEADING_COLUMN] = MOST_USED_HEADING
+        elif min(OCRScript_v3.levenshtein_distance(row_text, key) for key in
+                 KEYWORDS_FOR_NOTIFICATIONS_RECEIVED[lang]) <= moe and not row_text_contains_digits:
+            # Row contains 'Notifications'
+            df.loc[i, HEADING_COLUMN] = NOTIFICATIONS_HEADING
+        elif min(OCRScript_v3.levenshtein_distance(row_text, key) for key in
+                 KEYWORDS_FOR_MOST_NOTIFICATIONS[lang]) <= moe and not row_text_contains_digits:
+            # Row contains 'Most Notifications'
+            df.loc[i, HEADING_COLUMN] = MOST_NOTIFICATIONS_HEADING
+        elif min(OCRScript_v3.levenshtein_distance(row_text, key) for key in
+                 KEYWORDS_FOR_TIMES_OPENED[lang]) <= moe and not row_text_contains_digits:
+            # Row contains 'Times Opened'
+            df.loc[i, HEADING_COLUMN] = UNLOCKS_HEADING
+        elif min(OCRScript_v3.levenshtein_distance(row_text, key) for key in KEYWORDS_FOR_VIEW_MORE[lang]) <= moe:
+            # Row contains 'View More'
+            df.loc[i, HEADING_COLUMN] = VIEW_MORE_HEADING
+
+        elif min(OCRScript_v3.levenshtein_distance(row_text, key) for key in KEYWORDS_FOR_2018_SCREENTIME[lang]) <= moe:
+            # Row contains
+            df.loc[i, HEADING_COLUMN] = OLD_SCREENTIME_HEADING
+        elif OCRScript_v3.levenshtein_distance(row_text, KEYWORDS_FOR_2018_MOST_USED[lang]) <= moe:
+            df.loc[i, HEADING_COLUMN] = OLD_MOST_USED_HEADING
+        elif OCRScript_v3.levenshtein_distance(row_text, KEYWORDS_FOR_2018_UNLOCKS[lang]) <= moe:
+            df.loc[i, HEADING_COLUMN] = OLD_UNLOCKS_HEADING
+
+        elif bool(re.match(time_fmt_short, row_text)) and df['left'][i] < 0.15 * screenshot.width or \
+                min(OCRScript_v3.levenshtein_distance(row_text_filtered, key.replace(' ', ''))
+                    for key in GOOGLE_SCREENTIME_FORMATS[lang]) < moe and \
+                abs(centre_of_row - (0.5 * screenshot.width)) < (0.1 * screenshot.width) and \
+                not df[HEADING_COLUMN].str.contains(TOTAL_SCREENTIME).any():
+            # Row text starts with a short-format time length (e.g. 1h5m) and is left-aligned (Samsung style), or
+            # Row text matches a long-format time length (e.g. 1 hr 5 min) and is centred (Google style)
+            df.loc[i, HEADING_COLUMN] = TOTAL_SCREENTIME
+        elif (min(OCRScript_v3.levenshtein_distance(row_text_filtered, key.replace(' ', '')) for key in
+                  (GOOGLE_NOTIFICATIONS_FORMATS[lang] + SAMSUNG_NOTIFICATIONS_FORMATS[lang])) < moe and
+              (df['left'][i] < 0.15 * screenshot.width or
+               abs(centre_of_row - (0.5 * screenshot.width)) < (0.1 * screenshot.width))) and \
+                not df[HEADING_COLUMN].str.contains(TOTAL_NOTIFICATIONS).any():
+            # Row text matches a 'total notifications' format and is either left-aligned (Samsung) or centred (Google)
+            df.loc[i, HEADING_COLUMN] = TOTAL_NOTIFICATIONS
+        elif ((min(OCRScript_v3.levenshtein_distance(row_text_filtered, key.replace(' ', '')) for key in
+                   (GOOGLE_UNLOCKS_FORMATS[lang] + SAMSUNG_UNLOCKS_FORMAT[lang]))) < moe and
+              (df['left'][i] < 0.15 * screenshot.width or abs(centre_of_row - (0.5 * screenshot.width)) < (
+                      0.1 * screenshot.width))) and \
+                not df[HEADING_COLUMN].str.contains(TOTAL_UNLOCKS).any():
+            # Row text matches a 'total unlocks' format and is either left-aligned (Samsung) or centred (Google)
+            df.loc[i, HEADING_COLUMN] = TOTAL_UNLOCKS
+        else:
+            df = df.drop(i)
+    print("\nHeadings found:")
+    print(df[['text', 'heading']])
+    print()
+
+    return df
+
+
+def get_android_version(screenshot):
+    """
+    As of 2024, there are 4 distinct versions of the Android Dashboard, depending on phone brand and OS version.
+
+    In version 1 (Samsung version), all headings appear on one scrollable page, in this order:
+        Screen time,   Most used apps,   Notifications received,   Most notifications,   Unlocks
+    In version 2 (NEW Samsung version), all 3 categories are available, but there are no category headings.
+
+    In version 3 (Google version), each category is its own page, with the heading selected from a drop-down menu. The headings to choose from are:
+        Screen time,   Notifications received,   Times opened
+    In version 4 (2018 version), the user can choose to view an activity summary of either 'Today' or 'Last 7 days'.
+    Thus, the data cannot be for one complete 24-hour day, and are thus not usable for the HappyB study.
+    However, the data from these screenshots will still be extracted and saved. The headings are:
+        SCREEN TIME,   APPS USED,   UNLOCKS   (no 'Notifications' data)
+    :param screenshot: The screenshot to determine the android version for (contains headings_df)
+    :return: The version of Android
+    """
+    img_lang = screenshot.language
+    heads_df = screenshot.headings_df
+    samsung_2021_headings = [SCREENTIME_HEADING, MOST_USED_HEADING,
+                             NOTIFICATIONS_HEADING, MOST_NOTIFICATIONS_HEADING,
+                             UNLOCKS_HEADING]
+    _2018_headings_in_img_lang = (KEYWORDS_FOR_2018_SCREENTIME[img_lang] +
+                                  KEYWORDS_FOR_2018_MOST_USED[img_lang] +
+                                  KEYWORDS_FOR_2018_UNLOCKS[img_lang])
+    error_margin = 2  # For finding headings from the 2018 Dashboard version
+
+    if heads_df.empty:
+        return None, None
+    elif not heads_df[heads_df['text'].str.isupper()].empty:
+        android_ver = _2018  # TODO: not sure on the year
+    elif max(abs(heads_df['left'] + 0.5 * heads_df['width'] - (0.5 * screenshot.width))) < (0.1 * screenshot.width):
+        # All the headings found are centred
+        android_ver = GOOGLE
+    elif not (heads_df['heading'].isin(samsung_2021_headings)).any():
+        # None of the Samsung 2021 headings are found
+        android_ver = SAMSUNG_2024
+    elif (heads_df['heading'][1:].isin(samsung_2021_headings)).any() or \
+        (not heads_df[~heads_df[HEADING_COLUMN].str.contains('total')].empty and
+         min(heads_df['left'][~heads_df[HEADING_COLUMN].str.contains('total')]) < 0.15 * screenshot.width):
+        # There's at least one non-'total' heading, and at least one of them is left-aligned
+        android_ver = SAMSUNG_2021
+    else:
+        android_ver = None
+
+    if android_ver is not None:
+        print(f"Android version detected: {android_ver}")
+    else:
+        print("Android version not detected.")
+
+    return android_ver
+
 
 def main():
     print("I am now in AndroidFunctions.py")

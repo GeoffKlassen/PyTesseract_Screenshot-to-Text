@@ -15,7 +15,7 @@ import requests
 from PIL import Image
 from io import BytesIO
 import warnings
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 
 
@@ -211,6 +211,21 @@ def levenshtein_distance(s1, s2):
     return distances[-1]
 
 
+def get_date_regex(lang, fmt=DATE_FORMAT):
+    """
+    Creates the date regular expression to use when looking for text in a screenshot that matches a date format.
+    :param lang: The language to use for month abbreviations
+    :param fmt: The date type to create a regex for (DATE_FORMAT or DATE_RANGE_FORMAT)
+    :return: The full date regex of all possible date formats for the given language
+    """
+    patterns = []
+    for _format in fmt[lang]:
+        # Replace the 'MMM's in DATE_FORMAT with the appropriate 3-4 letter abbreviations for the months.
+        patterns.append(re.sub('MMM', ''.join(['(', '|'.join(MONTH_ABBREVIATIONS[lang]), ')']), _format))
+    date_regex = '|'.join(patterns)
+    return date_regex
+
+
 def merge_df_rows_by_height(df):
     # Sometimes two 'words' that are side-by-side on the screenshot end up on their own lines in the df.
     # Merge these rows into a single row (combine their 'text' values, average their 'conf' values, and
@@ -360,6 +375,167 @@ def determine_language_of_image(participant, df):
     return backup_lang, user_lang_exists
 
 
+def get_best_language(screenshot):
+    """
+    Determines the language to use when looking up keywords in language dictionaries. Returns (in descending order
+    of availability) the screenshot language, the participant language, or the study default language.
+
+    :param screenshot: The screenshot to find the best language for
+
+    :return: (String) The language to use as the key for dictionaries
+    """
+    if screenshot.language is not None:
+        return screenshot.language
+    elif screenshot.participant.language is not None:
+        return screenshot.participant.language
+    else:
+        return default_language
+
+
+def get_date_in_screenshot(screenshot):
+    """
+    Checks if any text found in the given screenshot matches the appropriate date pattern based on the language of the
+    image. If there's a match, return it.
+    :param screenshot: The screenshot to search for a date.
+    :return: The date-format value of the date found in the screenshot text (if any), otherwise 'None'.
+    """
+
+    df = screenshot.text
+    lang = get_best_language(screenshot)
+    # Different languages display dates in different formats. Create the correct regex pattern for the date.
+    date_pattern = get_date_regex(lang)
+    week_pattern = get_date_regex(lang, fmt=DATE_RANGE_FORMAT)
+
+    try:
+        # Pull out the first row of df where the text contains the date regex
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            dates_df = df[df['text'].str.contains(date_pattern, regex=True, case=False)]
+            date_row_text = dates_df['text'].iloc[0]
+            if bool(re.search(week_pattern, date_row_text)):
+                print("Screenshot contains week info.")
+                return None
+
+        # Extract the date, month, and day from that row of text, as strings
+        date_detected = re.search(date_pattern, date_row_text, flags=re.IGNORECASE).group()
+        month_detected = re.search(r'[a-zA-Z]+', date_detected).group().lower()
+        day_detected = re.search(r'\d+', date_detected).group()
+
+        # Create a translation dictionary to replace non-English month names with English ones.
+        months_to_replace = MONTH_ABBREVIATIONS[lang]
+        for i, abbr in enumerate(months_to_replace):
+            month_detected = month_detected.replace(abbr, english_months[i])
+        month_detected = month_detected[0:3]  # datetime.strptime (used below) requires month to be 3 characters
+
+        try:
+            # Convert the string date to a date object
+            date_object = datetime.strptime(f"{day_detected} {month_detected}", "%d %b")
+
+            # Get the numeric month value from the mapping
+            month_numeric = month_mapping.get(month_detected)
+            if month_numeric:
+                # Construct the complete date with the year
+                complete_date = date_object.replace(year=int(screenshot.date_submitted.year), month=month_numeric)
+                if (screenshot.date_submitted - complete_date.date()).days < 0:
+                    # In case a screenshot of a previous year is submitted after the new year, correct the year.
+                    complete_date = date_object.replace(year=(int(screenshot.date_submitted.year) - 1))
+                print(f"Date text detected: \"{date_row_text}\".  Setting date to {complete_date.date()}.")
+                return complete_date.date(), dates_df
+            else:
+                print("Invalid month abbreviation.")
+        except ValueError:
+            print("Invalid date format.")
+    except:
+        print("No date text detected.")
+
+    return None, None
+
+
+def get_day_type_in_screenshot(screenshot):
+    """
+    Determines whether the given screenshot contains daily data (today, yesterday, weekday) or weekly data.
+    :param screenshot: The screenshot to find the date (range) for
+    :returns: tuple: (A day identifier, the row of the text in the screenshot that contains the day identifier)
+    """
+    lang = get_best_language(screenshot)
+    df = screenshot.text.copy()
+    date_pattern = get_date_regex(lang)
+    device_os = screenshot.device_os
+
+    moe_yesterday = round(np.log(max((len(key) for key in KEYWORDS_FOR_YESTERDAY[lang]))))
+    moe_today = round(np.log(max((len(key) for key in KEYWORDS_FOR_TODAY[lang]))))
+    moe_weekday = round(np.log(max((len(key) for key in KEYWORDS_FOR_WEEKDAY_NAMES[lang]))))
+    moe_week_keyword = round(np.log(max((len(key) for key in KEYWORDS_FOR_WEEK[lang]))))
+    moe_day_before_yesterday = round(np.log(max((len(key) for key in KEYWORDS_FOR_DAY_BEFORE_YESTERDAY[lang]))))
+    # moe = 'margin of error'
+    # Set how close a spelling can be to a keyword in order for that spelling to be considered the (misread) keyword.
+
+    df['next_text'] = df['text'].shift(-1)
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+
+        rows_with_today = df[(df['text'].apply(
+            # Row contains today, and (1) also contains date, or (2) the next row contains a date, or (3) is Android
+            lambda x: min(levenshtein_distance(row_word, key)
+                          for row_word in str.split(x)
+                          for key in KEYWORDS_FOR_TODAY[lang])) <= moe_today) &
+                              ((device_os == ANDROID) |
+                               (df['text'].str.contains(date_pattern, case=False)) |
+                               (df['next_text'].str.contains(date_pattern, case=False)))]
+
+        rows_with_yesterday = df[(df['text'].apply(
+            # Row contains yesterday, and (1) also contains date or (2) the next row contains a date, or (3) is Android
+            # (In Android, rows with day names are not guaranteed to be followed by a date.)
+            lambda x: min(levenshtein_distance(row_word, key)
+                          for row_word in str.split(x)
+                          for key in KEYWORDS_FOR_YESTERDAY[lang])) <= moe_yesterday) &
+                                 ((device_os == ANDROID) |
+                                  (df['text'].str.contains(date_pattern, case=False)) |
+                                  (df['next_text'].str.contains(date_pattern, case=False)))]
+
+        rows_with_day_before_yesterday = df[(df['text'].apply(
+            # Row contains 'day before yesterday'
+            lambda x: min(levenshtein_distance(x, key)
+                          for key in KEYWORDS_FOR_DAY_BEFORE_YESTERDAY[lang])) <= moe_day_before_yesterday)]
+        # 'Day before yesterday' text may only appear in Android screenshots
+
+        rows_with_weekday = df[(df['text'].apply(
+            # Row contains name of weekday, and (1) also contains date, or (2) the next row contains a date
+            lambda x: min(levenshtein_distance(str.split(x)[0], key)
+                          for key in KEYWORDS_FOR_WEEKDAY_NAMES[lang])) <= moe_weekday) &
+                               ((df['text'].str.contains(date_pattern, case=False)) |
+                                (df['next_text'].str.contains(date_pattern, case=False)))]
+        # Full (un-abbreviated) 'weekday' text may only appear in iOS screenshots'
+
+        rows_with_week_keyword = df[(df['text'].apply(
+            # Row contains one of the keywords for a week-format screenshot (e.g. Daily Average) (iOS only)
+            lambda x: min(levenshtein_distance(x, key) for key in KEYWORDS_FOR_WEEK[lang])) <= moe_week_keyword)]
+
+    if rows_with_yesterday.shape[0] > 0:
+        print(f"Day text detected: \"{rows_with_yesterday.iloc[0]['text']}\". "
+              f"Setting image type to '{YESTERDAY}'.")
+        return YESTERDAY, rows_with_yesterday
+    elif rows_with_today.shape[0] > 0:
+        print(f"Day text detected: \"{rows_with_today.iloc[0]['text']}\". "
+              f"Setting image type to '{TODAY}'.")
+        return TODAY, rows_with_today
+    elif rows_with_day_before_yesterday.shape[0] > 0:
+        print(f"Day text detected: \"{rows_with_day_before_yesterday.iloc[0]['text']}\". "
+              f"Setting image type to '{DAY_BEFORE_YESTERDAY}.")
+        return DAY_BEFORE_YESTERDAY, rows_with_day_before_yesterday
+    elif rows_with_weekday.shape[0] > 0:
+        print(f"Day text detected: \"{rows_with_weekday.iloc[0]['text']}.\" "
+              f"Setting image type to '{DAY_OF_THE_WEEK}'.")
+        return DAY_OF_THE_WEEK, rows_with_weekday
+    elif rows_with_week_keyword.shape[0] > 0:
+        print(f"Week text detected: \"{rows_with_week_keyword.iloc[0]['text']}\". "
+              f"Setting image type to '{WEEK}'.")
+        return WEEK, rows_with_week_keyword
+    else:
+        print("No day/week text detected.")
+        return None, None
+
+
 def get_or_create_participant(users, user_id, dev_id):
     for u in users:
         if u.user_id == user_id:
@@ -409,22 +585,22 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False)
     c1 = f"(conf = {conf1})" if conf1 != NO_CONF else ""
     c2 = f"(conf = {conf2})" if conf2 != NO_CONF else ""
 
-    value_format = misread_number_format if value_is_number else misread_time_format
+    val_fmt = misread_number_format if value_is_number else misread_time_format
     format_name = 'number' if value_is_number else 'time'
 
     print(f"Comparing scan 1: {t1} {c1}\n       vs scan 2: {t2} {c2}  ——  ", end='')
     if conf1 != NO_CONF and conf2 != NO_CONF:
-        if bool(re.search(value_format, text1)) and bool(re.search(value_format, text2)) and text1 != text2:
+        if bool(re.search(val_fmt, text1)) and bool(re.search(val_fmt, text2)) and text1 != text2:
             if text1 in text2:
                 print(f"{t2} contains {t1}. Using {t2}.")
                 return text2, conf2
             elif text2 in text1:
                 print(f"{t1} contains {t2}. Keeping {t1}.")
                 return text1, conf1
-        if bool(re.search(value_format, text1)) and not bool(re.search(value_format, text2)):
+        if bool(re.search(val_fmt, text1)) and not bool(re.search(val_fmt, text2)):
             print(f"Only {t1} matches a proper {format_name} format. Keeping {t1}.")
             return text1, conf1
-        elif not bool(re.search(value_format, text1)) and bool(re.search(value_format, text2)):
+        elif not bool(re.search(val_fmt, text1)) and bool(re.search(val_fmt, text2)):
             print(f"Only {t2} matches a proper {format_name} format. Using {t2}.")
             return text2, conf2
         elif len(text1) > len(text2) and value_is_number:
@@ -441,13 +617,13 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False)
                 print("2nd scan has higher confidence. Using 2nd scan.")
                 return text2, conf2
     elif conf1 != NO_CONF:
-        if value_is_number and not bool(re.search(value_format, text1)):
+        if value_is_number and not bool(re.search(val_fmt, text1)):
             print(f"Improper number format found in {t1}; no text found in {t2}.")
             return NO_NUMBER, NO_CONF
         print(f"No text found in 2nd scan. Keeping {t1}.")
         return text1, conf1
     elif conf2 != NO_CONF:
-        if value_is_number and not bool(re.search(value_format, text2)):
+        if value_is_number and not bool(re.search(val_fmt, text2)):
             print(f"No text found in {t1}; improper number format found in {t2}.")
             return NO_NUMBER, NO_CONF
         print(f"No text found on 1st scan. Using {t2}.")
@@ -483,8 +659,8 @@ def extract_app_info(screenshot, image, scale):
     print(f"\nApp numbers from initial scan, where conf > 0.5:")
     print(truncated_text_df[['left', 'top', 'width', 'height', 'conf', 'text']])
 
-    columns_to_scale = ['left', 'top', 'width', 'height']
-    truncated_text_df[columns_to_scale] = truncated_text_df[columns_to_scale].apply(lambda x: x * scale).astype(int)
+    cols_to_scale = ['left', 'top', 'width', 'height']
+    truncated_text_df[cols_to_scale] = truncated_text_df[cols_to_scale].apply(lambda x: x * scale).astype(int)
     app_info_scan_1 = iOS.consolidate_overlapping_text(pd.concat([app_info_scan_1, truncated_text_df], ignore_index=True))
     app_info_scan_1 = app_info_scan_1.sort_values(by=['top', 'left']).reset_index(drop=True)
 
@@ -541,8 +717,8 @@ if __name__ == '__main__':
                                         category=url_list[IMG_RESPONSE_TYPE][index])
 
         """ FOR ANDROID TESTING: SKIP iOS IMAGES"""
-        # if current_screenshot.device_os == IOS:
-        #     continue
+        if current_screenshot.device_os == IOS:
+            continue
 
         # Add the current screenshot to the list of all screenshots
         screenshots.append(current_screenshot)
@@ -583,9 +759,20 @@ if __name__ == '__main__':
         if show_images:
             show_image(text_df, bw_image_scaled, draw_boxes=True)
 
+        # Initialize an empty dataframe of app data
+        empty_app_data = pd.DataFrame({
+            'app': [NO_TEXT] * max_apps_per_category,
+            'app_conf': [NO_CONF] * max_apps_per_category,
+            'number': [NO_NUMBER] * max_apps_per_category,
+            'number_conf': [NO_CONF] * max_apps_per_category
+        })
+
         if text_df.shape[0] == 0:
-            print(f"No text found.  Setting {current_screenshot.category_submitted} values to {NO_NUMBER}.")
-            # update_all_columns_for_empty_screenshot(reason='No text found')
+            print(f"No text found.  Setting {current_screenshot.category_submitted} values to N/A.")
+            current_screenshot.set_daily_total(NO_TEXT)
+            if current_screenshot.category_submitted == SCREENTIME:
+                current_screenshot.set_daily_total_minutes(NO_NUMBER)
+            current_participant.add_screenshot(current_screenshot)
             continue
 
         current_screenshot.set_text(text_df)
@@ -595,7 +782,7 @@ if __name__ == '__main__':
         if language_was_detected:
             current_screenshot.set_language(image_language)
             current_participant.set_language(image_language)
-            current_screenshot.set_date_format(iOS.get_date_regex(image_language))
+            current_screenshot.set_date_format(get_date_regex(image_language))
 
         if study_to_analyze[CATEGORIES].__len__() == 1:
             # If the study we're analyzing only asked for one category of screenshot,
@@ -604,22 +791,72 @@ if __name__ == '__main__':
         else:
             dashboard_category = None
 
-        """ Here, the phone OS determines which branch of code we run to extract daily total and app-level data """
+        # Determine the date in the screenshot
+        date_in_screenshot, rows_with_date = get_date_in_screenshot(current_screenshot)
+        current_screenshot.set_date_detected(date_in_screenshot)
+        current_screenshot.set_rows_with_date(rows_with_date)
+
+        # Determine if the screenshot contains 'daily' data ('today', 'yesterday', etc.) or 'weekly' data
+        day_type, rows_with_day_type = get_day_type_in_screenshot(current_screenshot)
+        if day_type is not None:
+            current_screenshot.set_time_period(day_type)
+            current_screenshot.set_rows_with_day_type(rows_with_day_type)
+
+        # Initialize an empty dataframe of app data
+        empty_app_data = pd.DataFrame({
+            'app': [NO_TEXT] * max_apps_per_category,
+            'app_conf': [NO_CONF] * max_apps_per_category,
+            'number': [NO_TEXT if dashboard_category == SCREENTIME else NO_NUMBER] * max_apps_per_category,
+            'number_conf': [NO_CONF] * max_apps_per_category
+        })
+
+        """ Here, the phone OS determines which branch of code we run to extract daily total and app-level data. """
 
         if current_screenshot.device_os == ANDROID:
-            Android.main()
-            app_data = None  # Temporary until the android code is in place
-            # use functions from AndroidFunctions.py
+            """
+            
+            ANDROID  -  Execute the procedure for extracting data from an Android screenshot  
+            
+            """
+            app_data = empty_app_data  # Temporary
+            time_format_short, time_format_long = Android.get_time_formats_in_lang(current_screenshot.language)
+            # time_format_end_of_line needed? Need to replace the ending \b's with $ signs
+
+            # Determine if the screenshot contains data mis-considered relevant by participant -- if so, skip it
             if Android.screenshot_contains_unrelated_data(current_screenshot):
+                current_screenshot.set_daily_total(NO_TEXT if dashboard_category == SCREENTIME else NO_NUMBER)
+                if dashboard_category == SCREENTIME:
+                    current_screenshot.set_daily_total_minutes(NO_NUMBER)
+                current_screenshot.set_app_data(empty_app_data)
+                current_participant.add_screenshot(current_screenshot)
+                continue
 
-                app_data = None
-                # Set screenshot info to NONE and continue
+            if day_type is None and date_in_screenshot is not None:
+                print(f"Determining day type based on number of days between submitted date "
+                      f"({current_screenshot.date_submitted}) and date in screenshot ({date_in_screenshot}):")
+                if current_screenshot.date_submitted == date_in_screenshot:
+                    day_type = TODAY
+                elif current_screenshot.date_submitted == date_in_screenshot + timedelta(days=1):
+                    day_type = YESTERDAY
+                elif current_screenshot.date_submitted == date_in_screenshot + timedelta(days=2):
+                    day_type = DAY_BEFORE_YESTERDAY
+                elif current_screenshot.date_submitted > date_in_screenshot:
+                    day_type = DAY_OF_THE_WEEK
+                print(f"Screenshot set to '{day_type}'.")
+                current_screenshot.set_time_period(day_type)
 
+            # Get headings from screenshot text
+            headings_df = Android.get_headings(current_screenshot, time_format_short)
+            current_screenshot.set_headings(headings_df)
 
-            # Determine if the screenshot contains unrelated data -- if so, skip it
-            # Determine date and day in screenshot
-            # Get headings from text_df
             # Determine the version of Android
+            if not headings_df.empty:
+                android_version = Android.get_android_version(current_screenshot)
+                current_screenshot.set_android_version(android_version)
+
+            if show_images:
+                show_image(text_df, bw_image)
+
             # Determine which type of data is visible on screen
             #   Might be able to systematically search for all 3 kinds of data
             # Extract the daily total (and confidence)
@@ -635,17 +872,11 @@ if __name__ == '__main__':
             # End up with a dataframe app_data[['app', 'number']]
 
         elif current_screenshot.device_os == IOS:
-            """Execute the procedure for extracting data from an iOS screenshot"""
+            """
 
-            # Determine the date in the screenshot
-            date_in_screenshot = iOS.get_date_in_screenshot(current_screenshot)
-            current_screenshot.set_date_detected(date_in_screenshot)
+            iOS  -  Execute the procedure for extracting data from an iOS screenshot  
 
-            # Determine if the screenshot contains 'daily' data ('today', 'yesterday', etc.) or 'weekly' data
-            day_type, rows_with_day_type = iOS.get_day_type_in_screenshot(current_screenshot)
-            current_screenshot.set_time_period(day_type)
-            current_screenshot.set_rows_with_day_type(rows_with_day_type)
-
+            """
             # Find the rows in the screenshot that contain headings ("SCREEN TIME", "MOST USED", "PICKUPS", etc.)
             headings_df = iOS.get_headings(current_screenshot)
             current_screenshot.set_headings(headings_df)
@@ -770,9 +1001,11 @@ if __name__ == '__main__':
                 print("\nApp data found:")
                 print(app_data[['name', 'number']])
                 print(f"Daily total {dashboard_category}: {daily_total}")
+
         else:
             print("Operating System not detected.")
-            app_data = None
+            current_screenshot.set_app_data(empty_app_data)
+            continue
             # For both android and iOS screenshots, we can now store the app-level data in the Screenshot object.
         current_screenshot.set_app_data(app_data)
         current_participant.add_screenshot(current_screenshot)

@@ -61,11 +61,23 @@ MONTH_ABBREVIATIONS = {ITA: ['gen', 'feb', 'mar', 'apr', 'mag',  'giu',  'lug', 
                        GER: ['jan', 'feb', 'mar', 'apr', 'mai',  'jun',  'jul',  'aug',  'sep', 'okt', 'nov', 'dez'],
                        FRA: ['jan', 'fev', 'mar', 'avr', 'mai', 'juin', 'juil', 'aout', 'sept', 'oct', 'nov', 'dec']}
 # Abbreviations must be in chronological order, from January to December.
+english_months = MONTH_ABBREVIATIONS[ENG]
+month_mapping = {mon: english_months.index(mon) + 1 for mon in english_months}  # 1:January, 2:February, 3:March, etc.
+
 
 DATE_FORMAT = {ITA: [r'\d{1,2}\s?MMM'],
                ENG: [r'\d{1,2}\s?MMM', r'MMM[a-z]*\s?\d{1,2}'],
                GER: [r'\d{1,2}\s?MMM'],
                FRA: [r'\d{1,2}\s?MMM']}
+DATE_RANGE_FORMAT = {ITA: [r'\d{1,2}-\d{1,2}\s?MMM',
+                           r'\d{1,2}\s?MMM[a-z]*-d{1,2}\s?MMM'],
+                     ENG: [r'\d{1,2}-\d{1,2}\s?MMM',
+                           r'MMM\s?\d{1,2}-\d{1,2}',
+                           r'MMM*\s?\d{1,2}-MMM*\s?\d{1,2}'],
+                     GER: [r'\d{1,2}-\d{1,2}\s?MMM',
+                           r'\d{1,2}\s?MMM[a-z]*-\d{1,2}\s?MMM'],
+                     FRA: [r'\d{1,2}-\d{1,2}\s?MMM',
+                           r'\d{1,2}\s?MMM[a-z]*-\d{1,2}\s?MMM']}
 # MMM stands in for the 3-4 letter abbreviation for each month.
 # The list of abbreviations for the necessary language will be subbed in as needed to create the full regex.
 
@@ -92,6 +104,11 @@ KEYWORDS_FOR_WEEK = {ITA: ['Questa settimana', 'Media giornaliera'],
                      GER: ['TODO FILL THIS IN'],  # TODO Fill this in
                      FRA: ['TODO FILL THIS IN']}  # TODO Fill this in
 # Keywords used to determine if screenshot contains 'week' data (instead of 'day' data)
+
+KEYWORDS_FOR_DAY_BEFORE_YESTERDAY = {ITA: ['Laltro ieri'],  # Actual phrase is L'altro ieri
+                                     ENG: ['English has no word for the day before yesterday'],  # Can't be empty string
+                                     GER: ['Vorgestern'],
+                                     FRA: ['Avant-hier']}
 
 
 

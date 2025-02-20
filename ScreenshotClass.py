@@ -15,12 +15,13 @@ class Screenshot:
         self.filename = url[url.rfind('/') + 1:] if url is not None else None
         self.user_id = participant.user_id
         self.device_os = device_os
+        self.android_version = None
         self.date_submitted = date
         self.category_submitted = category
         self.height = 0
         self.width = 0
         self.is_light_mode = None
-        self.scale_factor = None
+        self.scale_factor = None  # Might not be necessary?
         self.language = None
         self.date_format = None
         self.grey_image = None
@@ -37,6 +38,7 @@ class Screenshot:
         self.screentime_subheading_found = None
         self.pickups_subheading_found = None
         self.notifications_subheading_found = None
+        self.rows_with_date = None
 
     def __str__(self):
         s_user_id = f"User ID: {self.user_id}".ljust(22)
@@ -72,7 +74,6 @@ class Screenshot:
         else:
             pass
 
-
     def set_text(self, text):
         self.text = text
 
@@ -103,3 +104,9 @@ class Screenshot:
 
     def set_app_data(self, data):
         self.app_data = data
+
+    def set_android_version(self, ver):
+        self.android_version = ver
+
+    def set_rows_with_date(self, rows_df):
+        self.rows_with_date = rows_df
