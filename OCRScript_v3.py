@@ -682,6 +682,41 @@ def extract_app_info(screenshot, image, scale):
     return app_info
 
 
+def get_dashboard_category(screenshot, study_cat):
+    """
+
+    :param screenshot:
+    :param study_cat
+    :return:
+    """
+    device_os = screenshot.device_os
+    heads_df = screenshot.headings_df
+    # Get the category of data that is visible in the screenshot (Screen time, pickups, or notifications)
+    if study_cat is not None:
+        # The category is normally 'None' at this point, but if the current study only requested one category
+        # of screenshot, then we don't want to look for data from other categories.
+        print(f"{study_to_analyze['Name']} study only requested screenshots of {study_cat} data.  "
+              f"Category set to '{study_cat}'.")
+        category_detected = True
+        category = study_cat
+    elif not heads_df.empty:
+        category = iOS.get_dashboard_category(screenshot) if device_os == IOS else \
+            Android.get_dashboard_category(screenshot)
+        if category is None:
+            category_detected = False
+            category = study_cat
+        else:
+            category_detected = True
+
+    else:
+        current_screenshot.set_android_version(None)
+
+        category_detected = False
+        category = current_screenshot.category_submitted
+
+    return category, category_detected
+
+
 if __name__ == '__main__':
     # Read in the list of URLs for the appropriate Study (as specified in RuntimeValues.py)
     url_list = pd.DataFrame()
@@ -787,9 +822,10 @@ if __name__ == '__main__':
         if study_to_analyze[CATEGORIES].__len__() == 1:
             # If the study we're analyzing only asked for one category of screenshot,
             # then we can ignore looking for the other categories.
-            dashboard_category = study_to_analyze[CATEGORIES][0]
+            study_category = study_to_analyze[CATEGORIES][0]
+            current_screenshot.set_category_detected(study_category)
         else:
-            dashboard_category = None
+            study_category = None
 
         # Determine the date in the screenshot
         date_in_screenshot, rows_with_date = get_date_in_screenshot(current_screenshot)
@@ -806,7 +842,7 @@ if __name__ == '__main__':
         empty_app_data = pd.DataFrame({
             'app': [NO_TEXT] * max_apps_per_category,
             'app_conf': [NO_CONF] * max_apps_per_category,
-            'number': [NO_TEXT if dashboard_category == SCREENTIME else NO_NUMBER] * max_apps_per_category,
+            'number': [NO_TEXT if study_category == SCREENTIME else NO_NUMBER] * max_apps_per_category,
             'number_conf': [NO_CONF] * max_apps_per_category
         })
 
@@ -824,8 +860,8 @@ if __name__ == '__main__':
 
             # Determine if the screenshot contains data mis-considered relevant by participant -- if so, skip it
             if Android.screenshot_contains_unrelated_data(current_screenshot):
-                current_screenshot.set_daily_total(NO_TEXT if dashboard_category == SCREENTIME else NO_NUMBER)
-                if dashboard_category == SCREENTIME:
+                current_screenshot.set_daily_total(NO_TEXT if study_category == SCREENTIME else NO_NUMBER)
+                if study_category == SCREENTIME:
                     current_screenshot.set_daily_total_minutes(NO_NUMBER)
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
@@ -849,13 +885,13 @@ if __name__ == '__main__':
             headings_df = Android.get_headings(current_screenshot, time_format_short)
             current_screenshot.set_headings(headings_df)
 
-            # Determine the version of Android
-            if not headings_df.empty:
-                android_version = Android.get_android_version(current_screenshot)
-                current_screenshot.set_android_version(android_version)
+            # Get which version of Android the screenshot is
+            android_version = Android.get_android_version(current_screenshot)
+            current_screenshot.set_android_version(android_version)
 
-            if show_images:
-                show_image(text_df, bw_image)
+            dashboard_category, dashboard_category_detected = get_dashboard_category(current_screenshot, study_category)
+            if dashboard_category_detected:
+                current_screenshot.set_category_detected(dashboard_category)
 
             # Determine which type of data is visible on screen
             #   Might be able to systematically search for all 3 kinds of data
@@ -881,23 +917,9 @@ if __name__ == '__main__':
             headings_df = iOS.get_headings(current_screenshot)
             current_screenshot.set_headings(headings_df)
 
-            # Get the category of data that is visible in the screenshot (Screen time, pickups, or notifications)
-            if dashboard_category is not None:
-                print(f"{study_to_analyze['Name']} study only requested screenshots of {dashboard_category} data.  "
-                      f"Category already set to '{dashboard_category}'.")
-                dashboard_category_not_detected = False
-            elif not headings_df.empty:
-                dashboard_category = iOS.get_dashboard_category(current_screenshot)
-                if dashboard_category is None:
-                    dashboard_category_not_detected = True
-                    dashboard_category = current_screenshot.category_submitted
-                else:
-                    dashboard_category_not_detected = False
-            else:
-                dashboard_category_not_detected = True
-                dashboard_category = current_screenshot.category_submitted
-
-            current_screenshot.set_category_detected(dashboard_category)
+            dashboard_category, dashboard_category_detected = get_dashboard_category(current_screenshot)
+            if dashboard_category_detected:
+                current_screenshot.set_category_detected(dashboard_category)
 
             # for category in 'categories to search for' loop with 'category' as the 3rd input to function
             # if screentime is in the categories to search for ??
@@ -1002,12 +1024,13 @@ if __name__ == '__main__':
                 print(app_data[['name', 'number']])
                 print(f"Daily total {dashboard_category}: {daily_total}")
 
+            # For both android and iOS screenshots, we can now store the app-level data in the Screenshot object.
+            current_screenshot.set_app_data(app_data)
+            current_participant.add_screenshot(current_screenshot)
+            # And also give it to the Participant object, checking to see if data already exists for that day & category
+            #   (if it does, run the function (within Participant?) to determine how to merge the two sets of data together)
+
         else:
             print("Operating System not detected.")
             current_screenshot.set_app_data(empty_app_data)
             continue
-            # For both android and iOS screenshots, we can now store the app-level data in the Screenshot object.
-        current_screenshot.set_app_data(app_data)
-        current_participant.add_screenshot(current_screenshot)
-        # And also give it to the Participant object, checking to see if data already exists for that day & category
-        #   (if it does, run the function (within Participant?) to determine how to merge the two sets of data together)

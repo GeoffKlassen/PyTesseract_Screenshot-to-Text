@@ -175,10 +175,10 @@ def screenshot_contains_unrelated_data(ss):
     
     if any(text_df['text'].apply(lambda x: min(OCRScript_v3.levenshtein_distance(x[0:len(key)], key)
                                                for key in KEYWORDS_FOR_UNRELATED_SCREENSHOTS[lang])) < moe):
-        print("Unrelated screenshot")
+        print("Did not detect data relevant to the study.")
         # One of the rows of text_df starts with one of the keywords for unrelated screenshots
         return True
-    print("Screenshot is indeed relevant. Hooray!")
+
     return False
 
 
@@ -348,6 +348,69 @@ def get_android_version(screenshot):
         print("Android version not detected.")
 
     return android_ver
+
+
+def get_dashboard_category(screenshot):
+    heads_df = screenshot.headings_df
+    text_df = screenshot.text
+    category_submitted = screenshot.category_submitted
+    categories_found = []
+    
+    if any(heads_df[HEADING_COLUMN] == SCREENTIME_HEADING) or \
+            any(heads_df[HEADING_COLUMN] == TOTAL_SCREENTIME) or \
+            any(heads_df[HEADING_COLUMN] == MOST_USED_HEADING) and \
+            (text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == MOST_USED_HEADING].index[0] + 1 or
+             heads_df[heads_df[HEADING_COLUMN] == MOST_USED_HEADING].iloc[-1]['top'] < 0.9 * screenshot.height):
+        # Found screentime heading; or
+        # Found total screentime; or
+        # Found 'most used' heading and either:
+        #     text_df has more data below the 'most used' heading, or
+        #     the 'most used' heading is not too close to the bottom of the screenshot
+        categories_found.append(SCREENTIME)
+
+    if any(heads_df[HEADING_COLUMN] == NOTIFICATIONS_HEADING) and \
+            (text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == NOTIFICATIONS_HEADING].index[0] + 1 or
+             heads_df[heads_df[HEADING_COLUMN] == NOTIFICATIONS_HEADING].iloc[-1]['top'] < 0.9 * screenshot.height) or \
+            any(heads_df[HEADING_COLUMN] == TOTAL_NOTIFICATIONS) or \
+            any(heads_df[HEADING_COLUMN] == MOST_NOTIFICATIONS_HEADING) and \
+            (text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == MOST_NOTIFICATIONS_HEADING].index[0] + 1 or
+             heads_df[heads_df[HEADING_COLUMN] == MOST_NOTIFICATIONS_HEADING].iloc[-1][
+                 'top'] < 0.9 * screenshot.height):
+        # Found notifications heading, and either;
+        #     text_df has more data below the notifications heading, or
+        #     the notifications heading is not too close to the bottom of the screenshot; or
+        # Found total notifications; or
+        # Found 'most notifications' heading and either:
+        #     text_df has more data below the 'most notifications' heading, or
+        #     the 'most notifications' heading is not too close to the bottom of the screenshot
+        categories_found.append(NOTIFICATIONS)
+
+    if any(heads_df[HEADING_COLUMN] == UNLOCKS_HEADING) and \
+            (text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == UNLOCKS_HEADING].index[0] + 1 or
+             heads_df[heads_df[HEADING_COLUMN] == UNLOCKS_HEADING].iloc[-1]['top'] < 0.9 * screenshot.height) or \
+            heads_df[HEADING_COLUMN].str.contains(TOTAL_UNLOCKS).any():
+        # Found unlocks heading, and either:
+        #     text_df has more data below the unlocks heading, or
+        #     the unlocks heading is not too close to the bottom of the screenshot; or
+        # Found total unlocks
+        categories_found.append(UNLOCKS)
+
+    if not categories_found:
+        print(f"No categories detected.")  # Defaulting to submitted category: {backup_category}")
+        # Returning None to flag the screenshot for manual review;
+        # screenshot category is set to backup_category after this function is called
+        return None
+    else:
+        print(f"Category submitted: {category_submitted}    Categories detected: {categories_found}")
+        if category_submitted in categories_found:
+            category_found = category_submitted
+        else:
+            category_found = categories_found[0]
+            print(f"Screenshot submitted under '{category_submitted}' category, but found '{category_found}' instead.")
+
+    print(f"Setting category to '{category_found}'.")
+
+    return category_found
 
 
 def main():
