@@ -1,4 +1,6 @@
 """This file contains Android-specific dictionaries, functions, and variables."""
+from collections import namedtuple
+
 import cv2
 import numpy as np
 import re
@@ -6,6 +8,7 @@ import re
 import pandas as pd
 
 import OCRScript_v3
+from OCRScript_v3 import get_best_language
 from RuntimeValues import *
 
 """
@@ -169,7 +172,9 @@ def get_time_formats_in_lang(lang):
     long_format = long_format.replace(" ", r"\s?")
     long_format = "(" + long_format + ")"
 
-    return short_format, long_format
+    eol_format = '|'.join([short_format, long_format]).replace("^", "\\s")
+
+    return short_format, long_format, eol_format
 
 
 def get_headings(screenshot, time_fmt_short):
@@ -631,9 +636,264 @@ def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_sh
         cropped_image = image[crop_top:crop_bottom, crop_left:crop_right]
     else:
         print(f"Android version not detected; image will not be cropped.")
-        return image
+        return image, [None, None, None, None]
 
-    return cropped_image
+    return cropped_image, [crop_top, crop_left, crop_bottom, crop_right]
+
+
+def consolidate_overlapping_text(df, time_format_eol):
+    # For calculating overlap of two text boxes
+    Rectangle = namedtuple('Rectangle', 'xmin ymin xmax ymax')
+
+    def calculate_overlap(rect_a, rect_b):
+        # Find the overlap in the x-axis
+        dx = min(rect_a.xmax, rect_b.xmax) - max(rect_a.xmin, rect_b.xmin)
+        # Find the overlap in the y-axis
+        dy = min(rect_a.ymax, rect_b.ymax) - max(rect_a.ymin, rect_b.ymin)
+        #
+        smallest_rect_area = min((rect_a.xmax - rect_a.xmin) * (rect_a.ymax - rect_a.ymin),
+                                 (rect_b.xmax - rect_b.xmin) * (rect_b.ymax - rect_b.ymin))
+
+        # If there is an overlap in both x and y, calculate the area
+        if (dx >= 0) and (dy >= 0):
+            return dx * dy / smallest_rect_area
+        else:
+            return 0  # No overlap
+
+    # This section checks if two text values physically overlap;
+    # if there is enough overlap, it decides which word to consider the 'correct' word.
+    rows_to_drop = []
+    for i in df.index:
+        if i == 0:
+            continue
+        current_left = df['left'][i]
+        current_right = df['left'][i] + df['width'][i]
+        current_top = df['top'][i]
+        current_bottom = df['top'][i] + df['height'][i]
+        prev_left = df['left'][i - 1]
+        prev_right = df['left'][i - 1] + df['width'][i - 1]
+        prev_top = df['top'][i - 1]
+        prev_bottom = df['top'][i - 1] + df['height'][i - 1]
+
+        current_textbox = Rectangle(current_left, current_top, current_right, current_bottom)
+        prev_textbox = Rectangle(prev_left, prev_top, prev_right, prev_bottom)
+
+        current_num_digits = len(re.findall(r'\d', df['text'][i]))
+        prev_num_digits = len(re.findall(r'\d', df['text'][i - 1]))
+
+        if calculate_overlap(current_textbox, prev_textbox) > 0.3:
+            # If two text boxes overlap by at least 30%, consider them to be two readings of the same text.
+            if (re.search(time_format_eol, df.loc[i, 'text']) and
+                    not re.search(time_format_eol, df.loc[i - 1, 'text'])):
+                rows_to_drop.append(i - 1)
+            elif (not re.search(time_format_eol, df.loc[i, 'text']) and
+                  re.search(time_format_eol, df.loc[i - 1, 'text'])):
+                rows_to_drop.append(i)
+            elif current_num_digits > prev_num_digits:
+                rows_to_drop.append(i - 1)
+            elif current_num_digits < prev_num_digits:
+                rows_to_drop.append(i)
+            elif len(df['text'][i - 1]) > len(df['text'][i]):
+                rows_to_drop.append(i)
+            elif len(df['text'][i]) > len(df['text'][i - 1]):
+                rows_to_drop.append(i - 1)
+            elif df['conf'][i - 1] > df['conf'][i]:
+                if df['text'][i - 1] == 'min':
+                    rows_to_drop.append(i - 1)
+                else:
+                    rows_to_drop.append(i)
+            else:
+                if df['text'][i] == 'min':
+                    rows_to_drop.append(i)
+                else:
+                    rows_to_drop.append(i - 1)
+
+    if 'level_0' in df.columns:
+        df.drop(columns=['level_0'], inplace=True)
+
+    merged_df = df.drop(index=rows_to_drop).reset_index()
+
+    # consolidated_df = merge_df_rows_by_height(merged_df)
+
+    return merged_df  # consolidated_df ?
+
+
+def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, coordinates):
+
+    num_missed_app_values = 0
+    android_version = screenshot.android_version
+    time_short, time_long, time_eol = time_formats[0], time_formats[1], time_formats[2]
+    crop_top, crop_left, crop_bottom, crop_right = coordinates[0], coordinates[1], coordinates[2], coordinates[3]
+    img_lang = get_best_language(screenshot)
+    app_names = pd.DataFrame(columns=['name', 'name_conf'])
+    app_numbers = pd.DataFrame(columns=['number', 'number_conf'])
+    empty_name_row = pd.DataFrame({'name': [NO_TEXT], 'name_conf': [NO_CONF]})
+    empty_number_row = pd.DataFrame({'number': [NO_TEXT], 'number_conf': [NO_CONF]}) if category == SCREENTIME else (
+                       pd.DataFrame({'number': [NO_NUMBER], 'number_conf': [NO_CONF]}))
+
+    def build_app_and_number_dfs(app, num):
+        nonlocal previous_text
+        nonlocal app_names
+        nonlocal app_numbers
+        nonlocal num_missed_app_values
+
+        if previous_text == NUMBER:
+            if app != '' and num != '':  # App and its number in same row)
+                new_name = pd.DataFrame({'name': [app], 'name_conf': [row_conf]})
+                new_number = pd.DataFrame({'number': [num], 'number_conf': [row_conf]})
+                app_names = new_name if app_names.empty else pd.concat([app_names, new_name], ignore_index=True)
+                app_numbers = new_number if app_numbers.empty else pd.concat([app_numbers, new_number], ignore_index=True)
+
+            elif app == '':  # Only number
+                if len(app_names) < max_apps:
+                    num_missed_app_values += 1
+                app_names = empty_name_row if app_names.empty else pd.concat([app_names, empty_name_row], ignore_index=True)
+                new_number = pd.DataFrame({'number': [num], 'number_conf': [row_conf]})
+                app_numbers = new_number if app_numbers.empty else pd.concat([app_numbers, new_number], ignore_index=True)
+
+            elif num == '':  # Only app
+                new_name = pd.DataFrame({'name': [app], 'name_conf': [row_conf]})
+                app_names = new_name if app_names.empty else pd.concat([app_names, new_name], ignore_index=True)
+                previous_text = APP
+
+        elif previous_text == APP:
+            if app != '' and num != '':  # App and its number in same row
+                if len(app_names) < max_apps:
+                    num_missed_app_values += 1
+                app_numbers = empty_number_row if app_numbers.empty else pd.concat([app_numbers, empty_number_row], ignore_index=True)
+
+                new_name = pd.DataFrame({'name': [app], 'name_conf': [row_conf]})
+                new_number = pd.DataFrame({'number': [num], 'number_conf': [row_conf]})
+                app_names = new_name if app_names.empty else pd.concat([app_names, new_name], ignore_index=True)
+                app_numbers = new_number if app_numbers.empty else pd.concat([app_numbers, new_number], ignore_index=True)
+                previous_text = NUMBER
+
+            elif app == '':
+                new_number = pd.DataFrame({'number': [num], 'number_conf': [row_conf]})
+                app_numbers = new_number if app_numbers.empty else pd.concat([app_numbers, new_number], ignore_index=True)
+                previous_text = NUMBER
+
+            elif num == '':
+                if len(app_names) < max_apps:
+                    num_missed_app_values += 1
+                app_numbers = empty_number_row if app_numbers.empty else pd.concat([app_numbers, empty_number_row], ignore_index=True)
+                new_name = pd.DataFrame({'name': [app], 'name_conf': [row_conf]})
+                app_names = new_name if app_names.empty else pd.concat([app_names, new_name], ignore_index=True)
+
+        if android_version != GOOGLE and len(app_names) == max_apps and num == '':
+            num_missed_app_values += 1
+
+    def split_app_name_and_screen_time(s):
+        if re.match('|'.join([time_short, time_long]), s):
+            # If the entire string matches a time format, then it must be a time only (no app name)
+            name = ''
+            time = s
+        else:
+            split_text = re.split(time_eol, s)
+            if len(split_text) == 1:
+                # If the string does not end in a time format, then it must be an app name only (no time)
+                return s, ''
+            name = split_text[0].strip()
+            time = s.replace(name, "").strip()
+
+        hours_format = '|'.join([H, KEYWORD_FOR_HR[img_lang], ('|'.join(KEYWORDS_FOR_HOURS[img_lang]))]).replace(" ",
+                                                                                                                 r"\s?")
+        minutes_format = '|'.join([MIN, KEYWORD_FOR_MIN[img_lang], ('|'.join(KEYWORDS_FOR_MINUTES[img_lang]))])
+        time_filtered = filter_time_text(time, NO_CONF, hours_format, minutes_format)
+
+        return name, time_filtered
+
+    def split_app_name_and_notifications(s):
+        # Find all the numbers in the string
+        numbers = re.findall(r'\d+', s)
+        if not numbers or s[-1].isdigit():
+            # If there are no numbers, return the original string and an empty string
+            return s, ''
+
+        # Get the last number
+        last_number = numbers[-1]
+        # Find the index of the first digit of the last number
+        index = s.rfind(last_number)
+
+        name = s[:index].rstrip()
+        number = re.split(r'\s|[a-zA-Z]', s[index:])[0]
+        # Split the string at the index of the first digit of the last number
+
+        return name, number
+
+    previous_text = NUMBER  # initialize to handle the first text beginning with an app name (most likely case)
+
+    if category == SCREENTIME:
+        for row_text, row_conf, row_left in zip(df['text'],
+                                                df['conf'],
+                                                df['left']):
+            app_name, app_number = split_app_name_and_screen_time(row_text)
+            if app_name != '' and app_number == '' and row_left + crop_left > (0.4 * screenshot.width):
+                # Sometimes there are 'pill' shapes above the app time; these can be misread as app names.
+                # Ignore such apparent app names whose left edges lie beyond 40% of the screenshot width.
+                continue
+            build_app_and_number_dfs(app_name, app_number)
+    elif category == NOTIFICATIONS:
+        for row_text, row_conf, row_left, row_width in zip(df['text'],
+                                                           df['conf'],
+                                                           df['left'],
+                                                           df['width']):
+            app_name, app_number = split_app_name_and_notifications(row_text)
+            if app_name != '' and app_number == '' and row_left + crop_left > (0.4 * screenshot.width):
+                # See 'pill' comment in similar line above
+                continue
+            elif app_name != '' and app_number == '' and app_name.split()[
+                -1].isdigit() and row_left + crop_left + row_width > 0.85 * screenshot.width:
+                # For screenshots in SAMSUNG 2024 format or screenshots with weekly info,
+                # sometimes the number of notifications has no text after it
+                # (e.g. "14" instead of "14 notifications").
+                app_number = app_name.split()[-1]
+                app_name = ' '.join(app_name.split()[:-1])
+            build_app_and_number_dfs(app_name, app_number)
+    elif category == UNLOCKS:
+        if android_version != GOOGLE:
+            empty_rows = [{'name': NO_TEXT, 'name_conf': NO_CONF}] * max_apps
+            app_names = pd.concat([app_names, empty_rows], ignore_index=True)
+            empty_rows = [{'number': NO_NUMBER, 'number_conf': NO_CONF}] * max_apps
+            app_numbers = pd.concat([app_numbers, empty_rows], ignore_index=True)
+        else:
+            # Only the Google Dashboard has app-level unlocks info;
+            # other Dashboard formats only show total unlocks.
+            for row_text, row_conf in zip(df['text'], df['conf']):
+                error_margin = round(np.log(len(row_text)))
+                row_text_filtered = re.sub(r'\d+', '#', row_text)
+                if min(OCRScript_v3.levenshtein_distance(row_text_filtered, key) for key in
+                       GOOGLE_UNLOCKS_FORMATS[img_lang]) < error_margin:
+                    # Row text contains an unlocks value
+                    try:
+                        app_number = re.findall(r'\d+', row_text)[0]
+                        conf = row_conf
+                    except IndexError:
+                        app_number = NO_NUMBER
+                        conf = NO_CONF
+                    if previous_text == NUMBER:
+                        if len(app_names) < max_apps:
+                            num_missed_app_values += 1
+                        app_names = empty_name_row if app_names.empty else pd.concat([app_names, empty_name_row], ignore_index=True)
+                    new_number_row = pd.DataFrame({'number': [app_number], 'number_conf': [row_conf]})
+                    app_numbers = new_number_row if app_numbers.empty else pd.concat([app_numbers, new_number_row],
+                                                      ignore_index=True)
+                    previous_text = NUMBER
+                else:
+                    # Row text contains an app name
+                    if previous_text == APP:
+                        if len(app_names) < max_apps:
+                            num_missed_app_values += 1
+                        app_numbers = empty_number_row if app_numbers.empty else pd.concat([app_numbers, empty_number_row],
+                                                ignore_index=True)
+                    new_name_row = pd.DataFrame({'name': [row_text], 'name_conf': [row_conf]})
+                    app_names = new_name_row if app_names.empty else pd.concat([app_names, new_name_row], ignore_index=True)
+                    previous_text = APP
+
+    top_n_app_names_and_numbers = pd.concat(
+        [app_names.head(max_apps), app_numbers.head(max_apps)], axis=1)
+
+    return top_n_app_names_and_numbers
 
 
 def main():

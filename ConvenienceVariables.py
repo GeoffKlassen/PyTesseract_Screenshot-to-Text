@@ -125,3 +125,6 @@ time_or_number_format = '|'.join([time_format, number_format])
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 BROWN = (165, 165, 165)  # Not used as a pixel colour, just used as a shorthand for the colour name
+
+APP = 'app'
+NUMBER = 'number'

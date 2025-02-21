@@ -592,7 +592,7 @@ def crop_image_to_app_area(screenshot, heading_above, heading_below):
         #   the 'MOST_USED' heading was not found (the heading for the screentime apps) and
         #   the 'FIRST_USED_AFTER_PICKUP' heading was found (the heading for pickups apps)
         print(f"Heading above app list was not found.")
-        return screenshot.grey_image, None, None, None, None
+        return screenshot.grey_image, [None, None, None, None]
         # app_area_heading_not_found = True
         # num_missed_app_values = 0
 
@@ -604,7 +604,7 @@ def crop_image_to_app_area(screenshot, heading_above, heading_below):
     else:
         _, cropped_filtered_image = cv2.threshold(cropped_grey_image, 50, 180, cv2.THRESH_BINARY)
 
-    return cropped_filtered_image, crop_top, crop_left, crop_bottom, crop_right
+    return cropped_filtered_image, [crop_top, crop_left, crop_bottom, crop_right]
 
 
 def erase_value_bars_and_icons(screenshot, df, image):

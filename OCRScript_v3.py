@@ -1,3 +1,5 @@
+from pandas.core.methods.selectn import SelectNSeries
+
 import AndroidFunctions as Android
 import iOSFunctions as iOS
 from RuntimeValues import *
@@ -639,15 +641,17 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False)
         return NO_NUMBER, NO_CONF
 
 
-def extract_app_info(screenshot, image, scale):
+def extract_app_info(screenshot, image, coordinates, scale):
     """
 
     :param screenshot:
     :param image:
+    :param coordinates:
     :param scale:
     :return:
     """
     text = screenshot.text
+    crop_top, crop_left, crop_bottom, crop_right = coordinates[0], coordinates[1], coordinates[2], coordinates[3]
 
     _, app_info_scan_1 = extract_text_from_image(image, remove_chars="[^a-zA-Z0-9+é:.!,()'&-]+")
 
@@ -674,7 +678,8 @@ def extract_app_info(screenshot, image, scale):
 
     cols_to_scale = ['left', 'top', 'width', 'height']
     truncated_text_df[cols_to_scale] = truncated_text_df[cols_to_scale].apply(lambda x: x * scale).astype(int)
-    app_info_scan_1 = iOS.consolidate_overlapping_text(pd.concat([app_info_scan_1, truncated_text_df], ignore_index=True))
+    overlapped_text = pd.concat([app_info_scan_1, truncated_text_df], ignore_index=True)
+    app_info_scan_1 = iOS.consolidate_overlapping_text(overlapped_text) if screenshot.device_os == IOS else Android.consolidate_overlapping_text(overlapped_text, time_format_eol)
     app_info_scan_1 = app_info_scan_1.sort_values(by=['top', 'left']).reset_index(drop=True)
 
     image_missed_text = image.copy()
@@ -690,7 +695,7 @@ def extract_app_info(screenshot, image, scale):
     _, app_info_scan_2 = extract_text_from_image(image_missed_text, remove_chars="[^a-zA-Z0-9+é:.!,()'&-]+")
 
     app_info = pd.concat([app_info_scan_1, app_info_scan_2])
-    app_info = iOS.consolidate_overlapping_text(app_info)
+    app_info = iOS.consolidate_overlapping_text(app_info) if screenshot.device_os == IOS else Android.consolidate_overlapping_text(app_info, time_format_eol)
 
     return app_info
 
@@ -776,8 +781,8 @@ if __name__ == '__main__':
                                         category=url_list[IMG_RESPONSE_TYPE][index])
 
         """ FOR ANDROID TESTING: SKIP iOS IMAGES"""
-        if current_screenshot.device_os == IOS:
-            continue
+        # if current_screenshot.device_os == IOS:
+        #     continue
 
         # Add the current screenshot to the list of all screenshots
         screenshots.append(current_screenshot)
@@ -858,8 +863,8 @@ if __name__ == '__main__':
             
             """
             app_data = empty_app_data  # Temporary
-            time_format_short, time_format_long = Android.get_time_formats_in_lang(current_screenshot.language)
-            # time_format_end_of_line needed? Need to replace the ending \b's with $ signs
+            time_formats = Android.get_time_formats_in_lang(current_screenshot.language)
+            time_format_short, time_format_long, time_format_eol = time_formats[0], time_formats[1], time_formats[2]
 
             # Determine if the screenshot contains data mis-considered relevant by participant -- if so, skip it
             if Android.screenshot_contains_unrelated_data(current_screenshot):
@@ -928,20 +933,38 @@ if __name__ == '__main__':
                 continue
 
             # Crop the image to the app-specific region
-            cropped_image = Android.crop_image_to_app_area(image=bw_image,
-                                                           heading_above_apps=heading_above_apps,
-                                                           screenshot=current_screenshot,
-                                                           time_format_short=time_format_short)
+            cropped_image, crop_coordinates = (
+                Android.crop_image_to_app_area(image=bw_image,
+                                               heading_above_apps=heading_above_apps,
+                                               screenshot=current_screenshot,
+                                               time_format_short=time_format_short))
+            scaled_cropped_image = cv2.resize(cropped_image,
+                                              dsize=None,
+                                              fx=app_area_scale_factor,
+                                              fy=app_area_scale_factor,
+                                              interpolation=cv2.INTER_AREA)
 
-            # Extract app-specific data
+            # Extract app info from cropped image
+            app_area_df = extract_app_info(current_screenshot, scaled_cropped_image, crop_coordinates, app_area_scale_factor)
+            if show_images:
+                show_image(app_area_df, scaled_cropped_image)
+
+
             # Sort the app-specific data into app names and app usage numbers
-            # Collect some review-oriented statistics on the screenshot
-            # Put the data from the screenshot into the current screenshot's collection
-            # Put the data from the screenshot into the master CSV for all screenshots
-            # Check if data already exist for this user & date
-            #   If so, determine how to combine the existing data and current data so they fit together properly
+            app_data = Android.get_app_names_and_numbers(screenshot=current_screenshot,
+                                                         df=app_area_df,
+                                                         category=dashboard_category,
+                                                         max_apps=max_apps_per_category,
+                                                         time_formats=time_formats,
+                                                         coordinates=crop_coordinates)
+            print("\nApp data found:")
+            print(app_data[['name', 'number']])
+            print(f"Daily total {dashboard_category}: {daily_total}")
 
-            # End up with a dataframe app_data[['app', 'number']]
+            current_screenshot.set_app_data(app_data)
+            current_participant.add_screenshot(current_screenshot)
+            # Collect some review-oriented statistics on the screenshot
+            # Put the data from the screenshot into the master CSV for all screenshots
 
         elif current_screenshot.device_os == IOS:
             """
@@ -1003,8 +1026,8 @@ if __name__ == '__main__':
                 daily_total_conf = NO_CONF
 
             # Crop image to app region
-            cropped_image, crop_top, crop_left, crop_bottom, crop_right = iOS.crop_image_to_app_area(current_screenshot, heading_above_applist, heading_below_applist)
-            if all(crops is None for crops in (crop_top, crop_left, crop_bottom, crop_right)):
+            cropped_image, crop_coordinates = iOS.crop_image_to_app_area(current_screenshot, heading_above_applist, heading_below_applist)
+            if all(crops is None for crops in crop_coordinates):
                 print(f"Setting all app-specific data to N/A.")
                 current_screenshot.set_app_data(empty_app_data)
 
@@ -1018,11 +1041,6 @@ if __name__ == '__main__':
                 cropped_prescan_words['text'] = cropped_prescan_words['text'].astype(str)
                 cropped_prescan_df['text'] = cropped_prescan_df['text'].astype(str)
                 cropped_prescan_words = cropped_prescan_words[cropped_prescan_words['text'].str.fullmatch(r'[a-zA-Z0-9]+', na=False)]
-
-
-
-
-
                 cropped_prescan_words = cropped_prescan_words.reset_index(drop=True)
                 cropped_image_no_bars = iOS.erase_value_bars_and_icons(screenshot=current_screenshot,
                                                                        df=cropped_prescan_words,
@@ -1034,7 +1052,7 @@ if __name__ == '__main__':
                                                   interpolation=cv2.INTER_AREA)
 
                 # Extract app info from cropped image
-                app_area_df = extract_app_info(current_screenshot, scaled_cropped_image, app_area_scale_factor)
+                app_area_df = extract_app_info(current_screenshot, scaled_cropped_image, crop_coordinates, app_area_scale_factor)
                 if show_images:
                     show_image(app_area_df, scaled_cropped_image)
                 value_format = misread_time_format if dashboard_category == SCREENTIME else misread_number_format
