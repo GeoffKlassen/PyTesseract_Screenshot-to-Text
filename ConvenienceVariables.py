@@ -23,6 +23,30 @@ HOURS_AXIS_HEADING = 'hours row'
 DAY_OR_WEEK_HEADING = 'day or week'
 DATE_HEADING = 'date'
 
+# Extra headings specific to Android
+TOTAL_SCREENTIME = 'total screentime'
+TOTAL_NOTIFICATIONS = 'total notifications'
+MOST_NOTIFICATIONS_HEADING = 'most notifications'
+UNLOCKS_HEADING = PICKUPS  # 'PICKUPS' on iOS is similar to 'UNLOCKS' on Android, except that, at the app level,
+# iOS measures the number of times each app was the first app used after pickup, while Android measures the number of
+# times each app was opened overall, regardless of whether it was the first app opened after pickup. As such, on iOS
+# the sum of all app pickups should equal the total pickups on iOS, and on Android the total unlocks is generally lower
+# than the sum of all app unlocks (but technically they are simply correlated, so it's possible for total unlocks to be greater).
+TOTAL_UNLOCKS = PICKUPS_HEADING
+UNLOCKS = PICKUPS
+DAY_NAME_HEADING = 'day name'
+VIEW_MORE_HEADING = 'view more'
+
+GOOGLE = 'google'
+VERSION_2018 = '2018'
+SAMSUNG_2021 = 'samsung 2021'
+SAMSUNG_2024 = 'samsung 2024'
+
+OLD_SCREENTIME_HEADING = '2018 screentime'
+OLD_MOST_USED_HEADING = '2018 most used'
+OLD_UNLOCKS_HEADING = '2018 unlocks'
+
+
 """
     Values to use when data is missing or not found
 """

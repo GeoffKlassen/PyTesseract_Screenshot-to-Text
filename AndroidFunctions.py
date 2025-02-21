@@ -6,8 +6,6 @@ import re
 import pandas as pd
 
 import OCRScript_v3
-from ConvenienceVariables import *
-from LanguageDictionaries import *
 from RuntimeValues import *
 
 """
@@ -144,32 +142,6 @@ KEYWORDS_FOR_UNRELATED_SCREENSHOTS = {ITA: ['USO BATTERIA', 'Benessere digitale'
                                       GER: ['TODO FILL THIS IN'],
                                       FRA: ['TODO FILL THIS IN']}
 # Some screenshots show only Battery Usage info; these screenshots do not contain any of the requested info.
-SCREENTIME = 'screentime'
-UNLOCKS = 'unlocks'
-NOTIFICATIONS = 'notifications'
-
-HEADING_COLUMN = 'heading'
-SCREENTIME_HEADING = SCREENTIME
-TOTAL_SCREENTIME = 'total screentime'
-# LIMITS_HEADING = 'limits'
-MOST_USED_HEADING = 'most used'
-NOTIFICATIONS_HEADING = NOTIFICATIONS
-TOTAL_NOTIFICATIONS = 'total notifications'
-MOST_NOTIFICATIONS_HEADING = 'most notifications'
-UNLOCKS_HEADING = UNLOCKS
-TOTAL_UNLOCKS = 'total unlocks'
-DAY_NAME_HEADING = 'day name'
-DATE_HEADING = 'date'
-VIEW_MORE_HEADING = 'view more'
-
-OLD_SCREENTIME_HEADING = '2018 screentime'
-OLD_MOST_USED_HEADING = '2018 most used'
-OLD_UNLOCKS_HEADING = '2018 unlocks'
-
-GOOGLE = 'Google'
-_2018 = '2018'
-SAMSUNG_2021 = 'Samsung 2021'
-SAMSUNG_2024 = 'Samsung 2024'
 
 
 def screenshot_contains_unrelated_data(ss):
@@ -273,21 +245,21 @@ def get_headings(screenshot, time_fmt_short):
 
         elif bool(re.match(time_fmt_short, row_text)) and df['left'][i] < 0.15 * screenshot.width or \
                 min(OCRScript_v3.levenshtein_distance(row_text_filtered, key.replace(' ', ''))
-                    for key in GOOGLE_SCREENTIME_FORMATS[lang]) < moe and \
+                    for key in GOOGLE_SCREENTIME_FORMATS[lang]) <= moe and \
                 abs(centre_of_row - (0.5 * screenshot.width)) < (0.1 * screenshot.width) and \
                 not df[HEADING_COLUMN].str.contains(TOTAL_SCREENTIME).any():
             # Row text starts with a short-format time length (e.g. 1h5m) and is left-aligned (Samsung style), or
             # Row text matches a long-format time length (e.g. 1 hr 5 min) and is centred (Google style)
             df.loc[i, HEADING_COLUMN] = TOTAL_SCREENTIME
         elif (min(OCRScript_v3.levenshtein_distance(row_text_filtered, key.replace(' ', '')) for key in
-                  (GOOGLE_NOTIFICATIONS_FORMATS[lang] + SAMSUNG_NOTIFICATIONS_FORMATS[lang])) < moe and
+                  (GOOGLE_NOTIFICATIONS_FORMATS[lang] + SAMSUNG_NOTIFICATIONS_FORMATS[lang])) <= moe and
               (df['left'][i] < 0.15 * screenshot.width or
                abs(centre_of_row - (0.5 * screenshot.width)) < (0.1 * screenshot.width))) and \
                 not df[HEADING_COLUMN].str.contains(TOTAL_NOTIFICATIONS).any():
             # Row text matches a 'total notifications' format and is either left-aligned (Samsung) or centred (Google)
             df.loc[i, HEADING_COLUMN] = TOTAL_NOTIFICATIONS
         elif ((min(OCRScript_v3.levenshtein_distance(row_text_filtered, key.replace(' ', '')) for key in
-                   (GOOGLE_UNLOCKS_FORMATS[lang] + SAMSUNG_UNLOCKS_FORMAT[lang]))) < moe and
+                   (GOOGLE_UNLOCKS_FORMATS[lang] + SAMSUNG_UNLOCKS_FORMAT[lang]))) <= moe and
               (df['left'][i] < 0.15 * screenshot.width or abs(centre_of_row - (0.5 * screenshot.width)) < (
                       0.1 * screenshot.width))) and \
                 not df[HEADING_COLUMN].str.contains(TOTAL_UNLOCKS).any():
@@ -332,7 +304,7 @@ def get_android_version(screenshot):
     if heads_df.empty:
         return None, None
     elif not heads_df[heads_df['text'].str.isupper()].empty:
-        android_ver = _2018  # TODO: not sure on the year
+        android_ver = VERSION_2018  # TODO: not sure on the year
     elif max(abs(heads_df['left'] + 0.5 * heads_df['width'] - (0.5 * screenshot.width))) < (0.1 * screenshot.width):
         # All the headings found are centred
         android_ver = GOOGLE
@@ -361,9 +333,9 @@ def get_dashboard_category(screenshot):
     category_submitted = screenshot.category_submitted
     categories_found = []
     
-    if any(heads_df[HEADING_COLUMN] == SCREENTIME_HEADING) or \
-            any(heads_df[HEADING_COLUMN] == TOTAL_SCREENTIME) or \
-            any(heads_df[HEADING_COLUMN] == MOST_USED_HEADING) and \
+    if any(heads_df[HEADING_COLUMN].eq(SCREENTIME_HEADING)) or \
+            any(heads_df[HEADING_COLUMN].eq(TOTAL_SCREENTIME)) or \
+            any(heads_df[HEADING_COLUMN].eq(MOST_USED_HEADING)) and \
             (text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == MOST_USED_HEADING].index[0] + 1 or
              heads_df[heads_df[HEADING_COLUMN] == MOST_USED_HEADING].iloc[-1]['top'] < 0.9 * screenshot.height):
         # Found screentime heading; or
@@ -373,11 +345,11 @@ def get_dashboard_category(screenshot):
         #     the 'most used' heading is not too close to the bottom of the screenshot
         categories_found.append(SCREENTIME)
 
-    if any(heads_df[HEADING_COLUMN] == NOTIFICATIONS_HEADING) and \
+    if any(heads_df[HEADING_COLUMN].eq(NOTIFICATIONS_HEADING)) and \
             (text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == NOTIFICATIONS_HEADING].index[0] + 1 or
              heads_df[heads_df[HEADING_COLUMN] == NOTIFICATIONS_HEADING].iloc[-1]['top'] < 0.9 * screenshot.height) or \
-            any(heads_df[HEADING_COLUMN] == TOTAL_NOTIFICATIONS) or \
-            any(heads_df[HEADING_COLUMN] == MOST_NOTIFICATIONS_HEADING) and \
+            any(heads_df[HEADING_COLUMN].eq(TOTAL_NOTIFICATIONS)) or \
+            any(heads_df[HEADING_COLUMN].eq(MOST_NOTIFICATIONS_HEADING)) and \
             (text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == MOST_NOTIFICATIONS_HEADING].index[0] + 1 or
              heads_df[heads_df[HEADING_COLUMN] == MOST_NOTIFICATIONS_HEADING].iloc[-1][
                  'top'] < 0.9 * screenshot.height):
@@ -390,7 +362,7 @@ def get_dashboard_category(screenshot):
         #     the 'most notifications' heading is not too close to the bottom of the screenshot
         categories_found.append(NOTIFICATIONS)
 
-    if any(heads_df[HEADING_COLUMN] == UNLOCKS_HEADING) and \
+    if any(heads_df[HEADING_COLUMN].eq(UNLOCKS_HEADING)) and \
             (text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == UNLOCKS_HEADING].index[0] + 1 or
              heads_df[heads_df[HEADING_COLUMN] == UNLOCKS_HEADING].iloc[-1]['top'] < 0.9 * screenshot.height) or \
             heads_df[HEADING_COLUMN].str.contains(TOTAL_UNLOCKS).any():
@@ -419,7 +391,7 @@ def get_dashboard_category(screenshot):
 
 
 def filter_time_text(text, conf, hr_f, min_f):
-    print(f"text coming in: {text}")
+
     if str(text) == NO_TEXT:
         return NO_TEXT, NO_CONF
 
@@ -438,7 +410,6 @@ def filter_time_text(text, conf, hr_f, min_f):
     text = replace_misread_digit('(l|L)', '1', text)
     text = replace_misread_digit('(s|S)', '5', text)
     text = replace_misread_digit('(o|O)', '0', text)
-    print(f'text going out: {text}')
 
     return text, conf
 
@@ -448,7 +419,7 @@ def get_daily_total_and_confidence(screenshot, image, heading):
     headings_df = screenshot.headings_df
     android_version = screenshot.android_version
     img_lang = screenshot.language
-    total_heading = "total " + heading
+    total_heading = "total " + heading if heading is not None else "total " + screenshot.category_submitted
     day_rows = screenshot.rows_with_day_type
     date_rows = screenshot.rows_with_date
 
@@ -502,7 +473,7 @@ def get_daily_total_and_confidence(screenshot, image, heading):
 
         cropped_scan = rescan_cropped_area(image, crop_top, crop_bottom, crop_left, crop_right)
 
-    elif android_version == _2018 and not headings_df[headings_df[HEADING_COLUMN] == heading].empty:
+    elif android_version == VERSION_2018 and not headings_df[headings_df[HEADING_COLUMN] == heading].empty:
         total_value_1st_scan = NO_TEXT
         total_value_1st_scan_conf = NO_CONF
 
@@ -550,6 +521,119 @@ def get_daily_total_and_confidence(screenshot, image, heading):
                                                             hours_format, minutes_format)
 
     return total_value_filtered, total_conf
+
+
+def convert_string_time_to_minutes(screenshot):
+    """
+
+    :param screenshot:
+    :return:
+    """
+    lang = OCRScript_v3.get_best_language(screenshot)
+    s = screenshot.daily_total
+    android_version = screenshot.android_version
+
+    if str(s) == NO_TEXT:
+        return NO_TEXT
+
+    def split_time(_s, _format):
+        split = re.split(_format, _s)
+        if split[0] != s:
+            # Time did start with 'format' (either '# hours' or '# minutes'); extract the number before the format
+            time_str = split[0].replace(" ", "")
+            time_str = re.findall(r'\d+', time_str)
+            time_int = int(time_str[0]) if len(time_str) > 0 else 0
+            leftover_str = "".join(split[1:])
+        else:
+            time_int = 0
+            leftover_str = _s
+
+        return time_int, leftover_str
+
+
+    if android_version == GOOGLE:
+        hours_format = '|'.join([('|'.join(KEYWORDS_FOR_HOURS[lang])), KEYWORD_FOR_HR[lang]]).replace(" ", r"\s?")
+        minutes_format = '|'.join([('|'.join(KEYWORDS_FOR_MINUTES[lang])), KEYWORD_FOR_MIN[lang]])
+    else:
+        hours_format = H
+        minutes_format = MIN
+
+    hours, str_after_hours = split_time(s, hours_format)
+    minutes, _ = split_time(str_after_hours, minutes_format)
+
+    time_in_min = (hours * 60) + minutes
+
+    return time_in_min
+
+
+def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_short):
+    android_version = screenshot.android_version
+    date_rows = screenshot.rows_with_date
+    text_df = screenshot.text
+    headings_df = screenshot.headings_df
+    dashboard_category = screenshot.category_detected
+
+    if android_version == GOOGLE:
+        crop_left = int(0.15 * screenshot.width)  # Crop out the app icon area (first 15% of screenshot_width)
+        crop_right = int(0.79 * screenshot.width)  # Crop out the hourglass area (last 79% of screenshot_width)
+        if not date_rows.empty:
+            crop_top = date_rows.iloc[-1]['top'] + (2 * date_rows.iloc[-1]['height'])
+            crop_bottom = screenshot.height
+        else:
+            # TODO Leaving this as a catch-all for now -- debug later if this condition is used
+            crop_top = 0
+            crop_bottom = screenshot.height
+
+        cropped_image = image[crop_top:crop_bottom, crop_left:crop_right]
+
+    elif android_version in [SAMSUNG_2024, SAMSUNG_2021, VERSION_2018]:
+        crop_left = int(0.1 * screenshot.width) if android_version == SAMSUNG_2024 else int(
+            0.17 * screenshot.width)  # Crop out the app icon area (first 17% of screenshot_width)
+        # Crop out the > arrows to the right of each app (these appear in the Samsung 2018 version of Dashboard)
+        crop_right = int(0.9 * screenshot.width) if android_version == VERSION_2018 else screenshot.width
+
+        if any(headings_df[HEADING_COLUMN].eq(heading_above_apps)):
+            row_above_apps = headings_df[headings_df[HEADING_COLUMN] == heading_above_apps].iloc[0]
+            crop_top = row_above_apps['top'] + row_above_apps['height']
+            headings_below_apps_df = headings_df[headings_df.index > row_above_apps.name]
+            if not headings_below_apps_df.empty:
+                row_below_apps = headings_below_apps_df.iloc[0]
+                crop_bottom = row_below_apps['top']
+            else:
+                crop_bottom = screenshot.height
+        else:
+            print("Sub-heading above app rows not found. Searching for app rows directly.")
+            crop_top = 0
+            format_for_time_or_number_eol = '|'.join([time_format_short.replace("^", "\\s"), "\\s\\d+"])
+
+            headings_above_apps_df = headings_df[headings_df[HEADING_COLUMN].str.contains(dashboard_category)]
+            index_of_closest_heading = headings_above_apps_df.index[-1] if not headings_above_apps_df.empty else 0
+            index_of_first_app = -1
+
+            for i in range(index_of_closest_heading, text_df.shape[0]):
+                if text_df['left'][i] < 0.25 * screenshot.width and \
+                        text_df['left'][i] + text_df['width'][i] > 0.85 * screenshot.width and \
+                        re.search(format_for_time_or_number_eol, text_df['text'][i]):
+                    # Row text spans most of the width of the screenshot, and also ends with a time/number
+                    print(f"App row found: {text_df['text'][i]}.  "
+                          f"Setting top of crop region to top of this app row.")
+                    crop_top = int(text_df['top'][i] - 0.01 * screenshot.height)
+                    index_of_first_app = i
+                    break
+
+            headings_below_apps_df = headings_df[headings_df.index > max(index_of_first_app, index_of_closest_heading)]
+            if not headings_below_apps_df.empty:
+                row_below_apps = headings_below_apps_df.iloc[0]
+                crop_bottom = row_below_apps['top']
+            else:
+                crop_bottom = screenshot.height
+
+        cropped_image = image[crop_top:crop_bottom, crop_left:crop_right]
+    else:
+        print(f"Android version not detected; image will not be cropped.")
+        return image
+
+    return cropped_image
 
 
 def main():

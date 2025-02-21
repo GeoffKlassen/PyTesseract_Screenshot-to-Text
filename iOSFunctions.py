@@ -711,7 +711,8 @@ def erase_value_bars_and_icons(screenshot, df, image):
             find_and_erase_bar_and_icon(start_row, start_col, h_max=int(1.5*height))
 
     if top_left_coordinates:
-        # Sometimes pytesseract doesn't read an app name, but we'd still like to have the bar below it erased.
+        # Sometimes pytesseract doesn't read an app name, which is used as reference for erasing the value bar below it,
+        # but we'd still like to have that bar erased.
         # This section determines the pixel spacing between two successive bars and, if any of the gaps between found-bars
         # is large enough, it seeks out the missed bar and erases it.
         median_bar_height = int(np.median([coord[2] for coord in top_left_coordinates]))

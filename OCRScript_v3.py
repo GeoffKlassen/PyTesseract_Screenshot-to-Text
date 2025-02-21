@@ -776,8 +776,8 @@ if __name__ == '__main__':
                                         category=url_list[IMG_RESPONSE_TYPE][index])
 
         """ FOR ANDROID TESTING: SKIP iOS IMAGES"""
-        # if current_screenshot.device_os == IOS:
-        #     continue
+        if current_screenshot.device_os == IOS:
+            continue
 
         # Add the current screenshot to the list of all screenshots
         screenshots.append(current_screenshot)
@@ -828,6 +828,7 @@ if __name__ == '__main__':
             current_participant.add_screenshot(current_screenshot)
             continue
 
+        # If there was text found, we can keep going
         current_screenshot.set_text(text_df)
 
         # Get the language of the image, and assign that language to the screenshot & user (if a language was detected)
@@ -898,9 +899,40 @@ if __name__ == '__main__':
             daily_total, daily_total_conf = Android.get_daily_total_and_confidence(screenshot=current_screenshot,
                                                                                    image=bw_image_scaled,
                                                                                    heading=dashboard_category)
-            print(f"Daily total and confidence: {daily_total} {daily_total_conf}")
-            # Extract the daily total (and confidence)
+            current_screenshot.set_daily_total(daily_total, daily_total_conf)
+            dt = "N/A" if daily_total_conf == NO_CONF else daily_total
+
+            if dashboard_category == SCREENTIME:
+                daily_total_minutes = Android.convert_string_time_to_minutes(screenshot=current_screenshot)
+                dtm = (" (" + str(daily_total_minutes) + " minutes)") if daily_total_conf != NO_CONF else ""
+                print(f"Daily total {dashboard_category}: {dt}{dtm}")
+            else:
+                print(f"Daily total {dashboard_category}: {dt}")
+
+            # For Samsung_2021 and 2018 versions of the dashboard, the Screentime heading and Notifications heading
+            # both have sub-headings ('most used' and 'most notifications', respectively).
+            if dashboard_category == SCREENTIME:
+                heading_above_apps = MOST_USED_HEADING
+            elif dashboard_category == NOTIFICATIONS:
+                heading_above_apps = MOST_NOTIFICATIONS_HEADING
+            else:  # dashboard_category == UNLOCKS, or no dashboard category
+                heading_above_apps = None
+
+            # if the daily total is 0 (and not GOOGLE unlocks version), then there will be no app-level data to extract.
+            if daily_total[0] in ['0', 'o', 'O'] and not (android_version == GOOGLE and dashboard_category == UNLOCKS):
+                print(
+                    f"No app-level data for {android_version} dashboard when daily total {dashboard_category} = 0. "
+                    f"Skipping search for app-level data.")
+                current_screenshot.set_app_data(empty_app_data)
+                current_participant.add_screenshot(current_screenshot)
+                continue
+
             # Crop the image to the app-specific region
+            cropped_image = Android.crop_image_to_app_area(image=bw_image,
+                                                           heading_above_apps=heading_above_apps,
+                                                           screenshot=current_screenshot,
+                                                           time_format_short=time_format_short)
+
             # Extract app-specific data
             # Sort the app-specific data into app names and app usage numbers
             # Collect some review-oriented statistics on the screenshot
