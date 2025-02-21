@@ -312,7 +312,13 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+')
     df_words['text'] = (df_words['text'].apply(ensure_text_is_string))
     df_words = df_words[~df_words['text'].str.contains('^[aemu]+$')] if df_words.shape[0] > 0 else df_words
 
+    # Sometimes tesseract misreads (Italian) "Foto" as "mele"/"melee"
+    df_words['text'] = df_words['text'].replace({r'^melee$|^mele$': 'Foto'}, regex=True)
+
     df_lines = merge_df_rows_by_line_num(df_words)
+
+    # ...or misreads ".AI" as ".Al"
+    df_lines['text'] = df_lines['text'].replace({r'.Al': '.AI'}, regex=True)
 
     return df_words, df_lines
 
@@ -770,8 +776,8 @@ if __name__ == '__main__':
                                         category=url_list[IMG_RESPONSE_TYPE][index])
 
         """ FOR ANDROID TESTING: SKIP iOS IMAGES"""
-        if current_screenshot.device_os == IOS:
-            continue
+        # if current_screenshot.device_os == IOS:
+        #     continue
 
         # Add the current screenshot to the list of all screenshots
         screenshots.append(current_screenshot)
@@ -1000,8 +1006,12 @@ if __name__ == '__main__':
                 if show_images:
                     show_image(app_area_df, scaled_cropped_image)
                 value_format = misread_time_format if dashboard_category == SCREENTIME else misread_number_format
-                confident_text_from_prescan = cropped_prescan_df[(cropped_prescan_df['conf'] > 80) |
-                                                                 (cropped_prescan_df['text'].str.fullmatch(value_format) & cropped_prescan_df['conf'] > 50)]
+                confident_text_from_prescan = \
+                    cropped_prescan_df[(cropped_prescan_df['right'] > 0.05 * scaled_cropped_image.shape[1]) &
+                                       ((cropped_prescan_df['conf'] > 80) |
+                                        (cropped_prescan_df['text'].str.fullmatch(value_format) & cropped_prescan_df['conf'] > 50))]
+                print("Confident text from prescan is:")
+                print(confident_text_from_prescan)
                 columns_to_scale = ['left', 'top', 'width', 'height']
                 confident_text_from_prescan.loc[:, columns_to_scale] = \
                     confident_text_from_prescan.loc[:, columns_to_scale].apply(lambda x: x * app_area_scale_factor).astype(int)

@@ -214,7 +214,7 @@ def filter_time_or_number_text(text, conf, f):
     if str(text) == NO_TEXT:
         return NO_TEXT, NO_CONF
 
-    # Check if 'text' contains any substring that matches the desired format
+    # Check if 'text' contains any substring that matches a misread value format
     fmt = re.compile(f, re.IGNORECASE)
     matches = re.findall(fmt, text)
     if matches:
@@ -235,6 +235,10 @@ def filter_time_or_number_text(text, conf, f):
 
     # Remove any characters that aren't a digit or a 'time' character ('h' = hours, 'min' = minutes, 's' = seconds)
     text = re.sub(r'[^0-9hmins]', '', text)
+
+    # If the final filtered text is not a proper (string) value, then no (numeric) value can be extracted from it.
+    if not re.match(time_or_number_format, text, re.IGNORECASE):
+        return NO_TEXT, NO_CONF
 
     return text, conf
 
@@ -330,7 +334,9 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
                 row_conf = round(df.loc[i]['conf'], 4)  # 4 decimal points of precision for the confidence value
 
                 if len(re.findall(value_pattern, row_text)) == 1:
+                    print(f"row text is {row_text}")
                     daily_total_1st_scan, daily_total_1st_scan_conf = filter_time_or_number_text(row_text, row_conf, value_pattern)
+                    print(f"daily total 1st scan is {daily_total_1st_scan}")
                     break
 
             if daily_total_1st_scan_conf == NO_CONF:
@@ -634,16 +640,16 @@ def erase_value_bars_and_icons(screenshot, df, image):
         left_of_bar = 0
         right_of_bar = image_width
 
-        if erase_icon:
+        if erase_icon and left < 0.10 * image_width:
             # These values are from the scope of the parent function
-            cv2.rectangle(image, (0, top - int(0.5 * height)), (left - 2, bottom + h_max), background_colour, -1)
+            cv2.rectangle(image, (0, top - int(0.5 * height)), (left - 2, image_height), background_colour, -1)
 
         # Find the top of the bar
         for row in range(r, min([image_height, r + h_max])):
             if image[row, c] != image[r, c]:
                 top_of_bar = row - 2
                 break
-        if top_of_bar == 0 or image_height - top_of_bar < 0.01 * image_height:
+        if top_of_bar <= 0 or image_height - top_of_bar < 0.02 * image_height:
             # Couldn't find the top of the bar, or the top of the bar is too close to the bottom of the cropped image
             return
 
@@ -672,7 +678,6 @@ def erase_value_bars_and_icons(screenshot, df, image):
             # Draw a background-coloured rectangle overtop of the value bar
             cv2.rectangle(image, (left_of_bar, top_of_bar), (right_of_bar, bottom_of_bar),
                           background_colour, -1)
-
             # For use in finding missed value bars later
             top_left_coordinates.append([left_of_bar, top_of_bar, bottom_of_bar - top_of_bar])
 
@@ -691,7 +696,7 @@ def erase_value_bars_and_icons(screenshot, df, image):
                 not re.search(misread_time_or_number_format, df['text'][1]):
             cv2.rectangle(image, (0, top), (image_width, bottom), background_colour, -1)
             continue
-        elif i > 0 and (top < prev_bottom + 0.01 * image_height or
+        elif i > 0 and (top < prev_bottom + 0.02 * image_height or
                         left > 0.1 * image_width or
                         re.match(time_or_number_format, row_text)):  # or image_height - (top + df['height'][i]) < 0.02 *
             # Skip row if either:
@@ -726,10 +731,16 @@ def erase_value_bars_and_icons(screenshot, df, image):
             # OCRScript_v3.show_image(df, image)
             if (i == 0 and top_left[1] - smallest_difference > 0) or \
                     (i > 0 and top_left[1] - prev_top > 1.5*smallest_difference):
-                find_and_erase_bar_and_icon(top_left[1] - smallest_difference - int(0.005*image_height),
+                prev_bar_top = top_left[1] - smallest_difference
+                find_and_erase_bar_and_icon(prev_bar_top - int(0.005*image_height),
                                             top_left[0] + int(0.015*image_width),
                                             median_bar_height,
                                             erase_icon=False)
+                if prev_bar_top - smallest_difference - int(0.005*image_height) > 0:
+                    find_and_erase_bar_and_icon(prev_bar_top - smallest_difference - int(0.005 * image_height),
+                                                top_left[0] + int(0.015 * image_width),
+                                                median_bar_height,
+                                                erase_icon=False)
             prev_top = top_left[1]
 
     return image
@@ -793,9 +804,17 @@ def consolidate_overlapping_text(df):
         if calculate_overlap(current_textbox, prev_textbox) > 0.3:
             # If two text boxes overlap by at least 30%, consider them to be two readings of the same text.
             # This if-block determines which row of text to keep, and which to discard.
-            if re.search(misread_time_format, df.loc[i, 'text']) and not re.search(misread_time_format, df.loc[i - 1, 'text']):
+            if df.loc[i, 'left'] == 0 and df.loc[i - 1, 'left'] != 0:
+                rows_to_drop.append(i)
+            elif df.loc[i, 'left'] != 0 and df.loc[i - 1, 'left'] == 0:
+                rows_to_drop.append(i - 1)
+            elif re.search(misread_time_format, df.loc[i, 'text']) and not re.search(misread_time_format, df.loc[i - 1, 'text']):
                 rows_to_drop.append(i - 1)
             elif not re.search(misread_time_format, df.loc[i, 'text']) and re.search(misread_time_format, df.loc[i - 1, 'text']):
+                rows_to_drop.append(i)
+            elif re.match(misread_time_format, df.loc[i, 'text']) and not re.match(misread_time_format, df.loc[i - 1, 'text']):
+                rows_to_drop.append(i - 1)
+            elif not re.match(misread_time_format, df.loc[i, 'text']) and re.match(misread_time_format, df.loc[i - 1, 'text']):
                 rows_to_drop.append(i)
             elif current_num_digits > prev_num_digits:
                 rows_to_drop.append(i - 1)
@@ -847,9 +866,9 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
         # and separates them.
         regex_format = misread_time_format if category == SCREENTIME else misread_number_format
         prev_row_type = ''
-        prev_app_top = -1
+        prev_row_top = -1
         prev_app_height = -1
-        prev_row_height = -1
+        prev_row_bottom = -1
         num_missed_app_values = 0
         for i in df.index:
             cleaned_text = re.sub(r'\W+', '', df['text'][i])
@@ -859,19 +878,20 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
                 row_text = df['text'][i]
             row_conf = round(df['conf'][i], 4)
             row_height = df['height'][i]
+            row_top = df['top'][i]
+
+            if prev_app_height >= 0 and \
+                        row_top - prev_row_bottom > 4*np.mean([row_height, prev_app_height]):
+                print(f"Suspected missing app between '{prev_app_name}' and '{row_text}'. Adding a blank row.")
+                app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
+                app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
+
             if (len(str(row_text)) >= 3 or re.match(r'[xX]{1,2}', str(row_text))) and \
                     not re.match(regex_format, str(row_text), re.IGNORECASE) and \
                     row_height > 0.75 * df['height'].mean():  # if current row text is app name
                 if prev_row_type == 'name':  # two app names in a row
                     if len(app_names) <= max_apps:
                         num_missed_app_values += 1
-                    app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
-                elif prev_row_type == 'number' and prev_app_top >= 0 and \
-                        df['top'][i] - prev_row_height > 3*np.median([row_height, prev_app_height]):
-
-                    print(f"{df['top'][i]} - {prev_app_top} > 4*max({row_height}, {prev_app_height}) ?")
-                    print(f"Suspected missing app between '{prev_app_name}' and '{row_text}'. Adding a blank row.")
-                    app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
                     app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
                 new_name_row = pd.DataFrame({'name': [row_text], 'name_conf': [row_conf]})
                 app_names = pd.concat([app_names, new_name_row], ignore_index=True)
@@ -891,7 +911,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
                 prev_row_type = 'number'
             else:  # row is neither a valid app name nor a number, so discard it
                 pass
-            prev_row_height = row_height
+            prev_row_bottom = row_top + row_height
+            prev_row_top = df['top'][i]
         # Making sure each list is the right length (fill any missing values with NO_TEXT/NO_NUMBER and NO_CONF)
         while app_names.shape[0] < max_apps:
             app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
@@ -905,10 +926,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
             screenshot.set_daily_total(NO_TEXT, NO_CONF)
             screenshot.set_daily_total_minutes(NO_NUMBER)
 
-    # Sometimes tesseract misreads (Italian) "Foto" as "mele"/"melee" or misreads ".AI" as ".Al"
-    app_names['name'] = app_names['name'].replace({r'^melee$|^mele$': 'Foto'}, regex=True)
-    app_names['name'] = app_names['name'].replace({r'.Al': '.AI'}, regex=True)
-    
+
     top_n_app_names_and_numbers = pd.concat(
         [app_names.head(max_apps), app_numbers.head(max_apps)], axis=1)
 
