@@ -28,6 +28,7 @@ class Screenshot:
         self.date_detected = None
         self.category_detected = None
         self.text = None
+        self.words_df = None
         self.time_period = None
         self.rows_with_day_type = None
         self.headings_df = None
@@ -110,3 +111,6 @@ class Screenshot:
 
     def set_rows_with_date(self, rows_df):
         self.rows_with_date = rows_df
+
+    def set_words_df(self, words):
+        self.words_df = words

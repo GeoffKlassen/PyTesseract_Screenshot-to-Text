@@ -243,16 +243,16 @@ def merge_df_rows_by_height(df):
             # TODO replace 15 with a percentage of the screenshot width (define moe = x% of screenshot width)
             if df.loc[i]['left'] > df.loc[i - 1]['left']:
                 df.at[i - 1, 'text'] = df.loc[i - 1]['text'] + ' ' + df.loc[i]['text']
-                df.at[i - 1, 'width'] = max(df.loc[i]['right'], df.loc[i - 1]['right']) - min(df.loc[i]['left'],
-                                                                                              df.loc[i - 1]['right'])
-
+                # df.at[i - 1, 'width'] = max(df.loc[i]['right'], df.loc[i - 1]['right']) - min(df.loc[i]['left'],
+                #                                                                               df.loc[i - 1]['right'])
+                df.at[i - 1, 'width'] = df['right'][i] - df['left'][i - 1]
                 df.at[i - 1, 'conf'] = (df.loc[i - 1]['conf'] + df.loc[i]['conf']) / 2
                 rows_to_drop.append(i)
             elif df.loc[i - 1]['left'] > df.loc[i]['left']:
                 df.at[i, 'text'] = df.loc[i]['text'] + ' ' + df.loc[i - 1]['text']
-                df.at[i, 'width'] = max(df.loc[i]['right'], df.loc[i - 1]['right']) - min(df.loc[i]['left'],
-                                                                                          df.loc[i - 1]['right'])
-
+                # df.at[i, 'width'] = max(df.loc[i]['right'], df.loc[i - 1]['right']) - min(df.loc[i]['left'],
+                #                                                                           df.loc[i - 1]['right'])
+                df.at[i, 'width'] = df['right'][i - 1] - df['left'][i]
                 df.at[i, 'conf'] = (df.loc[i]['conf'] + df.loc[i - 1]['conf']) / 2
                 rows_to_drop.append(i - 1)
 
@@ -652,8 +652,9 @@ def extract_app_info(screenshot, image, coordinates, scale):
     """
     text = screenshot.text
     crop_top, crop_left, crop_bottom, crop_right = coordinates[0], coordinates[1], coordinates[2], coordinates[3]
-
-    _, app_info_scan_1 = extract_text_from_image(image, remove_chars="[^a-zA-Z0-9+é:.!,()'&-]+")
+    remove_chars = "[^a-zA-Z0-9+é:.!,()'&-]+" if screenshot.device_os == IOS else '[^a-zA-Z0-9+\\(\\)\\-\\.é]+'
+    # Android needs characters like commas (,) removed because they appear in screentime values
+    _, app_info_scan_1 = extract_text_from_image(image, remove_chars=remove_chars)
 
     # paste the truncated text df stuff here
     """Sometimes the cropped rescan misses app numbers that were found on the initial scan.
@@ -692,10 +693,11 @@ def extract_app_info(screenshot, image, coordinates, scale):
         bg_colour = (255, 255, 255) if is_light_mode else (0, 0, 0)
         cv2.rectangle(image_missed_text, upper_left_corner, bottom_right_corner, bg_colour, -1)
 
-    _, app_info_scan_2 = extract_text_from_image(image_missed_text, remove_chars="[^a-zA-Z0-9+é:.!,()'&-]+")
+    _, app_info_scan_2 = extract_text_from_image(image_missed_text, remove_chars=remove_chars)
 
-    app_info = pd.concat([app_info_scan_1, app_info_scan_2])
+    app_info = pd.concat([app_info_scan_1, app_info_scan_2], ignore_index=True)
     app_info = iOS.consolidate_overlapping_text(app_info) if screenshot.device_os == IOS else Android.consolidate_overlapping_text(app_info, time_format_eol)
+    app_info = app_info.reset_index(drop=True)
 
     return app_info
 
@@ -835,6 +837,7 @@ if __name__ == '__main__':
 
         # If there was text found, we can keep going
         current_screenshot.set_text(text_df)
+        current_screenshot.set_words_df(text_df_single_words)
 
         # Get the language of the image, and assign that language to the screenshot & user (if a language was detected)
         image_language, language_was_detected = determine_language_of_image(current_participant, text_df)
@@ -932,12 +935,30 @@ if __name__ == '__main__':
                 current_participant.add_screenshot(current_screenshot)
                 continue
 
+            if dashboard_category == UNLOCKS and android_version in [SAMSUNG_2024, SAMSUNG_2021, VERSION_2018]:
+                print(f"{android_version} Dashboard does not contain app-level {dashboard_category} data. "
+                      f"Skipping search for app data.")
+                current_screenshot.set_app_data(empty_app_data)
+                current_participant.add_screenshot(current_screenshot)
+                continue
+            """
+            app_area_df, crop_coordinates = Android.crop_image_and_get_app_info(screenshot=current_screenshot,
+                                                                                image=bw_image,
+                                                                                heading_above_apps=heading_above_apps,
+                                                                                time_formats=time_formats)
+            """
             # Crop the image to the app-specific region
             cropped_image, crop_coordinates = (
                 Android.crop_image_to_app_area(image=bw_image,
                                                heading_above_apps=heading_above_apps,
                                                screenshot=current_screenshot,
                                                time_format_short=time_format_short))
+            if all(crops is None for crops in crop_coordinates):
+                print(f"Setting all app-specific data to N/A.")
+                current_screenshot.set_app_data(empty_app_data)
+                current_participant.add_screenshot(current_screenshot)
+                continue
+
             scaled_cropped_image = cv2.resize(cropped_image,
                                               dsize=None,
                                               fx=app_area_scale_factor,
@@ -957,6 +978,7 @@ if __name__ == '__main__':
                                                          max_apps=max_apps_per_category,
                                                          time_formats=time_formats,
                                                          coordinates=crop_coordinates)
+
             print("\nApp data found:")
             print(app_data[['name', 'number']])
             print(f"Daily total {dashboard_category}: {daily_total}")
@@ -1030,57 +1052,56 @@ if __name__ == '__main__':
             if all(crops is None for crops in crop_coordinates):
                 print(f"Setting all app-specific data to N/A.")
                 current_screenshot.set_app_data(empty_app_data)
+                current_participant.add_screenshot(current_screenshot)
+                continue
 
-            else:
+            cropped_image = cv2.GaussianBlur(cropped_image, ksize=(3, 3), sigmaX=0)
 
-                cropped_image = cv2.GaussianBlur(cropped_image, ksize=(3, 3), sigmaX=0)
+            # Perform pre-scan to remove value bars below app names and fragments of app icons left of app names
+            cropped_prescan_words, cropped_prescan_df = extract_text_from_image(cropped_image,
+                                                                                remove_chars="[^a-zA-Z0-9+é:.!,()'&-]+")
+            cropped_prescan_words['text'] = cropped_prescan_words['text'].astype(str)
+            cropped_prescan_df['text'] = cropped_prescan_df['text'].astype(str)
+            cropped_prescan_words = cropped_prescan_words[cropped_prescan_words['text'].str.fullmatch(r'[a-zA-Z0-9]+', na=False)]
+            cropped_prescan_words = cropped_prescan_words.reset_index(drop=True)
+            cropped_image_no_bars = iOS.erase_value_bars_and_icons(screenshot=current_screenshot,
+                                                                   df=cropped_prescan_words,
+                                                                   image=cropped_image)
+            scaled_cropped_image = cv2.resize(cropped_image,
+                                              dsize=None,
+                                              fx=app_area_scale_factor,
+                                              fy=app_area_scale_factor,
+                                              interpolation=cv2.INTER_AREA)
 
-                # Perform pre-scan to remove value bars below app names and fragments of app icons left of app names
-                cropped_prescan_words, cropped_prescan_df = extract_text_from_image(cropped_image,
-                                                                                    remove_chars="[^a-zA-Z0-9+é:.!,()'&-]+")
-                cropped_prescan_words['text'] = cropped_prescan_words['text'].astype(str)
-                cropped_prescan_df['text'] = cropped_prescan_df['text'].astype(str)
-                cropped_prescan_words = cropped_prescan_words[cropped_prescan_words['text'].str.fullmatch(r'[a-zA-Z0-9]+', na=False)]
-                cropped_prescan_words = cropped_prescan_words.reset_index(drop=True)
-                cropped_image_no_bars = iOS.erase_value_bars_and_icons(screenshot=current_screenshot,
-                                                                       df=cropped_prescan_words,
-                                                                       image=cropped_image)
-                scaled_cropped_image = cv2.resize(cropped_image,
-                                                  dsize=None,
-                                                  fx=app_area_scale_factor,
-                                                  fy=app_area_scale_factor,
-                                                  interpolation=cv2.INTER_AREA)
+            # Extract app info from cropped image
+            app_area_df = extract_app_info(current_screenshot, scaled_cropped_image, crop_coordinates, app_area_scale_factor)
+            if show_images:
+                show_image(app_area_df, scaled_cropped_image)
+            value_format = misread_time_format if dashboard_category == SCREENTIME else misread_number_format
+            confident_text_from_prescan = \
+                cropped_prescan_df[(cropped_prescan_df['right'] > 0.05 * scaled_cropped_image.shape[1]) &
+                                   ((cropped_prescan_df['conf'] > 80) |
+                                    (cropped_prescan_df['text'].str.fullmatch(value_format) & cropped_prescan_df['conf'] > 50))]
+            print("Confident text from prescan is:")
+            print(confident_text_from_prescan)
+            columns_to_scale = ['left', 'top', 'width', 'height']
+            confident_text_from_prescan.loc[:, columns_to_scale] = \
+                confident_text_from_prescan.loc[:, columns_to_scale].apply(lambda x: x * app_area_scale_factor).astype(int)
+            app_area_2_df = iOS.consolidate_overlapping_text(
+                pd.concat([app_area_df, confident_text_from_prescan], ignore_index=True))
+            # Divide the extracted app info into app names and their numbers
+            if show_images:
+                show_image(app_area_2_df, scaled_cropped_image)
 
-                # Extract app info from cropped image
-                app_area_df = extract_app_info(current_screenshot, scaled_cropped_image, crop_coordinates, app_area_scale_factor)
-                if show_images:
-                    show_image(app_area_df, scaled_cropped_image)
-                value_format = misread_time_format if dashboard_category == SCREENTIME else misread_number_format
-                confident_text_from_prescan = \
-                    cropped_prescan_df[(cropped_prescan_df['right'] > 0.05 * scaled_cropped_image.shape[1]) &
-                                       ((cropped_prescan_df['conf'] > 80) |
-                                        (cropped_prescan_df['text'].str.fullmatch(value_format) & cropped_prescan_df['conf'] > 50))]
-                print("Confident text from prescan is:")
-                print(confident_text_from_prescan)
-                columns_to_scale = ['left', 'top', 'width', 'height']
-                confident_text_from_prescan.loc[:, columns_to_scale] = \
-                    confident_text_from_prescan.loc[:, columns_to_scale].apply(lambda x: x * app_area_scale_factor).astype(int)
-                app_area_2_df = iOS.consolidate_overlapping_text(
-                    pd.concat([app_area_df, confident_text_from_prescan], ignore_index=True))
-                # Divide the extracted app info into app names and their numbers
-                if show_images:
-                    show_image(app_area_2_df, scaled_cropped_image)
+            app_data = iOS.get_app_names_and_numbers(screenshot=current_screenshot,
+                                                     df=app_area_2_df,
+                                                     category=dashboard_category,
+                                                     max_apps=max_apps_per_category)
+            print("\nApp data found:")
+            print(app_data[['name', 'number']])
+            print(f"Daily total {dashboard_category}: {daily_total}")
 
-                app_data = iOS.get_app_names_and_numbers(screenshot=current_screenshot,
-                                                         df=app_area_2_df,
-                                                         category=dashboard_category,
-                                                         max_apps=max_apps_per_category)
-                print("\nApp data found:")
-                print(app_data[['name', 'number']])
-                print(f"Daily total {dashboard_category}: {daily_total}")
-
-                current_screenshot.set_app_data(app_data)
-
+            current_screenshot.set_app_data(app_data)
             current_participant.add_screenshot(current_screenshot)
             # And also give it to the Participant object, checking to see if data already exists for that day & category
             #   (if it does, run the function (within Participant?) to determine how to merge the two sets of data together)
