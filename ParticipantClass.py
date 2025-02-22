@@ -7,6 +7,7 @@ import iOSFunctions
 SCREENTIME = ConvenienceVariables.SCREENTIME
 PICKUPS = ConvenienceVariables.PICKUPS
 NOTIFICATIONS = ConvenienceVariables.NOTIFICATIONS
+UNLOCKS = ConvenienceVariables.UNLOCKS
 
 EMPTY_CELL = ''
 
@@ -48,7 +49,8 @@ class Participant:
         category = ss.category_detected
         if category == SCREENTIME:
             subheading_found_in_ss = ss.screentime_subheading_found
-        elif category == PICKUPS:
+        elif category in [PICKUPS, UNLOCKS]:
+            category = PICKUPS
             subheading_found_in_ss = ss.pickups_subheading_found
         elif category == NOTIFICATIONS:
             subheading_found_in_ss = ss.notifications_subheading_found
