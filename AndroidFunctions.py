@@ -808,7 +808,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
     def split_app_name_and_notifications(s):
         # Find all the numbers in the string
         numbers = re.findall(r'\d+', s)
-        if not numbers or s[-1].isdigit():
+        if not (numbers or s[-1].isdigit()):
             # If there are no numbers, return the original string and an empty string
             return s, ''
 
@@ -891,6 +891,11 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                     new_name_row = pd.DataFrame({'name': [row_text], 'name_conf': [row_conf]})
                     app_names = new_name_row if app_names.empty else pd.concat([app_names, new_name_row], ignore_index=True)
                     previous_text = APP
+
+    while app_names.shape[0] < max_apps:
+        app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
+    while app_numbers.shape[0] < max_apps:
+        app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
 
     top_n_app_names_and_numbers = pd.concat(
         [app_names.head(max_apps), app_numbers.head(max_apps)], axis=1)
