@@ -853,11 +853,12 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
     :param max_apps: The maximum number of apps to search for
     :return: A dataframe of length max_apps, with app names and numbers, and their respective confidence values.
     """
-    app_names = pd.DataFrame(columns=['name', 'name_conf'])
-    app_numbers = pd.DataFrame(columns=['number', 'number_conf'])
     empty_name_row = pd.DataFrame({'name': [NO_TEXT], 'name_conf': [NO_CONF]})
     empty_number_row = pd.DataFrame({'number': [NO_TEXT], 'number_conf': [NO_CONF]}) if category == SCREENTIME else (
                        pd.DataFrame({'number': [NO_NUMBER], 'number_conf': [NO_CONF]}))
+    app_names = empty_name_row.copy()
+    app_numbers = empty_number_row.copy()
+
     value_format = misread_time_format if category == SCREENTIME else misread_number_format
 
     with (warnings.catch_warnings()):
@@ -927,7 +928,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
             screenshot.set_daily_total(NO_TEXT, NO_CONF)
             screenshot.set_daily_total_minutes(NO_NUMBER)
 
-
+    app_names, app_numbers = app_names.drop(app_names.index[0]), app_numbers.drop(app_names.index[0])
     top_n_app_names_and_numbers = pd.concat(
         [app_names.head(max_apps), app_numbers.head(max_apps)], axis=1)
 

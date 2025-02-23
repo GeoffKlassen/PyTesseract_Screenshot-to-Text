@@ -1,7 +1,6 @@
 from pandas.core.methods.selectn import SelectNSeries
 
 import AndroidFunctions as Android
-import OCRScript_v3
 import iOSFunctions as iOS
 from RuntimeValues import *
 from ScreenshotClass import Screenshot
@@ -25,11 +24,11 @@ import time
 def compile_list_of_urls(df, url_cols,
                          date_col='Record Time', id_col='Participant ID', device_id_col='Device ID'):
     """Create a DataFrame of URLs from a provided DataFrame of survey responses.
-    :param df:                 The dataframe with columns that contain URLs
-    :param url_cols:           A dictionary of column names for screentime URLs, pickups URLs, and notifications URLs
-    :param date_col:           The name of the column in df that lists the date & time stamp of submission (For Avicenna CSVs, this is usually 'Record Time')
-    :param id_col:             The name of the column in df that contains the Avicenna ID of the user (For Avicenna CSVs, this is usually 'Participant ID')
-    :param device_id_col:      The name of the column in df that contains the ID of the device from which the user responded (For Avicenna CSVs, this is usually 'Device ID')
+    :param df:             The dataframe with columns that contain URLs
+    :param url_cols:       A dictionary of column names for screentime URLs, pickups URLs, and notifications URLs
+    :param date_col:       The name of the column in df that lists the date & time stamp of submission (For Avicenna CSVs, this is usually 'Record Time')
+    :param id_col:         The name of the column in df that contains the Avicenna ID of the user (For Avicenna CSVs, this is usually 'Participant ID')
+    :param device_id_col:  The name of the column in df that contains the ID of the device from which the user responded (For Avicenna CSVs, this is usually 'Device ID')
 
     :return: A DataFrame of image URLs, with user ID, response date, and category the image was submitted in.
 
@@ -74,7 +73,11 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
     """
 
     def _download_image_from_avicenna(img_path):
+        """
 
+        :param img_path:
+        :return:
+        """
         empty_arr = np.array([])
         if "https" not in img_path and "avicennaresearch" not in img_path:
             print("Skipping. Invalid URL.")
@@ -230,6 +233,11 @@ def get_date_regex(lang, fmt=DATE_FORMAT):
 
 
 def merge_df_rows_by_height(df):
+    """
+
+    :param df:
+    :return:
+    """
     # Sometimes two 'words' that are side-by-side on the screenshot end up on their own lines in the df.
     # Merge these rows into a single row (combine their 'text' values, average their 'conf' values, and
     # increase the 'width' value of the first word).
@@ -265,6 +273,11 @@ def merge_df_rows_by_height(df):
 
 
 def merge_df_rows_by_line_num(df):
+    """
+
+    :param df:
+    :return:
+    """
     df['right'] = df['left'] + df['width']
     df['bottom'] = df['top'] + df['height']
 
@@ -292,6 +305,13 @@ def merge_df_rows_by_line_num(df):
 
 
 def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+'):
+    """
+
+    :param img:
+    :param cmd_config:
+    :param remove_chars:
+    :return:
+    """
     def ensure_text_is_string(value):
         try:
             # Try converting the value to a float
@@ -367,6 +387,12 @@ def show_image(df, img, draw_boxes=True):
 
 
 def determine_language_of_image(participant, df):
+    """
+
+    :param participant:
+    :param df:
+    :return:
+    """
     backup_lang = participant.language if participant.language is not None else default_language
     backup_lang_msg = f"Setting image language to {'study' if participant.language is None else 'user'} default ({backup_lang})."
     user_lang_exists = True if participant.language is not None else False
@@ -464,7 +490,7 @@ def get_day_type_in_screenshot(screenshot):
     """
     Determines whether the given screenshot contains daily data (today, yesterday, weekday) or weekly data.
     :param screenshot: The screenshot to find the date (range) for
-    :returns: tuple: (A day identifier, the row of the text in the screenshot that contains the day identifier)
+    :returns: tuple: (A day identifier, and the row of text in the screenshot that contains the day identifier)
     """
     lang = get_best_language(screenshot)
     df = screenshot.text.copy()
@@ -546,6 +572,13 @@ def get_day_type_in_screenshot(screenshot):
 
 
 def get_or_create_participant(users, user_id, dev_id):
+    """
+
+    :param users:
+    :param user_id:
+    :param dev_id:
+    :return:
+    """
     for u in users:
         if u.user_id == user_id:
             print(f"Found existing user: {u}")
@@ -589,6 +622,15 @@ def get_os(dev_id):
 
 
 def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False):
+    """
+
+    :param text1:
+    :param conf1:
+    :param text2:
+    :param conf2:
+    :param value_is_number:
+    :return:
+    """
     t1 = f"'{str(text1)}'" if conf1 != NO_CONF else "N/A"
     t2 = f"'{str(text2)}'" if conf2 != NO_CONF else "N/A"
     c1 = f"(conf = {conf1})" if conf1 != NO_CONF else ""
@@ -657,7 +699,6 @@ def extract_app_info(screenshot, image, coordinates, scale):
     # Android needs characters like commas (,) removed because they appear in screentime values
     _, app_info_scan_1 = extract_text_from_image(image, remove_chars=remove_chars)
 
-    # paste the truncated text df stuff here
     """Sometimes the cropped rescan misses app numbers that were found on the initial scan.
                     Merge these app numbers from the initial scan into the rescan."""
     # Select only numbers from the initial scan that have high confidence (above conf_limit)
@@ -686,7 +727,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
     app_info_scan_1 = app_info_scan_1.sort_values(by=['top', 'left']).reset_index(drop=True)
 
     if show_images:
-        OCRScript_v3.show_image(app_info_scan_1, image)
+        show_image(app_info_scan_1, image)
 
     image_missed_text = image.copy()
     for i in app_info_scan_1.index:
@@ -700,7 +741,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
 
     _, app_info_scan_2 = extract_text_from_image(image_missed_text, remove_chars=remove_chars)
     if show_images:
-        OCRScript_v3.show_image(app_info_scan_2, image_missed_text)
+        show_image(app_info_scan_2, image_missed_text)
 
     app_info = pd.concat([app_info_scan_1, app_info_scan_2], ignore_index=True)
     app_info = iOS.consolidate_overlapping_text(app_info) if screenshot.device_os == IOS else (
@@ -867,7 +908,9 @@ if __name__ == '__main__':
             current_screenshot.set_time_period(day_type)
             current_screenshot.set_rows_with_day_type(rows_with_day_type)
 
-        """ Here, the phone OS determines which branch of code we run to extract daily total and app-level data. """
+        """
+            Here, the phone OS determines which branch of code we run to extract the daily total and app-level data.
+        """
 
         if current_screenshot.device_os == ANDROID:
             """
@@ -875,7 +918,6 @@ if __name__ == '__main__':
             ANDROID  -  Execute the procedure for extracting data from an Android screenshot  
             
             """
-            app_data = empty_app_data  # Temporary
             time_formats = Android.get_time_formats_in_lang(current_screenshot.language)
             time_format_short, time_format_long, time_format_eol = time_formats[0], time_formats[1], time_formats[2]
 
@@ -931,10 +973,15 @@ if __name__ == '__main__':
             # both have sub-headings ('most used' and 'most notifications', respectively).
             if dashboard_category == SCREENTIME:
                 heading_above_apps = MOST_USED_HEADING
+                # Determine whether the row of text immediately above the app area is found
+                # (used in ParticipantClass for comparing two screenshots from the same person & day & category)
+                current_screenshot.set_screentime_subheading_found(False)
             elif dashboard_category == NOTIFICATIONS:
                 heading_above_apps = MOST_NOTIFICATIONS_HEADING
+                current_screenshot.set_notifications_subheading_found(False)
             else:  # dashboard_category == UNLOCKS, or no dashboard category
                 heading_above_apps = None
+                current_screenshot.set_pickups_subheading_found(False)
 
             # if the daily total is 0 (and not GOOGLE unlocks version), then there will be no app-level data to extract.
             if daily_total[0] in ['0', 'o', 'O'] and not (android_version == GOOGLE and dashboard_category == UNLOCKS):

@@ -728,11 +728,11 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
     time_short, time_long, time_eol = time_formats[0], time_formats[1], time_formats[2]
     crop_top, crop_left, crop_bottom, crop_right = coordinates[0], coordinates[1], coordinates[2], coordinates[3]
     img_lang = get_best_language(screenshot)
-    app_names = pd.DataFrame(columns=['name', 'name_conf'])
-    app_numbers = pd.DataFrame(columns=['number', 'number_conf'])
     empty_name_row = pd.DataFrame({'name': [NO_TEXT], 'name_conf': [NO_CONF]})
     empty_number_row = pd.DataFrame({'number': [NO_TEXT], 'number_conf': [NO_CONF]}) if category == SCREENTIME else (
                        pd.DataFrame({'number': [NO_NUMBER], 'number_conf': [NO_CONF]}))
+    app_names = empty_name_row.copy()
+    app_numbers = empty_number_row.copy()
 
     def build_app_and_number_dfs(app, num):
         nonlocal previous_text
@@ -916,6 +916,11 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
     while app_numbers.shape[0] < max_apps:
         app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
 
+    app_names, app_numbers = app_names.drop(app_names.index[0]), app_numbers.drop(app_numbers.index[0])
+    # Having initialized app_names and app_numbers with an empty row (at index 0), the indexes of the app rows
+    # line up with the app ordinals. (The 1st app in the screenshot is at index 1, etc.)
+    # This makes it easier to compare a row of existing data to a row of new data (when the current screenshot is for
+    # a person & day & category for which data already exists).
     top_n_app_names_and_numbers = pd.concat(
         [app_names.head(max_apps), app_numbers.head(max_apps)], axis=1)
 

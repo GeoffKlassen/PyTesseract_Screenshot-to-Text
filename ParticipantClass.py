@@ -8,8 +8,35 @@ SCREENTIME = ConvenienceVariables.SCREENTIME
 PICKUPS = ConvenienceVariables.PICKUPS
 NOTIFICATIONS = ConvenienceVariables.NOTIFICATIONS
 UNLOCKS = ConvenienceVariables.UNLOCKS
+MAX_APPS = RuntimeValues.max_apps_per_category
+NO_TEXT = ConvenienceVariables.NO_TEXT
 
 EMPTY_CELL = ''
+
+
+def edit_distance(s1, s2):
+    """
+    NOTE: This is an exact copy of levenshtein_distance from OCRScript_v3.py.
+
+    Determines the number of character insertions/deletions/substitutions required to transform s1 into s2.
+    :param s1: (String) One of the strings
+    :param s2: (String) The other string
+    :return: (int) The distance between s1 and s2.
+    """
+    if len(s1) < len(s2):
+        return edit_distance(s2, s1)
+
+    distances = range(len(s1) + 1)
+    for index2, char2 in enumerate(s2):
+        new_distances = [index2 + 1]
+        for index1, char1 in enumerate(s1):
+            if char1 == char2:
+                new_distances.append(distances[index1])
+            else:
+                new_distances.append(1 + min((distances[index1], distances[index1 + 1], new_distances[-1])))
+        distances = new_distances
+
+    return distances[-1]
 
 
 def initialize_usage_df():
@@ -75,7 +102,7 @@ class Participant:
             self.usage_data.loc[date_index] = EMPTY_CELL
         print(f'Was the subheading found? {subheading_found_in_ss}')
 
-        if self.usage_data[f'{category}_subheading_found'][date_index] == EMPTY_CELL:
+        if self.usage_data[f'total_{category}'][date_index] == EMPTY_CELL:
             print("Adding data from current screenshot to user data in participant.")
             self.usage_data.loc[date_index, 'participant_id'] = self.user_id
             self.usage_data.loc[date_index, 'date'] = ss.date_detected
@@ -90,19 +117,51 @@ class Participant:
             if category == SCREENTIME:
                 self.usage_data.loc[date_index, f'total_{category}_minutes'] = ss.daily_total_minutes
 
-            for i in range(RuntimeValues.max_apps_per_category):
-                self.usage_data.loc[date_index, f'{category}_app_{i + 1}_name'] = ss.app_data['name'][i]
-                self.usage_data.loc[date_index, f'{category}_app_{i + 1}_number'] = ss.app_data['number'][i]
-                self.usage_data_conf.loc[date_index, f'{category}_app_{i + 1}_name'] = ss.app_data['name_conf'][i]
-                self.usage_data_conf.loc[date_index, f'{category}_app_{i + 1}_number'] = ss.app_data['number_conf'][i]
+            for i in range(1, MAX_APPS + 1):
+                self.usage_data.loc[date_index, f'{category}_app_{i}_name'] = ss.app_data['name'][i]
+                self.usage_data.loc[date_index, f'{category}_app_{i}_number'] = ss.app_data['number'][i]
+                self.usage_data_conf.loc[date_index, f'{category}_app_{i}_name'] = ss.app_data['name_conf'][i]
+                self.usage_data_conf.loc[date_index, f'{category}_app_{i}_number'] = ss.app_data['number_conf'][i]
                 if category == SCREENTIME:
-                    self.usage_data.loc[date_index, f'{category}_app_{i + 1}_minutes'] = \
+                    self.usage_data.loc[date_index, f'{category}_app_{i}_minutes'] = \
                         iOSFunctions.convert_text_time_to_minutes(ss.app_data['number'][i])
-                    self.usage_data_conf.loc[date_index, f'{category}_app_{i + 1}_minutes'] = \
+                    self.usage_data_conf.loc[date_index, f'{category}_app_{i}_minutes'] = \
                         ss.app_data['number_conf'][i]
 
         else:
             print("Existing data found. Comparisons must be made.")
+            # start with comparing the daily totals
+
+            # then go on to this part
+            moe = 2
+            existing_data_app_num = -1
+            new_data_index = -1
+            lineup_found = False
+            for i in range(1, MAX_APPS + 1):
+                for j in range(1, MAX_APPS + 1):
+                    # compare app name i (from existing data) to app @ index j (new screenshot data)
+                    # if they're equal (and not NO_TEXT), then this is where the two datasets line up.
+                    if ss.app_data['name'][j] == NO_TEXT:
+                        continue
+                    elif edit_distance(self.usage_data[f'{category}_app_{i}_name'], ss.app_data['name'][j]) <= moe:
+                        existing_data_app_num = i
+                        new_data_index = j
+                        lineup_found = True
+                        break
+                    else:
+                        continue
+                if lineup_found:
+                    break
+            if lineup_found:
+                # line up the data in a new dataframe
+                if existing_data_app_num < new_data_index:
+                    pass
+                else:
+                    pass
+                pass
+            else:
+                # we need to see which dataset belongs first (in descending order of app usage)
+                pass
 
         # self.usage_data.loc[len(self.usage_data)] = EMPTY_CELL
         # new_values_row = pd.DataFrame({'participant_id': [self.user_id],

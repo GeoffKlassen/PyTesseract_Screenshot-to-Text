@@ -114,3 +114,13 @@ class Screenshot:
 
     def set_words_df(self, words):
         self.words_df = words
+
+    def set_screentime_subheading_found(self, tf):
+        self.screentime_subheading_found = tf
+
+    def set_pickups_subheading_found(self, tf):
+        self.pickups_subheading_found = tf
+
+    def set_notifications_subheading_found(self, tf):
+        self.notifications_subheading_found = tf
+
