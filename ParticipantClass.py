@@ -1,6 +1,7 @@
 import pandas as pd
 
 import ConvenienceVariables
+import OCRScript_v3
 import RuntimeValues
 import iOSFunctions
 
@@ -10,6 +11,8 @@ NOTIFICATIONS = ConvenienceVariables.NOTIFICATIONS
 UNLOCKS = ConvenienceVariables.UNLOCKS
 MAX_APPS = RuntimeValues.max_apps_per_category
 NO_TEXT = ConvenienceVariables.NO_TEXT
+NO_NUMBER = ConvenienceVariables.NO_NUMBER
+NO_CONF = ConvenienceVariables.NO_CONF
 
 EMPTY_CELL = ''
 
@@ -75,14 +78,17 @@ class Participant:
         self.screenshots.append(ss)
         category = ss.category_detected
         if category == SCREENTIME:
-            subheading_found_in_ss = ss.screentime_subheading_found
+            pass
+            # subheading_found_in_ss = ss.screentime_subheading_found
         elif category in [PICKUPS, UNLOCKS]:
             category = PICKUPS
-            subheading_found_in_ss = ss.pickups_subheading_found
+            # subheading_found_in_ss = ss.pickups_subheading_found
         elif category == NOTIFICATIONS:
-            subheading_found_in_ss = ss.notifications_subheading_found
+            pass
+            # subheading_found_in_ss = ss.notifications_subheading_found
         else:
-            subheading_found_in_ss = False
+            pass
+            # subheading_found_in_ss = False
 
         if ss.date_detected is None:
             print("Date not detected. Screenshot data will not be added to participant's temporal data.")
@@ -100,18 +106,17 @@ class Participant:
         except IndexError:
             date_index = len(self.usage_data)
             self.usage_data.loc[date_index] = EMPTY_CELL
-        print(f'Was the subheading found? {subheading_found_in_ss}')
 
         if self.usage_data[f'total_{category}'][date_index] == EMPTY_CELL:
             print("Adding data from current screenshot to user data in participant.")
             self.usage_data.loc[date_index, 'participant_id'] = self.user_id
             self.usage_data.loc[date_index, 'date'] = ss.date_detected
-            self.usage_data.loc[date_index, f'{category}_subheading_found'] = subheading_found_in_ss
+            # self.usage_data.loc[date_index, f'{category}_subheading_found'] = subheading_found_in_ss
             self.usage_data.loc[date_index, f'total_{category}'] = ss.daily_total
 
             self.usage_data_conf.loc[date_index, 'participant_id'] = self.user_id
             self.usage_data_conf.loc[date_index, 'date'] = ss.date_detected
-            self.usage_data_conf.loc[date_index, f'{category}_subheading_found'] = subheading_found_in_ss
+            # self.usage_data_conf.loc[date_index, f'{category}_subheading_found'] = subheading_found_in_ss
             self.usage_data_conf.loc[date_index, f'total_{category}'] = ss.daily_total_conf
 
             if category == SCREENTIME:
@@ -130,39 +135,129 @@ class Participant:
 
         else:
             print("Existing data found. Comparisons must be made.")
-            # start with comparing the daily totals
-
-            # then go on to this part
+            (self.usage_data.loc[date_index, f'total_{category}'],
+             self.usage_data_conf.loc[date_index, f'total_{category}']) = (
+                OCRScript_v3.choose_between_two_values(text1=self.usage_data.loc[date_index, f'total_{category}'],
+                                                       conf1=self.usage_data_conf[date_index, f'total_{category}'],
+                                                       text2=ss.daily_total,
+                                                       conf2=ss.daily_total_conf))
             moe = 2
             existing_data_app_num = -1
-            new_data_index = -1
+            new_data_app_num = -1
             lineup_found = False
             for i in range(1, MAX_APPS + 1):
                 for j in range(1, MAX_APPS + 1):
-                    # compare app name i (from existing data) to app @ index j (new screenshot data)
+                    # compare app name i (from existing data) to app name j (new screenshot data)
                     # if they're equal (and not NO_TEXT), then this is where the two datasets line up.
                     if ss.app_data['name'][j] == NO_TEXT:
                         continue
                     elif edit_distance(self.usage_data[f'{category}_app_{i}_name'], ss.app_data['name'][j]) <= moe:
                         existing_data_app_num = i
-                        new_data_index = j
+                        new_data_app_num = j
                         lineup_found = True
                         break
                     else:
                         continue
                 if lineup_found:
                     break
-            if lineup_found:
-                # line up the data in a new dataframe
-                if existing_data_app_num < new_data_index:
-                    pass
-                else:
-                    pass
-                pass
-            else:
-                # we need to see which dataset belongs first (in descending order of app usage)
-                pass
+            if not lineup_found:
+                # do the thing here to set one of (existing_data_app_num, new_data_app_num) to 0 and the other unchanged
+                if category == SCREENTIME:
+                    # List of column names
+                    existing_values_columns = [f'screentime_app_{i}_minutes' for i in range(1, MAX_APPS + 1)]
+                    new_values = ss.app_data['minutes']
 
+                else:
+                    existing_values_columns = [f'{category}_app_{i}_number' for i in range(1, MAX_APPS + 1)]
+                    new_values = ss.app_data['number']
+                # Select the row with index 'date_index' for the specified columns
+                existing_values_row = self.usage_data.loc[date_index, existing_values_columns]
+
+                # Exclude values equal to -99999
+                filtered_ex_values = existing_values_row[existing_values_row != NO_NUMBER]
+                filtered_new_values = new_values[new_values != NO_NUMBER]
+
+                min_existing_value = filtered_ex_values.min()
+                max_existing_value = filtered_ex_values.max()
+                min_new_value = filtered_new_values.min()
+                max_new_value = filtered_new_values.max()
+
+                if min_existing_value >= max_new_value:
+                    for i in range(MAX_APPS, 0, -1):
+                        if existing_values_row.loc[date_index, existing_values_columns[i]] == min_existing_value:
+                            existing_data_app_num = i
+                    new_data_app_num = 0
+
+                elif min_new_value >= max_existing_value:
+                    existing_data_app_num = 0
+                    new_data_app_num = new_values.idxmin()
+
+            if existing_data_app_num == -1 or new_data_app_num == -1:
+                print("Could not determine where existing data and new screenshot data line up. "
+                      "Existing data remains unchanged.")
+                return
+
+            max_lineup = max([existing_data_app_num, new_data_app_num])
+            compare_df = pd.DataFrame(columns=['ex_name', 'ex_name_conf', 'ex_number', 'ex_number_conf',
+                                               'new_name', 'new_name_conf', 'new_number', 'new_number_conf'])
+            for i in range(MAX_APPS + 1):
+                ex_index = i + existing_data_app_num - max_lineup
+                if ex_index > 0:
+                    compare_df.loc[i, 'ex_name'] = self.usage_data[
+                        f'{category}_app_{ex_index}_name'][date_index]
+                    compare_df.loc[i, 'ex_name_conf'] = self.usage_data_conf[
+                        f'{category}_app_{ex_index}_name'][date_index]
+                    compare_df.loc[i, 'ex_number'] = self.usage_data[
+                        f'{category}_app_{ex_index}_number'][date_index]
+                    compare_df.loc[i, 'ex_number_conf'] = self.usage_data_conf[
+                        f'{category}_app_{ex_index}_number'][date_index]
+                    if category == SCREENTIME:
+                        compare_df.loc[i, 'ex_minutes'] = self.usage_data_conf[
+                            f'{category}_app_{ex_index}_minutes'][date_index]
+                else:
+                    compare_df.loc[i, 'ex_name'] = NO_TEXT
+                    compare_df.loc[i, 'ex_name_conf'] = NO_CONF
+                    compare_df.loc[i, 'ex_number'] = NO_TEXT
+                    compare_df.loc[i, 'ex_number_conf'] = NO_CONF
+                    if category == SCREENTIME:
+                        compare_df.loc[i, 'ex_minutes'] = NO_NUMBER
+
+                new_index = i + new_data_app_num - max_lineup
+                if new_index > 0:
+                    compare_df.loc[i, 'new_name'] = ss.app_data.loc[i, 'name']
+                    compare_df.loc[i, 'new_name_conf'] = ss.app_data.loc[i, 'name_conf']
+                    compare_df.loc[i, 'new_number'] = ss.app_data.loc[i, 'number']
+                    compare_df.loc[i, 'new_number_conf'] = ss.app_data.loc[i, 'number_conf']
+                    if category == SCREENTIME:
+                        compare_df.loc[i, 'new_minutes'] = ss.app_data.loc[i, 'minutes']
+                else:
+                    compare_df.loc[i, 'new_name'] = NO_TEXT
+                    compare_df.loc[i, 'new_name_conf'] = NO_CONF
+                    compare_df.loc[i, 'new_number'] = NO_TEXT
+                    compare_df.loc[i, 'new_number_conf'] = NO_CONF
+                    if category == SCREENTIME:
+                        compare_df.loc[i, 'new_minutes'] = NO_NUMBER
+
+            print("Table of comparisons to be made:")
+            print(compare_df[['ex_name', 'ex_number', 'new_name', 'new_number']])
+
+            for i in range(1, MAX_APPS + 1):
+                (self.usage_data.loc[date_index, f'{category}_app_{i}_name'],
+                 self.usage_data_conf.loc[date_index, f'{category}_app_{i}_name']) = (
+                    OCRScript_v3.choose_between_two_values(text1=compare_df.loc[i, 'ex_name'],
+                                                           conf1=compare_df.loc[i, 'ex_name_conf'],
+                                                           text2=compare_df.loc[i, 'new_name'],
+                                                           conf2=compare_df.loc[i, 'new_name_conf']))
+                (self.usage_data.loc[date_index, f'{category}_app_{i}_number'],
+                 self.usage_data_conf.loc[date_index, f'{category}_app_{i}_number']) = (
+                    OCRScript_v3.choose_between_two_values(text1=compare_df.loc[i, 'ex_number'],
+                                                           conf1=compare_df.loc[i, 'ex_number_conf'],
+                                                           text2=compare_df.loc[i, 'new_number'],
+                                                           conf2=compare_df.loc[i, 'new_number_conf']))
+                if category == SCREENTIME:
+                    if self.usage_data.loc[date_index, f'{category}_app_{i}_number'] == compare_df.loc[i, 'new_number']:
+                        self.usage_data.loc[date_index, f'{category}_app_{i}_minutes'] = (
+                            compare_df.loc)[i, 'new_minutes']
         # self.usage_data.loc[len(self.usage_data)] = EMPTY_CELL
         # new_values_row = pd.DataFrame({'participant_id': [self.user_id],
         #                                'date': [ss.date_detected],

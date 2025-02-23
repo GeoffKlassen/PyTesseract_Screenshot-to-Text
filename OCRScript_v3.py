@@ -963,7 +963,8 @@ if __name__ == '__main__':
             dt = "N/A" if daily_total_conf == NO_CONF else daily_total
 
             if dashboard_category == SCREENTIME:
-                daily_total_minutes = Android.convert_string_time_to_minutes(screenshot=current_screenshot)
+                daily_total_minutes = Android.convert_string_time_to_minutes(str_time=daily_total,
+                                                                             screenshot=current_screenshot)
                 dtm = (" (" + str(daily_total_minutes) + " minutes)") if daily_total_conf != NO_CONF else ""
                 print(f"Daily total {dashboard_category}: {dt}{dtm}")
             else:
@@ -1036,6 +1037,13 @@ if __name__ == '__main__':
                                                          time_formats=time_formats,
                                                          coordinates=crop_coordinates)
 
+            if dashboard_category == SCREENTIME:
+                for i in range(1, max_apps_per_category + 1):
+                    if i in app_data.index:  # Make sure the index exists
+                        app_data.loc[i, 'minutes'] = Android.convert_string_time_to_minutes(
+                            str_time=app_data.loc[i, 'number'],
+                            screenshot=current_screenshot
+                        )
             print("\nApp data found:")
             print(app_data[['name', 'number']])
             print(f"Daily total {dashboard_category}: {daily_total}")

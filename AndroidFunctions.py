@@ -148,6 +148,11 @@ KEYWORDS_FOR_UNRELATED_SCREENSHOTS = {ITA: ['USO BATTERIA', 'Benessere digitale'
 
 
 def screenshot_contains_unrelated_data(ss):
+    """
+
+    :param ss:
+    :return:
+    """
     text_df = ss.text
     lang = ss.language
     moe = int(np.log(min(len(k) for k in KEYWORDS_FOR_UNRELATED_SCREENSHOTS[lang]))) + 1
@@ -163,6 +168,11 @@ def screenshot_contains_unrelated_data(ss):
 
 
 def get_time_formats_in_lang(lang):
+    """
+
+    :param lang:
+    :return:
+    """
     short_format = re.sub('HHH|hhh', H, re.sub('MMM|mmm', MIN, '|'.join(TIME_FORMATS)))
 
     long_format = re.sub('hhh', KEYWORD_FOR_HR[lang], '|'.join(TIME_FORMATS))
@@ -335,6 +345,11 @@ def get_android_version(screenshot):
 
 
 def get_dashboard_category(screenshot):
+    """
+
+    :param screenshot:
+    :return:
+    """
     heads_df = screenshot.headings_df
     text_df = screenshot.text
     category_submitted = screenshot.category_submitted
@@ -398,11 +413,26 @@ def get_dashboard_category(screenshot):
 
 
 def filter_time_text(text, conf, hr_f, min_f):
+    """
+
+    :param text:
+    :param conf:
+    :param hr_f:
+    :param min_f:
+    :return:
+    """
 
     if str(text) == NO_TEXT:
         return NO_TEXT, NO_CONF
 
     def replace_misread_digit(misread, actual, s):
+        """
+
+        :param misread:
+        :param actual:
+        :param s:
+        :return:
+        """
         # Replaces a 'misread' digit with the 'actual' digit, but only if it is followed by a time word/character
         # (hours or minutes) in the relevant language
         pattern = re.compile(''.join([misread, r"(?=[0-9tails]?\s?(", hr_f, "|", min_f, "))"]), flags=re.IGNORECASE)
@@ -422,6 +452,13 @@ def filter_time_text(text, conf, hr_f, min_f):
 
 
 def get_daily_total_and_confidence(screenshot, image, heading):
+    """
+
+    :param screenshot:
+    :param image:
+    :param heading:
+    :return:
+    """
     df = screenshot.text
     headings_df = screenshot.headings_df
     android_version = screenshot.android_version
@@ -530,22 +567,28 @@ def get_daily_total_and_confidence(screenshot, image, heading):
     return total_value_filtered, total_conf
 
 
-def convert_string_time_to_minutes(screenshot):
+def convert_string_time_to_minutes(str_time, screenshot):
     """
 
+    :param str_time:
     :param screenshot:
     :return:
     """
     lang = OCRScript_v3.get_best_language(screenshot)
-    s = screenshot.daily_total
     android_version = screenshot.android_version
 
-    if str(s) == NO_TEXT:
-        return NO_TEXT
+    if str(str_time) == NO_TEXT:
+        return NO_NUMBER
 
     def split_time(_s, _format):
+        """
+
+        :param _s:
+        :param _format:
+        :return:
+        """
         split = re.split(_format, _s)
-        if split[0] != s:
+        if split[0] != str_time:
             # Time did start with 'format' (either '# hours' or '# minutes'); extract the number before the format
             time_str = split[0].replace(" ", "")
             time_str = re.findall(r'\d+', time_str)
@@ -564,7 +607,7 @@ def convert_string_time_to_minutes(screenshot):
         hours_format = H
         minutes_format = MIN
 
-    hours, str_after_hours = split_time(s, hours_format)
+    hours, str_after_hours = split_time(str_time, hours_format)
     minutes, _ = split_time(str_after_hours, minutes_format)
 
     time_in_min = (hours * 60) + minutes
@@ -573,6 +616,14 @@ def convert_string_time_to_minutes(screenshot):
 
 
 def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_short):
+    """
+
+    :param image:
+    :param heading_above_apps:
+    :param screenshot:
+    :param time_format_short:
+    :return:
+    """
     android_version = screenshot.android_version
     date_rows = screenshot.rows_with_date
     text_df = screenshot.text
