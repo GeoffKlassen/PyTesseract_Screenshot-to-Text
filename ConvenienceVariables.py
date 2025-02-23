@@ -37,6 +37,7 @@ UNLOCKS_HEADING = UNLOCKS
 TOTAL_UNLOCKS = 'total unlocks'
 DAY_NAME_HEADING = 'day name'
 VIEW_MORE_HEADING = 'view more'
+REST_OF_THE_DAY = 'rest of the day'
 
 GOOGLE = 'Google'
 VERSION_2018 = 'Android 2018'

@@ -1,6 +1,7 @@
 from pandas.core.methods.selectn import SelectNSeries
 
 import AndroidFunctions as Android
+import OCRScript_v3
 import iOSFunctions as iOS
 from RuntimeValues import *
 from ScreenshotClass import Screenshot
@@ -680,23 +681,30 @@ def extract_app_info(screenshot, image, coordinates, scale):
     cols_to_scale = ['left', 'top', 'width', 'height']
     truncated_text_df[cols_to_scale] = truncated_text_df[cols_to_scale].apply(lambda x: x * scale).astype(int)
     overlapped_text = pd.concat([app_info_scan_1, truncated_text_df], ignore_index=True)
-    app_info_scan_1 = iOS.consolidate_overlapping_text(overlapped_text) if screenshot.device_os == IOS else Android.consolidate_overlapping_text(overlapped_text, time_format_eol)
+    app_info_scan_1 = iOS.consolidate_overlapping_text(overlapped_text) if screenshot.device_os == IOS else (
+        Android.consolidate_overlapping_text(overlapped_text, time_format_eol))
     app_info_scan_1 = app_info_scan_1.sort_values(by=['top', 'left']).reset_index(drop=True)
+
+    if show_images:
+        OCRScript_v3.show_image(app_info_scan_1, image)
 
     image_missed_text = image.copy()
     for i in app_info_scan_1.index:
         if app_info_scan_1['conf'][i] < conf_limit:
             continue
-        upper_left_corner = (app_info_scan_1['left'][i], app_info_scan_1['top'][i])
-        bottom_right_corner = (app_info_scan_1['left'][i] + app_info_scan_1['width'][i],
-                               app_info_scan_1['top'][i] + app_info_scan_1['height'][i])
-        bg_colour = (255, 255, 255) if is_light_mode else (0, 0, 0)
+        upper_left_corner = (app_info_scan_1['left'][i] - 1, app_info_scan_1['top'][i] - 1)
+        bottom_right_corner = (app_info_scan_1['left'][i] + app_info_scan_1['width'][i] + 1,
+                               app_info_scan_1['top'][i] + app_info_scan_1['height'][i] + 1)
+        bg_colour = WHITE if is_light_mode else BLACK
         cv2.rectangle(image_missed_text, upper_left_corner, bottom_right_corner, bg_colour, -1)
 
     _, app_info_scan_2 = extract_text_from_image(image_missed_text, remove_chars=remove_chars)
+    if show_images:
+        OCRScript_v3.show_image(app_info_scan_2, image_missed_text)
 
     app_info = pd.concat([app_info_scan_1, app_info_scan_2], ignore_index=True)
-    app_info = iOS.consolidate_overlapping_text(app_info) if screenshot.device_os == IOS else Android.consolidate_overlapping_text(app_info, time_format_eol)
+    app_info = iOS.consolidate_overlapping_text(app_info) if screenshot.device_os == IOS else (
+        Android.consolidate_overlapping_text(app_info, time_format_eol))
     app_info = app_info.reset_index(drop=True)
 
     return app_info
@@ -815,6 +823,8 @@ if __name__ == '__main__':
                                      fx=screenshot_scale_factor,
                                      fy=screenshot_scale_factor,
                                      interpolation=cv2.INTER_AREA)
+        if screenshot_scale_factor == 1:
+            bw_image_scaled = cv2.GaussianBlur(bw_image_scaled, ksize=(3, 3), sigmaX=0)
 
         current_screenshot.set_scale_factor(screenshot_scale_factor)
         current_screenshot.set_image(grey_image_scaled)
@@ -959,6 +969,7 @@ if __name__ == '__main__':
                 current_participant.add_screenshot(current_screenshot)
                 continue
 
+            cropped_image = cv2.GaussianBlur(cropped_image, ksize=(3, 3), sigmaX=0)
             scaled_cropped_image = cv2.resize(cropped_image,
                                               dsize=None,
                                               fx=app_area_scale_factor,
@@ -969,7 +980,6 @@ if __name__ == '__main__':
             app_area_df = extract_app_info(current_screenshot, scaled_cropped_image, crop_coordinates, app_area_scale_factor)
             if show_images:
                 show_image(app_area_df, scaled_cropped_image)
-
 
             # Sort the app-specific data into app names and app usage numbers
             app_data = Android.get_app_names_and_numbers(screenshot=current_screenshot,
@@ -985,6 +995,7 @@ if __name__ == '__main__':
 
             current_screenshot.set_app_data(app_data)
             current_participant.add_screenshot(current_screenshot)
+
             # Collect some review-oriented statistics on the screenshot
             # Put the data from the screenshot into the master CSV for all screenshots
 

@@ -127,16 +127,16 @@ SAMSUNG_UNLOCKS_FORMAT = {ITA: ['# volte', '# in totale'],
 #                             FRA: ''}  # TODO Fill this in
 # "You can set daily timers" is a tip box that appears in the Google version of Dashboard, until a user clears it.
 
-REST_OF_THE_DAY = {ITA: 'giornata',  # full phrase is 'resto della giornata' but 'giornata' is sometimes its own line
-                   ENG: 'rest of the day',
-                   GER: 'Rest des Tages pausiert',
-                   FRA: ''}
+KEYWORDS_FOR_REST_OF_THE_DAY = {ITA: ['giornata'],  # full phrase is 'resto della giornata' but 'giornata' is sometimes its own line
+                                ENG: ['rest of the day'],
+                                GER: ['Rest des Tages pausiert'],
+                                FRA: ['']}  # TODO Fill this in
 # "rest of the day" is the last text in the dialogue box for "You can set daily timers".
 
-SHOW_SITES_YOU_VISIT = {ITA: 'Mostra i siti visitati',
-                        ENG: 'Show sites that you visit',  # TODO: used to be 'Show sites you visit' for HappyB - check if this is the correct phrase
-                        GER: 'Besuchte Websites anzeigen',
-                        FRA: ''}  # TODO Fill this in
+KEYWORDS_FOR_SHOW_SITES_YOU_VISIT = {ITA: ['Mostra i siti visitati'],
+                                     ENG: ['Show sites you visit', 'Show sites that you visit'],
+                                     GER: ['Besuchte Websites anzeigen'],
+                                     FRA: ['']}  # TODO Fill this in
 # "Show sites you visit" can appear in the Google version of Dashboard, under the Chrome app (if it's in the app list).
 # Thus, it can be mistaken for an app name, so we need to ignore it.
 
@@ -172,7 +172,7 @@ def get_time_formats_in_lang(lang):
     long_format = long_format.replace(" ", r"\s?")
     long_format = "(" + long_format + ")"
 
-    eol_format = '|'.join([short_format, long_format]).replace("^", "\\s")
+    eol_format = '|'.join([short_format, long_format]).replace("^", "\\s")  # eol = 'end of line'
 
     return short_format, long_format, eol_format
 
@@ -270,6 +270,9 @@ def get_headings(screenshot, time_fmt_short):
                 not df[HEADING_COLUMN].str.contains(TOTAL_UNLOCKS).any():
             # Row text matches a 'total unlocks' format and is either left-aligned (Samsung) or centred (Google)
             df.loc[i, HEADING_COLUMN] = TOTAL_UNLOCKS
+
+        elif (min(OCRScript_v3.levenshtein_distance(row_text_filtered, key) for key in KEYWORDS_FOR_REST_OF_THE_DAY[lang])) < moe:
+            df.loc[i, HEADING_COLUMN] = REST_OF_THE_DAY
         else:
             df = df.drop(i)
     print("\nHeadings found:")
@@ -304,7 +307,6 @@ def get_android_version(screenshot):
     _2018_headings_in_img_lang = (KEYWORDS_FOR_2018_SCREENTIME[img_lang] +
                                   KEYWORDS_FOR_2018_MOST_USED[img_lang] +
                                   KEYWORDS_FOR_2018_UNLOCKS[img_lang])
-    error_margin = 2  # For finding headings from the 2018 Dashboard version
 
     if heads_df.empty:
         return None, None
@@ -555,7 +557,6 @@ def convert_string_time_to_minutes(screenshot):
 
         return time_int, leftover_str
 
-
     if android_version == GOOGLE:
         hours_format = '|'.join([('|'.join(KEYWORDS_FOR_HOURS[lang])), KEYWORD_FOR_HR[lang]]).replace(" ", r"\s?")
         minutes_format = '|'.join([('|'.join(KEYWORDS_FOR_MINUTES[lang])), KEYWORD_FOR_MIN[lang]])
@@ -597,8 +598,8 @@ def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_sh
         # Crop out the > arrows to the right of each app (these appear in the Samsung 2018 version of Dashboard)
         crop_right = int(0.9 * screenshot.width) if android_version == VERSION_2018 else screenshot.width
 
-        if any(headings_df[HEADING_COLUMN].eq(heading_above_apps)):
-            row_above_apps = headings_df[headings_df[HEADING_COLUMN] == heading_above_apps].iloc[0]
+        if headings_df[HEADING_COLUMN].isin([heading_above_apps, REST_OF_THE_DAY]).any():
+            row_above_apps = headings_df[headings_df[HEADING_COLUMN].isin([heading_above_apps, REST_OF_THE_DAY])].iloc[-1]
             crop_top = row_above_apps['top'] + row_above_apps['height']
             headings_below_apps_df = headings_df[headings_df.index > row_above_apps.name]
             if not headings_below_apps_df.empty:
@@ -823,12 +824,18 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
 
         return name, number
 
+    moe_show_sites = round(min(np.log(len(key)) for key in KEYWORDS_FOR_SHOW_SITES_YOU_VISIT[img_lang]))
     previous_text = NUMBER  # initialize to handle the first text beginning with an app name (most likely case)
 
     if category == SCREENTIME:
         for row_text, row_conf, row_left in zip(df['text'],
                                                 df['conf'],
                                                 df['left']):
+            if min(OCRScript_v3.levenshtein_distance(row_text, key) for key in
+                   KEYWORDS_FOR_SHOW_SITES_YOU_VISIT[img_lang]) < moe_show_sites:
+                # A button saying 'Show sites that you visit' appears below the Google Chrome web browser, which is not
+                # an app name, so it should be ignored
+                continue
             app_name, app_number = split_app_name_and_screen_time(row_text)
             if app_name != '' and app_number == '' and row_left + crop_left > (0.4 * screenshot.width):
                 # Sometimes there are 'pill' shapes above the app time; these can be misread as app names.
@@ -840,6 +847,11 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                                                            df['conf'],
                                                            df['left'],
                                                            df['width']):
+            if min(OCRScript_v3.levenshtein_distance(row_text, key) for key in
+                   KEYWORDS_FOR_SHOW_SITES_YOU_VISIT[img_lang]) < moe_show_sites:
+                # A button saying 'Show sites that you visit' appears below the Google Chrome web browser, which is not
+                # an app name, so it should be ignored
+                continue
             app_name, app_number = split_app_name_and_notifications(row_text)
             if app_name != '' and app_number == '' and row_left + crop_left > (0.4 * screenshot.width):
                 # See 'pill' comment in similar line above
@@ -862,10 +874,15 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
             # Only the Google Dashboard has app-level unlocks info;
             # other Dashboard formats only show total unlocks.
             for row_text, row_conf in zip(df['text'], df['conf']):
-                error_margin = round(np.log(len(row_text)))
+                if min(OCRScript_v3.levenshtein_distance(row_text, key) for key in
+                       KEYWORDS_FOR_SHOW_SITES_YOU_VISIT[img_lang]) < moe_show_sites:
+                    # A button saying 'Show sites that you visit' appears below the Google Chrome web browser, which is
+                    # not an app name, so it should be ignored
+                    continue
+                moe_unlocks = round(np.log(len(row_text)))
                 row_text_filtered = re.sub(r'\d+', '#', row_text)
                 if min(OCRScript_v3.levenshtein_distance(row_text_filtered, key) for key in
-                       GOOGLE_UNLOCKS_FORMATS[img_lang]) < error_margin:
+                       GOOGLE_UNLOCKS_FORMATS[img_lang]) < moe_unlocks:
                     # Row text contains an unlocks value
                     try:
                         app_number = re.findall(r'\d+', row_text)[0]
@@ -876,20 +893,22 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                     if previous_text == NUMBER:
                         if len(app_names) < max_apps:
                             num_missed_app_values += 1
-                        app_names = empty_name_row if app_names.empty else pd.concat([app_names, empty_name_row], ignore_index=True)
-                    new_number_row = pd.DataFrame({'number': [app_number], 'number_conf': [row_conf]})
-                    app_numbers = new_number_row if app_numbers.empty else pd.concat([app_numbers, new_number_row],
-                                                      ignore_index=True)
+                        app_names = empty_name_row if app_names.empty else (
+                            pd.concat([app_names, empty_name_row], ignore_index=True))
+                    new_number_row = pd.DataFrame({'number': [app_number], 'number_conf': [conf]})
+                    app_numbers = new_number_row if app_numbers.empty else (
+                        pd.concat([app_numbers, new_number_row], ignore_index=True))
                     previous_text = NUMBER
                 else:
                     # Row text contains an app name
                     if previous_text == APP:
                         if len(app_names) < max_apps:
                             num_missed_app_values += 1
-                        app_numbers = empty_number_row if app_numbers.empty else pd.concat([app_numbers, empty_number_row],
-                                                ignore_index=True)
+                        app_numbers = empty_number_row if app_numbers.empty else (
+                            pd.concat([app_numbers, empty_number_row], ignore_index=True))
                     new_name_row = pd.DataFrame({'name': [row_text], 'name_conf': [row_conf]})
-                    app_names = new_name_row if app_names.empty else pd.concat([app_names, new_name_row], ignore_index=True)
+                    app_names = new_name_row if app_names.empty else (
+                        pd.concat([app_names, new_name_row], ignore_index=True))
                     previous_text = APP
 
     while app_names.shape[0] < max_apps:
@@ -901,129 +920,6 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
         [app_names.head(max_apps), app_numbers.head(max_apps)], axis=1)
 
     return top_n_app_names_and_numbers
-
-
-def crop_image_and_get_app_info(screenshot, image, heading_above_apps, time_formats):
-    android_version = screenshot.android_version
-    date_rows = screenshot.rows_with_date
-    img_lang = get_best_language(screenshot)
-    headings_df = screenshot.headings_df
-    text_df = screenshot.text
-    text_df_single_words = screenshot.words_df
-    dashboard_category = screenshot.category_detected
-    app_area_df = text_df.drop(text_df.index)  # Initialize
-    crop_top, crop_left, crop_bottom, crop_right = 0, 0, image.shape[0], image.shape[1]  # Initialize
-    time_format_short, time_format_eol = time_formats[0], time_formats[2]
-
-    if android_version == GOOGLE:
-        crop_left = int(0.15 * screenshot.width)  # Crop out the app icon area (first 15% of screenshot.width)
-        crop_right = int(0.79 * screenshot.width)  # Crop out the hourglass area (last 79% of screenshot.width)
-        if not date_rows.empty:
-            crop_top = date_rows.iloc[-1]['top'] + (2 * date_rows.iloc[-1]['height'])
-            crop_bottom = screenshot.height
-        else:
-            # TODO Leaving this as a catch-all for now -- debug later if this condition is used
-            crop_top = 0
-            crop_bottom = screenshot.height
-
-        cropped_image = image[crop_top:crop_bottom, crop_left:crop_right]
-        _, cropped_scan_df =OCRScript_v3.extract_text_from_image(img=cropped_image,
-                                                                 remove_chars='[^a-zA-Z0-9+\\(\\)\\-\\.é]+')
-
-        length_of_rotd = len(REST_OF_THE_DAY[img_lang])
-        error_margin = round(np.log(length_of_rotd))
-        rows_with_rest_of_the_day = cropped_scan_df[cropped_scan_df['text'].apply(
-            lambda x: OCRScript_v3.levenshtein_distance(x[-length_of_rotd:], REST_OF_THE_DAY[img_lang]) < error_margin)]
-        if not rows_with_rest_of_the_day.empty:
-            # Screenshots of Google Dashboard sometimes show a tip box below the date but above the app list.
-            # Ignore text rows above (and including) the last line of this tip box.
-            cropped_scan_df = cropped_scan_df[cropped_scan_df.index > rows_with_rest_of_the_day.index[0]]
-        # Screenshots of Google Dashboard sometimes show a button below the Chrome app that says "Show sites you visit".
-        # Discard this row, if it is present.
-        error_margin = round(np.log(len(SHOW_SITES_YOU_VISIT[img_lang])))
-        app_area_df = cropped_scan_df[~(cropped_scan_df['text'].apply(
-            lambda x: OCRScript_v3.levenshtein_distance(x, SHOW_SITES_YOU_VISIT[img_lang])) < error_margin)]
-        if show_images:
-            OCRScript_v3.show_image(app_area_df, cropped_image)
-
-    elif android_version in [SAMSUNG_2021, SAMSUNG_2024, VERSION_2018]:
-        if heading_above_apps is None:
-            app_area_df = text_df.drop(text_df.index)
-            # TODO set all app info to -99999 conf -1
-        else:
-            crop_left = int(0.1 * screenshot.width) if android_version == SAMSUNG_2024 else int(
-                0.17 * screenshot.width)  # Crop out the app icon area (first 17% of screenshot.width)
-            # Crop out the > arrows to the right of each app (these appear in the Samsung 2018 version of Dashboard)
-            crop_right = int(0.9 * screenshot.width) if android_version == VERSION_2018 else screenshot.width
-
-            if any(headings_df[HEADING_COLUMN].eq(heading_above_apps)):
-                row_above_apps = headings_df[headings_df[HEADING_COLUMN] == heading_above_apps].iloc[0]
-                crop_top = row_above_apps['top'] + row_above_apps['height']
-                headings_below_apps_df = headings_df[headings_df.index > row_above_apps.name]
-                if not headings_below_apps_df.empty:
-                    row_below_apps = headings_below_apps_df.iloc[0]
-                    crop_bottom = row_below_apps['top']
-                else:
-                    crop_bottom = screenshot.height
-            else:
-                print("Sub-heading above app rows not found. Searching for app rows directly.")
-                crop_top = 0
-                format_for_time_or_number_eol = '|'.join([time_format_short.replace("^", "\\s"), "\\s\\d+"])
-
-                headings_above_apps_df = headings_df[headings_df[HEADING_COLUMN].str.contains(dashboard_category)]
-                index_of_closest_heading = headings_above_apps_df.index[
-                    -1] if not headings_above_apps_df.empty else 0
-                index_of_first_app = -1
-
-                for i in range(index_of_closest_heading, text_df.shape[0]):
-                    if text_df['left'][i] < 0.25 * screenshot.width and \
-                            text_df['left'][i] + text_df['width'][i] > 0.85 * screenshot.width and \
-                            re.search(format_for_time_or_number_eol, text_df['text'][i]):
-                        # Row text spans most of the width of the screenshot, and also ends with a time/number
-                        print(f"App row found: {text_df['text'][i]}.  "
-                              f"Setting top of crop region to top of this app row.")
-                        crop_top = int(text_df['top'][i] - 0.01 * screenshot.height)
-                        index_of_first_app = i
-                        break
-
-                headings_below_apps_df = headings_df[
-                    headings_df.index > max(index_of_first_app, index_of_closest_heading)]
-                if not headings_below_apps_df.empty:
-                    row_below_apps = headings_below_apps_df.iloc[0]
-                    crop_bottom = row_below_apps['top']
-                else:
-                    crop_bottom = screenshot.height
-
-            cropped_image = image[crop_top:crop_bottom, crop_left:crop_right]
-            _, cropped_scan_df = OCRScript_v3.extract_text_from_image(cropped_image,
-                                                         remove_chars='[^a-zA-Z0-9+\\(\\)\\-\\.é]+')
-
-            conf_min = 50
-            # Overlay the words from the initial scan that fall within the same cropped region.
-            # Selecting only words from the initial scan that have high enough confidence (above conf_min)
-            # and that lie in the 'app info' cropped region.
-            truncated_text_df = text_df_single_words[text_df_single_words['conf'] > conf_min]
-            truncated_text_df.loc[truncated_text_df.index, 'left'] = truncated_text_df['left'] - crop_left
-            truncated_text_df.loc[truncated_text_df.index, 'top'] = truncated_text_df['top'] - crop_top
-            truncated_text_df = truncated_text_df[(truncated_text_df['left'] > 0) &
-                                                  (truncated_text_df['top'] > 0) &
-                                                  (truncated_text_df['left'] + truncated_text_df[
-                                                      'width'] < crop_right - crop_left) &
-                                                  (truncated_text_df['top'] + truncated_text_df[
-                                                      'height'] < crop_bottom - crop_top)]
-            truncated_text_df =OCRScript_v3.merge_df_rows_by_line_num(truncated_text_df)
-
-            cropped_scan_merged_df = pd.concat([truncated_text_df, cropped_scan_df], ignore_index=True)
-            cropped_scan_merged_df = cropped_scan_merged_df.sort_values(by=['top', 'left']).reset_index(drop=True)
-
-            app_area_df = consolidate_overlapping_text(cropped_scan_merged_df, time_format_eol)
-            app_area_df[['left', 'width', 'top', 'height']] = app_area_df[
-                ['left', 'width', 'top', 'height']].astype(int)
-
-            if show_images:
-                OCRScript_v3.show_image(app_area_df, cropped_image)
-
-    return app_area_df, [crop_top, crop_left, crop_bottom, crop_right]
 
 
 def main():
