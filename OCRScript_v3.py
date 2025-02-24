@@ -514,7 +514,7 @@ def get_day_type_in_screenshot(screenshot):
 
         rows_with_today = df[(df['text'].apply(
             # Row contains today, and (1) also contains date, or (2) the next row contains a date, or (3) is Android
-            lambda x: min(levenshtein_distance(row_word, key)
+            lambda x: min(levenshtein_distance(row_word[:len(key)], key)
                           for row_word in str.split(x)
                           for key in KEYWORDS_FOR_TODAY[lang])) <= moe_today) &
                               ((device_os == ANDROID) |
@@ -524,7 +524,7 @@ def get_day_type_in_screenshot(screenshot):
         rows_with_yesterday = df[(df['text'].apply(
             # Row contains yesterday, and (1) also contains date or (2) the next row contains a date, or (3) is Android
             # (In Android, rows with day names are not guaranteed to be followed by a date.)
-            lambda x: min(levenshtein_distance(row_word, key)
+            lambda x: min(levenshtein_distance(row_word[:len(key)], key)
                           for row_word in str.split(x)
                           for key in KEYWORDS_FOR_YESTERDAY[lang])) <= moe_yesterday) &
                                  ((device_os == ANDROID) |

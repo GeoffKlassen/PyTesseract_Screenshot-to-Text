@@ -85,7 +85,7 @@ class Participant:
         if ss.date_detected is None:
             print("Date not detected. Screenshot data will not be added to participant's temporal data.")
             return
-        elif ss.time_period in [ConvenienceVariables.WEEK, ConvenienceVariables.TODAY]:
+        elif ss.time_period not in [ConvenienceVariables.YESTERDAY, ConvenienceVariables.DAY_OF_THE_WEEK]:
             print("Screenshot does not contain data for a previous day. "
                   "Screenshot data will not be added to participant's temporal data.")
             return
