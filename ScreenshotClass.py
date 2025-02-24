@@ -4,13 +4,15 @@ import pandas as pd
 import RuntimeValues
 from ConvenienceVariables import *
 
+
 def initialize_data_row():
-    df = pd.DataFrame(columns=['participant_id', 'language', 'device_os', 'date_submitted', 'date_detected', 'category_submitted', 'category_detected'])
+    df = pd.DataFrame(columns=['image_url', 'participant_id', 'language', 'device_os', 'date_submitted', 'date_detected', 'category_submitted', 'category_detected'])
     df[f'daily_total'] = None
     for i in range(1, RuntimeValues.max_apps_per_category + 1):
         df[f'app_{i}_name'] = None
         df[f'app_{i}_number'] = None
     return df
+
 
 class Screenshot:
 
@@ -52,7 +54,6 @@ class Screenshot:
         self.rows_with_date = None
         self.data_row = initialize_data_row()
         self.errors = []
-
 
     def __str__(self):
         s_user_id = f"User ID: {self.user_id}".ljust(22)

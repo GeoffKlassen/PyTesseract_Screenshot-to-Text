@@ -2,6 +2,7 @@ from pandas.core.methods.selectn import SelectNSeries
 
 import AndroidFunctions as Android
 import ParticipantClass
+import ScreenshotClass
 import iOSFunctions as iOS
 from RuntimeValues import *
 from ScreenshotClass import Screenshot
@@ -1231,15 +1232,10 @@ if __name__ == '__main__':
     all_participants_df = pd.concat(all_usage_dataframes, ignore_index=True)
     all_participants_df = all_participants_df.reset_index(drop=True)
 
-    all_screenshots_df = pd.DataFrame(columns=['participant_id', 'language', 'device_os',
-                                               'date_submitted', 'date_detected', 'day_type',
-                                               'category_submitted', 'category_detected'])
-    all_screenshots_df[f'daily_total'] = None
-    for i in range(1, max_apps_per_category + 1):
-        all_screenshots_df[f'app_{i}_name'] = None
-        all_screenshots_df[f'app_{i}_number'] = None
+    all_screenshots_df = ScreenshotClass.initialize_data_row()
 
     for idx, s in enumerate(screenshots):
+        all_screenshots_df.loc[idx, 'image_url'] = s.url
         all_screenshots_df.loc[idx, 'participant_id'] = s.user_id
         all_screenshots_df.loc[idx, 'language'] = s.language
         all_screenshots_df.loc[idx, 'device_os'] = s.device_os
