@@ -56,8 +56,8 @@ KEYWORD_FOR_MIN = {ITA: 'min',
                    FRA: 'min'}
 # Short format for time words
 
-H = '[hn]'
-MIN = '(mi?n?)'
+H = 'h'
+MIN = 'mi?n?\\b'
 
 KEYWORDS_FOR_2018_SCREENTIME = {ITA: ['DURATA SCHERMO', 'DURATA SCHERMO Altro'],
                                 ENG: ['TODO FILL THIS IN'],
@@ -437,18 +437,21 @@ def filter_time_text(text, conf, hr_f, min_f):
         # (hours or minutes) in the relevant language
         pattern = re.compile(''.join([misread, r"(?=[0-9tails]?\s?(", hr_f, "|", min_f, "))"]), flags=re.IGNORECASE)
         filtered_str = re.sub(pattern, actual, s)
-
         return filtered_str
 
     # Replace common misread characters (e.g. pytesseract sometimes misreads '1h' as 'Th'/'th').
-    text = replace_misread_digit('(t|T)', '1', text)
-    text = replace_misread_digit('(a|A)', '4', text)
-    text = replace_misread_digit('(i|I)', '1', text)
-    text = replace_misread_digit('(l|L)', '1', text)
-    text = replace_misread_digit('(s|S)', '5', text)
-    text = replace_misread_digit('(o|O)', '0', text)
+    text2 = replace_misread_digit('(t|T)', '1', text)
+    text2 = replace_misread_digit('(a|A)', '4', text2)
+    text2 = replace_misread_digit('(i|I)', '1', text2)
+    text2 = replace_misread_digit('(l|L)', '1', text2)
+    text2 = replace_misread_digit('(s|S)', '5', text2)
+    text2 = replace_misread_digit('(o|O)', '0', text2)
 
-    return text, conf
+    if text2 != text:
+        print("Filtering time text:")
+        print(f"Replaced '{text}' with '{text2}'.")
+
+    return text2, conf
 
 
 def get_daily_total_and_confidence(screenshot, image, heading):
@@ -479,7 +482,19 @@ def get_daily_total_and_confidence(screenshot, image, heading):
 
         return rescan_df
 
-    if any(headings_df[HEADING_COLUMN] == total_heading):
+    def filter_number_text(text):
+        text2 = text.replace("A", "4")
+        text2 = text2.replace("O", "0")
+        text2 = text2.replace("I", "1")
+        text2 = text2.replace("L", "1")
+        text2 = text2.replace("S", "5")
+        text2 = text2.replace("T", "1")
+        if text2 != text:
+            print(f"Replaced '{text}' with '{text2}'.")
+
+        return text2
+
+    if headings_df[HEADING_COLUMN].eq(total_heading).any():
         total_value_row = headings_df[headings_df[HEADING_COLUMN] == total_heading].iloc[0]
         total_value_1st_scan = total_value_row['text']
         total_value_1st_scan_conf = round(total_value_row['conf'], 4)
@@ -553,6 +568,7 @@ def get_daily_total_and_confidence(screenshot, image, heading):
             total_value_filtered = re.findall(r'-?\d+', total_value)[0]  # TODO why the - symbol?
         except IndexError:
             total_value_filtered = str.split(total_value)[0]
+            total_value_filtered = filter_number_text(total_value_filtered)
     else:
         if android_version == GOOGLE:
             hours_format = '|'.join([('|'.join(KEYWORDS_FOR_HOURS[img_lang])), KEYWORD_FOR_HR[img_lang]]).replace(" ",

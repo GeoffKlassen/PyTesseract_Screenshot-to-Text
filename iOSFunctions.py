@@ -225,22 +225,25 @@ def filter_time_or_number_text(text, conf, f):
         return NO_TEXT, NO_CONF
 
     # Replace common misread characters (e.g. pytesseract sometimes misreads '1h' as 'Th'/'th').
-    text = re.sub(r'[TtIi](?=.?[hm])', '1', text)  # 1 (before h or m) can be misread as T/I
-    text = re.sub('ah', '4h', text)  # 4h can be misread as ah
-    text = re.sub('oh', '5h', text)  # 5h can be misread as oh
-    text = re.sub('Qh', '9h', text)  # 9h can be misread as Qh
-    text = re.sub(r'(Os|O s)', '0s', text)  # 0s can be misread as Os (letter O and letter s)
-    text = re.sub('A', '4', text)  # 4 can be misread as A
-    text = text.lower()
+    text2 = re.sub(r'[TtIi](?=.?[hm])', '1', text)  # 1 (before h or m) can be misread as T/I
+    text2 = re.sub('ah', '4h', text2)  # 4h can be misread as ah
+    text2 = re.sub('oh', '5h', text2)  # 5h can be misread as oh
+    text2 = re.sub('Qh', '9h', text2)  # 9h can be misread as Qh
+    text2 = re.sub(r'(Os|O s)', '0s', text2)  # 0s can be misread as Os (letter O and letter s)
+    text2 = re.sub('A', '4', text2)  # 4 can be misread as A
+    text2 = text2.lower()
 
     # Remove any characters that aren't a digit or a 'time' character ('h' = hours, 'min' = minutes, 's' = seconds)
-    text = re.sub(r'[^0-9hmins]', '', text)
+    text2 = re.sub(r'[^0-9hmins]', '', text2)
 
     # If the final filtered text is not a proper (string) value, then no (numeric) value can be extracted from it.
-    if not re.match(time_or_number_format, text, re.IGNORECASE):
+    if not re.match(time_or_number_format, text2, re.IGNORECASE):
         return NO_TEXT, NO_CONF
 
-    return text, conf
+    if text2 != text.replace(" ", ''):
+        print(f"Replaced '{text}' with '{text2}'.")
+
+    return text2, conf
 
 
 def get_daily_total_and_confidence(screenshot, img, category=None):
