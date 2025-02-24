@@ -273,6 +273,7 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
         # Take the closest heading (to the daily total) that's above where the daily total would appear
         heading_row = headings_df[headings_df[HEADING_COLUMN] == category]
         if not heading_row.empty:
+            screenshot.set_total_heading_found(True)
             day_below_heading_row = headings_df[
                 (headings_df.index == heading_row.index[-1] + 1) & (headings_df[HEADING_COLUMN] == DAY_OR_WEEK_HEADING)]
             if not day_below_heading_row.empty:
@@ -922,7 +923,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
             prev_row_bottom = row_top + row_height
 
         if num_missed_app_values > 0:
-            screenshot.add_error(f"{num_missed_app_values} missed value{"s" if num_missed_app_values > 1 else ""}")
+            screenshot.add_error(f"Missed values", num_missed_app_values)
 
     # Making sure each list is the right length (fill any missing values with NO_TEXT/NO_NUMBER and NO_CONF)
     while app_names.shape[0] < max_apps + 1:

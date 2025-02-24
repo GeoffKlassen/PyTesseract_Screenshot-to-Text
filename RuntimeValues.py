@@ -59,4 +59,4 @@ conf_limit = 80
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Users\gbk546\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'  # At U of S
 
 test_lower_bound = 1
-test_upper_bound = 452
+test_upper_bound = 20

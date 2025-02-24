@@ -1020,7 +1020,8 @@ if __name__ == '__main__':
                                                                                    heading=dashboard_category)
             current_screenshot.set_daily_total(daily_total, daily_total_conf)
             if daily_total_conf == NO_CONF:
-                current_screenshot.add_error("Daily total not found")
+                if not current_screenshot.total_heading_found:
+                    current_screenshot.add_error("Daily total not found")
                 dt = "N/A"
             else:
                 dt = daily_total
@@ -1317,8 +1318,12 @@ if __name__ == '__main__':
         for col in s.data_row.columns:
             if col == f"ERR Values below {int(conf_limit)}% confidence":
                 all_screenshots_df.loc[idx, col] = s.num_values_low_conf
+            elif col == "ERR Missed values":
+                all_screenshots_df.loc[idx, col] = s.num_missed_values
             elif col.startswith("ERR"):
                 all_screenshots_df.loc[idx, col] = True
+            else:
+                pass
 
     all_ios_screenshots_df = all_screenshots_df[all_screenshots_df['device_os'] == IOS]
     all_android_screenshots_df = all_screenshots_df[all_screenshots_df['device_os'] == ANDROID]

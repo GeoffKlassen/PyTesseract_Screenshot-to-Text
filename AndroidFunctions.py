@@ -963,6 +963,9 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                         pd.concat([app_names, new_name_row], ignore_index=True))
                     previous_text = APP
 
+    if num_missed_app_values > 0:
+        screenshot.add_error(f"Missed values", num_missed_app_values)
+
     while app_names.shape[0] < max_apps + 1:
         app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
     while app_numbers.shape[0] < max_apps + 1:

@@ -50,6 +50,7 @@ class Screenshot:
         self.daily_total = None
         self.daily_total_conf = None
         self.daily_total_minutes = None
+        self.total_heading_found = False
         self.app_data = None
         self.screentime_subheading_found = None
         self.pickups_subheading_found = None
@@ -58,6 +59,7 @@ class Screenshot:
         self.data_row = initialize_data_row()
         self.errors = []
         self.num_values_low_conf = 0
+        self.num_missed_values = 0
 
     def __str__(self):
         s_user_id = f"User ID: {self.user_id}".ljust(22)
@@ -142,10 +144,16 @@ class Screenshot:
     def set_notifications_subheading_found(self, tf):
         self.notifications_subheading_found = tf
 
+    def set_total_heading_found(self, tf):
+        self.total_heading_found = tf
+
     def add_error(self, error, num=0):
         if error not in self.errors:
             self.errors.append(error)
             self.data_row[f"ERR {error}"] = True
             if num > 0:
-                self.num_values_low_conf = num
+                if "Values below" in error:
+                    self.num_values_low_conf = num
+                elif "Missed values" in error:
+                    self.num_missed_values = num
 
