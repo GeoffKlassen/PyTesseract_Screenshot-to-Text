@@ -927,9 +927,9 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
     while app_numbers.shape[0] < max_apps + 1:
         app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
 
-    if (category == SCREENTIME and app_numbers['number'][0] == screenshot.daily_total and
-            app_numbers['number'][0] != NO_NUMBER):
-        print(f"Daily total {category} matches first app time: {app_numbers['number'][0]}")
+    if category == SCREENTIME and screenshot.daily_total in app_numbers['number'].values and \
+            screenshot.daily_total != NO_TEXT:
+        print(f"Daily total {category} ({screenshot.daily_total}) matches one of the app usage times.")
         print(f"Resetting daily total {category} to {NO_NUMBER}.")
         screenshot.set_daily_total(NO_TEXT, NO_CONF)
         screenshot.set_daily_total_minutes(NO_NUMBER)

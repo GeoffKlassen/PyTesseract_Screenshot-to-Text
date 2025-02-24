@@ -1182,7 +1182,7 @@ if __name__ == '__main__':
 
             print("\nApp data found:")
             print(app_data[['name', 'number']])
-            print(f"Daily total {dashboard_category}: {daily_total}")
+            print(f"Daily total {dashboard_category}: {current_screenshot.daily_total}")
 
             current_screenshot.set_app_data(app_data)
             current_participant.add_screenshot(current_screenshot)

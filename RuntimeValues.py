@@ -13,7 +13,7 @@ from LanguageDictionaries import *
 """
 
 
-study_to_analyze = studies[0]
+study_to_analyze = studies[1]
 # Use studies[0] for the HappyB2.0 study
 # Use studies[1] for the BCH study
 
@@ -58,5 +58,5 @@ conf_limit = 80
 # Location of PyTesseract on local drive
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Users\gbk546\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'  # At U of S
 
-test_lower_bound = 1
+test_lower_bound = 16
 test_upper_bound = 553

@@ -191,8 +191,9 @@ class Participant:
                 if (not pd.isna(min_existing_value) and not pd.isna(max_new_value) and
                         min_existing_value >= max_new_value):
                     for i in range(MAX_APPS, 0, -1):
-                        if existing_values_row.loc[date_index, existing_values_columns[i]] == min_existing_value:
+                        if existing_values_row[existing_values_columns[i - 1]] == min_existing_value:
                             existing_data_app_num = i
+                            break
                     new_data_app_num = 0
 
                 elif (not pd.isna(min_new_value) and not pd.isna(max_existing_value) and
@@ -220,7 +221,7 @@ class Participant:
                     compare_df.loc[i, 'ex_number_conf'] = self.usage_data_conf[
                         f'{category}_app_{ex_index}_number'][date_index]
                     if category == SCREENTIME:
-                        compare_df.loc[i, 'ex_minutes'] = self.usage_data_conf[
+                        compare_df.loc[i, 'ex_minutes'] = self.usage_data[
                             f'{category}_app_{ex_index}_minutes'][date_index]
                 else:
                     compare_df.loc[i, 'ex_name'] = NO_TEXT
