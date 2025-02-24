@@ -807,7 +807,8 @@ if __name__ == '__main__':
         'name': [NO_TEXT] * max_apps_per_category,
         'name_conf': [NO_CONF] * max_apps_per_category,
         'number': [NO_TEXT if study_category == SCREENTIME else NO_NUMBER] * max_apps_per_category,
-        'number_conf': [NO_CONF] * max_apps_per_category
+        'number_conf': [NO_CONF] * max_apps_per_category,
+        'minutes': [NO_TEXT] * max_apps_per_category
     })
     empty_app_data.index = pd.Index([idx + 1 for idx in empty_app_data.index])
     # All app_data should have indexes that start at 1 instead of starting at 0
@@ -1201,7 +1202,7 @@ if __name__ == '__main__':
         str_elapsed_s = f"{"0" if elapsed_time_s < 10 else ""}{elapsed_time_s}"
         print(f"\n\nElapsed time:  {elapsed_time_min}:{str_elapsed_s}")
         average_time_per_screenshot = elapsed_time_in_seconds / (index - test_lower_bound + 2)
-        estimated_time_remaining = average_time_per_screenshot * (test_upper_bound - index - 1)
+        estimated_time_remaining = average_time_per_screenshot * (min([test_upper_bound, num_urls]) - index - 1)
         if estimated_time_remaining > 0:
             eta_min = int(estimated_time_remaining / 60)
             eta_s = int(estimated_time_remaining % 60)
