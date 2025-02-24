@@ -145,7 +145,11 @@ class Participant:
             existing_data_app_num = -1
             new_data_app_num = -1
             lineup_found = False
+            existing_data_contains_apps = False
             for i in range(1, MAX_APPS + 1):
+                if self.usage_data.loc[date_index, f'{category}_app_{i}_name'] == NO_TEXT:
+                    continue
+                existing_data_contains_apps = True
                 for j in range(1, MAX_APPS + 1):
                     # compare app name i (from existing data) to app name j (new screenshot data)
                     # if they're equal (and not NO_TEXT), then this is where the two datasets line up.
@@ -160,8 +164,8 @@ class Participant:
                         continue
                 if lineup_found:
                     break
+
             if not lineup_found:
-                # do the thing here to set one of (existing_data_app_num, new_data_app_num) to 0 and the other unchanged
                 if category == SCREENTIME:
                     # List of column names
                     existing_values_columns = [f'screentime_app_{i}_minutes' for i in range(1, MAX_APPS + 1)]
@@ -175,6 +179,8 @@ class Participant:
 
                 # Exclude values equal to -99999
                 filtered_ex_values = existing_values_row[existing_values_row != NO_NUMBER]
+                if filtered_ex_values.empty:
+                    pass
                 filtered_new_values = new_values[new_values != NO_NUMBER]
 
                 min_existing_value = filtered_ex_values.min()
@@ -190,7 +196,7 @@ class Participant:
                     new_data_app_num = 0
 
                 elif (not pd.isna(min_new_value) and not pd.isna(max_existing_value) and
-                        min_new_value >= max_existing_value):
+                        min_new_value >= max_existing_value) or not existing_data_contains_apps:
                     existing_data_app_num = 0
                     new_data_app_num = new_values.idxmin()
 
