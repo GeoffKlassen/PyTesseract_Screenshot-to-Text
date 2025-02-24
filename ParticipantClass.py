@@ -43,9 +43,8 @@ def edit_distance(s1, s2):
 
 
 def initialize_usage_df():
-    df = pd.DataFrame(columns=['participant_id', 'date'])
+    df = pd.DataFrame(columns=['participant_id', 'language', 'date'])
     for cat in RuntimeValues.categories_included:
-        df[f'{cat}_subheading_found'] = None
         df[f'total_{cat}'] = None
         if cat == SCREENTIME:
             df[f'total_{SCREENTIME}_minutes'] = None
@@ -77,18 +76,8 @@ class Participant:
     def add_screenshot(self, ss):
         self.screenshots.append(ss)
         category = ss.category_detected
-        if category == SCREENTIME:
-            pass
-            # subheading_found_in_ss = ss.screentime_subheading_found
-        elif category in [PICKUPS, UNLOCKS]:
+        if category in [PICKUPS, UNLOCKS]:
             category = PICKUPS
-            # subheading_found_in_ss = ss.pickups_subheading_found
-        elif category == NOTIFICATIONS:
-            pass
-            # subheading_found_in_ss = ss.notifications_subheading_found
-        else:
-            pass
-            # subheading_found_in_ss = False
 
         if ss.date_detected is None:
             print("Date not detected. Screenshot data will not be added to participant's temporal data.")
@@ -110,13 +99,13 @@ class Participant:
         if self.usage_data[f'total_{category}'][date_index] == EMPTY_CELL:
             print(f"Adding data from current screenshot to participant {self.user_id}'s temporal data.")
             self.usage_data.loc[date_index, 'participant_id'] = self.user_id
+            self.usage_data.loc[date_index, 'language'] = self.language
             self.usage_data.loc[date_index, 'date'] = ss.date_detected
-            # self.usage_data.loc[date_index, f'{category}_subheading_found'] = subheading_found_in_ss
             self.usage_data.loc[date_index, f'total_{category}'] = ss.daily_total
 
             self.usage_data_conf.loc[date_index, 'participant_id'] = self.user_id
+            self.usage_data_conf.loc[date_index, 'language'] = self.language
             self.usage_data_conf.loc[date_index, 'date'] = ss.date_detected
-            # self.usage_data_conf.loc[date_index, f'{category}_subheading_found'] = subheading_found_in_ss
             self.usage_data_conf.loc[date_index, f'total_{category}'] = ss.daily_total_conf
 
             if category == SCREENTIME:
@@ -233,12 +222,12 @@ class Participant:
 
                 new_index = i + new_data_app_num - max_lineup
                 if new_index > 0:
-                    compare_df.loc[i, 'new_name'] = ss.app_data.loc[i, 'name']
-                    compare_df.loc[i, 'new_name_conf'] = ss.app_data.loc[i, 'name_conf']
-                    compare_df.loc[i, 'new_number'] = ss.app_data.loc[i, 'number']
-                    compare_df.loc[i, 'new_number_conf'] = ss.app_data.loc[i, 'number_conf']
+                    compare_df.loc[i, 'new_name'] = ss.app_data.loc[new_index, 'name']
+                    compare_df.loc[i, 'new_name_conf'] = ss.app_data.loc[new_index, 'name_conf']
+                    compare_df.loc[i, 'new_number'] = ss.app_data.loc[new_index, 'number']
+                    compare_df.loc[i, 'new_number_conf'] = ss.app_data.loc[new_index, 'number_conf']
                     if category == SCREENTIME:
-                        compare_df.loc[i, 'new_minutes'] = ss.app_data.loc[i, 'minutes']
+                        compare_df.loc[i, 'new_minutes'] = ss.app_data.loc[new_index, 'minutes']
                 else:
                     compare_df.loc[i, 'new_name'] = NO_TEXT
                     compare_df.loc[i, 'new_name_conf'] = NO_CONF
@@ -251,18 +240,52 @@ class Participant:
             print(compare_df[['ex_name', 'ex_number', 'new_name', 'new_number']][1:])
 
             for i in range(1, MAX_APPS + 1):
-                (self.usage_data.loc[date_index, f'{category}_app_{i}_name'],
-                 self.usage_data_conf.loc[date_index, f'{category}_app_{i}_name']) = (
-                    OCRScript_v3.choose_between_two_values(text1=compare_df.loc[i, 'ex_name'],
-                                                           conf1=compare_df.loc[i, 'ex_name_conf'],
-                                                           text2=compare_df.loc[i, 'new_name'],
-                                                           conf2=compare_df.loc[i, 'new_name_conf']))
-                (self.usage_data.loc[date_index, f'{category}_app_{i}_number'],
-                 self.usage_data_conf.loc[date_index, f'{category}_app_{i}_number']) = (
-                    OCRScript_v3.choose_between_two_values(text1=compare_df.loc[i, 'ex_number'],
-                                                           conf1=compare_df.loc[i, 'ex_number_conf'],
-                                                           text2=compare_df.loc[i, 'new_number'],
-                                                           conf2=compare_df.loc[i, 'new_number_conf']))
+                if compare_df.loc[i, 'ex_name'] == NO_TEXT and compare_df.loc[i, 'new_name'] == NO_TEXT:
+                    print(f"No existing app name or new app name in position {i}. App name remains N/A.")
+
+                elif compare_df.loc[i, 'ex_name'] == NO_TEXT and compare_df.loc[i, 'new_name'] != NO_TEXT:
+                    print(f"No existing app name in position {i}. Updating to {compare_df.loc[i, 'new_name']}.")
+                    (self.usage_data.loc[date_index, f'{category}_app_{i}_name'],
+                     self.usage_data_conf.loc[date_index, f'{category}_app_{i}_name']) = (
+                        compare_df.loc[i, 'new_name'], compare_df.loc[i, 'new_name_conf'])
+
+                elif compare_df.loc[i, 'ex_name'] != NO_TEXT and compare_df.loc[i, 'new_name'] == NO_TEXT:
+                    print(f"No new app name in position {i}. Keeping {compare_df.loc[i, 'ex_name']}.")
+                    (self.usage_data.loc[date_index, f'{category}_app_{i}_name'],
+                     self.usage_data_conf.loc[date_index, f'{category}_app_{i}_name']) = (
+                        compare_df.loc[i, 'ex_name'], compare_df.loc[i, 'ex_name_conf'])
+
+                else:
+                    (self.usage_data.loc[date_index, f'{category}_app_{i}_name'],
+                     self.usage_data_conf.loc[date_index, f'{category}_app_{i}_name']) = (
+                        OCRScript_v3.choose_between_two_values(text1=compare_df.loc[i, 'ex_name'],
+                                                               conf1=compare_df.loc[i, 'ex_name_conf'],
+                                                               text2=compare_df.loc[i, 'new_name'],
+                                                               conf2=compare_df.loc[i, 'new_name_conf']))
+
+                if str(compare_df.loc[i, 'ex_number']) == NO_TEXT and str(compare_df.loc[i, 'new_number']) == NO_TEXT:
+                    print(f"No existing app number or new app number in position {i}. App number remains N/A.")
+
+                elif str(compare_df.loc[i, 'ex_number']) == NO_TEXT and str(compare_df.loc[i, 'new_name']) != NO_TEXT:
+                    print(f"No existing app number in position {i}. Updating to {compare_df.loc[i, 'new_number']}.")
+                    (self.usage_data.loc[date_index, f'{category}_app_{i}_number'],
+                     self.usage_data_conf.loc[date_index, f'{category}_app_{i}_number']) = (
+                        compare_df.loc[i, 'new_number'], compare_df.loc[i, 'new_number_conf'])
+
+                elif str(compare_df.loc[i, 'ex_number']) != NO_TEXT and str(compare_df.loc[i, 'new_number']) == NO_TEXT:
+                    print(f"No new app number in position {i}. Keeping {compare_df.loc[i, 'ex_number']}.")
+                    (self.usage_data.loc[date_index, f'{category}_app_{i}_number'],
+                     self.usage_data_conf.loc[date_index, f'{category}_app_{i}_number']) = (
+                        compare_df.loc[i, 'ex_number'], compare_df.loc[i, 'ex_number_conf'])
+
+                else:
+                    (self.usage_data.loc[date_index, f'{category}_app_{i}_number'],
+                     self.usage_data_conf.loc[date_index, f'{category}_app_{i}_number']) = (
+                        OCRScript_v3.choose_between_two_values(text1=compare_df.loc[i, 'ex_number'],
+                                                               conf1=compare_df.loc[i, 'ex_number_conf'],
+                                                               text2=compare_df.loc[i, 'new_number'],
+                                                               conf2=compare_df.loc[i, 'new_number_conf']))
+
                 if category == SCREENTIME:
                     if self.usage_data.loc[date_index, f'{category}_app_{i}_number'] == compare_df.loc[i, 'new_number']:
                         self.usage_data.loc[date_index, f'{category}_app_{i}_minutes'] = (

@@ -1,6 +1,7 @@
 from pandas.core.methods.selectn import SelectNSeries
 
 import AndroidFunctions as Android
+import ParticipantClass
 import iOSFunctions as iOS
 from RuntimeValues import *
 from ScreenshotClass import Screenshot
@@ -1208,3 +1209,50 @@ if __name__ == '__main__':
             eta_text = f"{eta_min}:{str_eta_s}"
             print(f"Estimated time remaining: {eta_text}")
 
+    # Initialize a
+    all_usage_dataframes = []
+    for p in participants:
+        all_usage_dataframes.append(p.usage_data)
+
+    all_participants_df = pd.concat(all_usage_dataframes, ignore_index=True)
+    all_participants_df = all_participants_df.reset_index(drop=True)
+
+    all_screenshots_df = pd.DataFrame(columns=['participant_id', 'language', 'device_os',
+                                               'date_submitted', 'date_detected', 'day_type',
+                                               'category_submitted', 'category_detected'])
+    all_screenshots_df[f'daily_total'] = None
+    for i in range(1, max_apps_per_category + 1):
+        all_screenshots_df[f'app_{i}_name'] = None
+        all_screenshots_df[f'app_{i}_number'] = None
+
+    for idx, s in enumerate(screenshots):
+        all_screenshots_df.loc[idx, 'participant_id'] = s.user_id
+        all_screenshots_df.loc[idx, 'language'] = s.language
+        all_screenshots_df.loc[idx, 'device_os'] = s.device_os
+        all_screenshots_df.loc[idx, 'date_submitted'] = s.date_submitted
+        all_screenshots_df.loc[idx, 'date_detected'] = s.date_detected
+        all_screenshots_df.loc[idx, 'day_type'] = s.time_period
+        all_screenshots_df.loc[idx, 'category_submitted'] = s.category_submitted
+        all_screenshots_df.loc[idx, 'category_detected'] = s.category_detected
+        all_screenshots_df.loc[idx, 'daily_total'] = s.daily_total
+        for n in range(1, max_apps_per_category + 1):
+            all_screenshots_df.loc[idx, f'app_{n}_name'] = s.app_data['name'][n]
+            all_screenshots_df.loc[idx, f'app_{n}_number'] = s.app_data['number'][n]
+
+    all_ios_screenshots_df = all_screenshots_df[all_screenshots_df['device_os'] == IOS]
+    all_android_screenshots_df = all_screenshots_df[all_screenshots_df['device_os'] == ANDROID]
+
+    all_screentime_screenshots_df = all_screenshots_df[all_screenshots_df['category_detected'] == SCREENTIME]
+    all_pickups_screenshots_df = all_screenshots_df[(all_screenshots_df['category_detected'] == PICKUPS) |
+                                                    (all_screenshots_df['category_detected'] == UNLOCKS)]
+    all_notifications_screenshots_df = all_screenshots_df[all_screenshots_df['category_detected'] == NOTIFICATIONS]
+
+    all_participants_df.to_csv(f"{study_to_analyze['Name']}_all_participants_data.csv")
+    all_screenshots_df.to_csv(f"{study_to_analyze['Name']}_all_screenshots_data.csv")
+
+    all_ios_screenshots_df.to_csv(f"{study_to_analyze['Name']}_all_ios_data.csv")
+    all_android_screenshots_df.to_csv(f"{study_to_analyze['Name']}_all_android_data.csv")
+
+    all_screentime_screenshots_df.to_csv(f"{study_to_analyze['Name']}_all_screentime_data.csv")
+    all_pickups_screenshots_df.to_csv(f"{study_to_analyze['Name']}_all_pickups_data.csv")
+    all_notifications_screenshots_df.to_csv(f"{study_to_analyze['Name']}_all_notifications_data.csv")
