@@ -108,7 +108,7 @@ class Participant:
             self.usage_data.loc[date_index] = EMPTY_CELL
 
         if self.usage_data[f'total_{category}'][date_index] == EMPTY_CELL:
-            print("Adding data from current screenshot to user data in participant.")
+            print(f"Adding data from current screenshot to participant {self.user_id}'s temporal data.")
             self.usage_data.loc[date_index, 'participant_id'] = self.user_id
             self.usage_data.loc[date_index, 'date'] = ss.date_detected
             # self.usage_data.loc[date_index, f'{category}_subheading_found'] = subheading_found_in_ss
@@ -138,7 +138,7 @@ class Participant:
             (self.usage_data.loc[date_index, f'total_{category}'],
              self.usage_data_conf.loc[date_index, f'total_{category}']) = (
                 OCRScript_v3.choose_between_two_values(text1=self.usage_data.loc[date_index, f'total_{category}'],
-                                                       conf1=self.usage_data_conf[date_index, f'total_{category}'],
+                                                       conf1=self.usage_data_conf.loc[date_index, f'total_{category}'],
                                                        text2=ss.daily_total,
                                                        conf2=ss.daily_total_conf))
             moe = 2
@@ -151,7 +151,7 @@ class Participant:
                     # if they're equal (and not NO_TEXT), then this is where the two datasets line up.
                     if ss.app_data['name'][j] == NO_TEXT:
                         continue
-                    elif edit_distance(self.usage_data[f'{category}_app_{i}_name'], ss.app_data['name'][j]) <= moe:
+                    elif edit_distance(self.usage_data.loc[date_index, f'{category}_app_{i}_name'], ss.app_data['name'][j]) <= moe:
                         existing_data_app_num = i
                         new_data_app_num = j
                         lineup_found = True
@@ -165,11 +165,11 @@ class Participant:
                 if category == SCREENTIME:
                     # List of column names
                     existing_values_columns = [f'screentime_app_{i}_minutes' for i in range(1, MAX_APPS + 1)]
-                    new_values = ss.app_data['minutes']
+                    new_values = ss.app_data.loc[:, 'minutes']
 
                 else:
                     existing_values_columns = [f'{category}_app_{i}_number' for i in range(1, MAX_APPS + 1)]
-                    new_values = ss.app_data['number']
+                    new_values = ss.app_data.loc[:, 'number']
                 # Select the row with index 'date_index' for the specified columns
                 existing_values_row = self.usage_data.loc[date_index, existing_values_columns]
 
@@ -182,13 +182,15 @@ class Participant:
                 min_new_value = filtered_new_values.min()
                 max_new_value = filtered_new_values.max()
 
-                if min_existing_value >= max_new_value:
+                if (not pd.isna(min_existing_value) and not pd.isna(max_new_value) and
+                        min_existing_value >= max_new_value):
                     for i in range(MAX_APPS, 0, -1):
                         if existing_values_row.loc[date_index, existing_values_columns[i]] == min_existing_value:
                             existing_data_app_num = i
                     new_data_app_num = 0
 
-                elif min_new_value >= max_existing_value:
+                elif (not pd.isna(min_new_value) and not pd.isna(max_existing_value) and
+                        min_new_value >= max_existing_value):
                     existing_data_app_num = 0
                     new_data_app_num = new_values.idxmin()
 
@@ -238,8 +240,8 @@ class Participant:
                     if category == SCREENTIME:
                         compare_df.loc[i, 'new_minutes'] = NO_NUMBER
 
-            print("Table of comparisons to be made:")
-            print(compare_df[['ex_name', 'ex_number', 'new_name', 'new_number']])
+            print("\nTable of app comparisons to be made:")
+            print(compare_df[['ex_name', 'ex_number', 'new_name', 'new_number']][1:])
 
             for i in range(1, MAX_APPS + 1):
                 (self.usage_data.loc[date_index, f'{category}_app_{i}_name'],
@@ -258,37 +260,6 @@ class Participant:
                     if self.usage_data.loc[date_index, f'{category}_app_{i}_number'] == compare_df.loc[i, 'new_number']:
                         self.usage_data.loc[date_index, f'{category}_app_{i}_minutes'] = (
                             compare_df.loc)[i, 'new_minutes']
-        # self.usage_data.loc[len(self.usage_data)] = EMPTY_CELL
-        # new_values_row = pd.DataFrame({'participant_id': [self.user_id],
-        #                                'date': [ss.date_detected],
-        #                                f'{category}_subheading_found': subheading_found_in_ss})
-        # columns_to_make_blank = (x for x in self.usage_data.columns[:] if
-        #                          x not in ['participant_id', 'date', f'{category}_subheading_found'])
-        # for col in columns_to_make_blank:
-        #     new_values_row[col] = EMPTY_CELL
-        # new_conf_row = new_values_row.copy()
-        #
-        # # Put the daily total (and daily total conf) into the master df
-        # new_values_row[f'total_{category}'] = ss.daily_total
-        # new_conf_row[f'total_{category}'] = ss.daily_total_conf
-        # # For screentime screenshots, put the total time converted to (int) minutes into the master df as well
-        # if category == SCREENTIME:
-        #     new_values_row[f'total_{category}_minutes'] = ss.daily_total_minutes
-        #     new_conf_row[f'total_{category}_minutes'] = ss.daily_total_conf
-        # # Put the data from the current screenshot into the master df
-        # for n in range(RuntimeValues.max_apps_per_category):
-        #     new_values_row[f'{category}_app_{n + 1}_name'] = ss.app_data['app'][n]
-        #     new_values_row[f'{category}_app_{n + 1}_number'] = ss.app_data['number'][n]
-        #     new_conf_row[f'{category}_app_{n + 1}_name'] = ss.app_data['app_conf'][n]
-        #     new_conf_row[f'{category}_app_{n + 1}_number'] = ss.app_data['number_conf'][n]
-        #     if category == SCREENTIME:
-        #         new_values_row[f'{category}_app_{n + 1}_minutes'] = iOSFunctions.convert_text_time_to_minutes(
-        #             ss.app_data['number'][n])
-        #         new_conf_row[f'{category}_app_{n + 1}_minutes'] = ss.app_data['number_conf'][n]
-        # self.usage_data = new_values_row if self.usage_data.shape[0] == 0 else (
-        #     pd.concat([self.usage_data, new_values_row], ignore_index=True))
-        # self.usage_data_conf = new_conf_row if self.usage_data.shape[0] == 0 else (
-        #     pd.concat([self.usage_data_conf, new_conf_row], ignore_index=True))
 
     def add_screentime_data(self):
         pass

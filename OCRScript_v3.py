@@ -772,7 +772,6 @@ def get_dashboard_category(screenshot):
             Android.get_dashboard_category(screenshot)
         if category is None:
             category_detected = False
-            category = study_category
         else:
             category_detected = True
 
@@ -809,7 +808,11 @@ if __name__ == '__main__':
         'number': [NO_TEXT if study_category == SCREENTIME else NO_NUMBER] * max_apps_per_category,
         'number_conf': [NO_CONF] * max_apps_per_category
     })
+    empty_app_data.index = pd.Index([idx + 1 for idx in empty_app_data.index])
+    # All app_data should have indexes that start at 1 instead of starting at 0
 
+    # Time the data extraction process
+    start_time = time.time()
     # Cycle through the images, creating a screenshot object for each one
     screenshots = []
     participants = []
@@ -916,6 +919,7 @@ if __name__ == '__main__':
             """
             
             ANDROID  -  Execute the procedure for extracting data from an Android screenshot  
+            ANDROID  -  Execute the procedure for extracting data from an Android screenshot  
             
             """
             time_formats = Android.get_time_formats_in_lang(current_screenshot.language)
@@ -955,6 +959,8 @@ if __name__ == '__main__':
             dashboard_category, dashboard_category_detected = get_dashboard_category(current_screenshot)
             if dashboard_category_detected:
                 current_screenshot.set_category_detected(dashboard_category)
+            else:
+                dashboard_category = current_screenshot.category_submitted
 
             daily_total, daily_total_conf = Android.get_daily_total_and_confidence(screenshot=current_screenshot,
                                                                                    image=bw_image_scaled,
@@ -1042,8 +1048,7 @@ if __name__ == '__main__':
                     if i in app_data.index:  # Make sure the index exists
                         app_data.loc[i, 'minutes'] = Android.convert_string_time_to_minutes(
                             str_time=app_data.loc[i, 'number'],
-                            screenshot=current_screenshot
-                        )
+                            screenshot=current_screenshot)
             print("\nApp data found:")
             print(app_data[['name', 'number']])
             print(f"Daily total {dashboard_category}: {daily_total}")
@@ -1095,6 +1100,7 @@ if __name__ == '__main__':
                 daily_total, daily_total_conf = choose_between_two_values(daily_total, daily_total_conf,
                                                                           daily_total_2nd_loc, daily_total_2nd_loc_conf)
                 current_screenshot.set_daily_total(daily_total, daily_total_conf)
+                dt = "N/A" if daily_total_conf == NO_CONF else daily_total
                 print(f"Daily total {dashboard_category}: {dt}")
 
                 heading_above_applist = FIRST_USED_AFTER_PICKUP_HEADING
@@ -1113,10 +1119,16 @@ if __name__ == '__main__':
                 daily_total = NO_TEXT
                 daily_total_conf = NO_CONF
 
+            if str(daily_total) in ["0", "0s"]:
+                print(f"No app-level data available when daily total {dashboard_category} is {daily_total}.")
+                print(f"Setting all app-specific data to N/A.")
+                current_screenshot.set_app_data(empty_app_data)
+                current_participant.add_screenshot(current_screenshot)
+                continue
             # Crop image to app region
             cropped_image, crop_coordinates = iOS.crop_image_to_app_area(current_screenshot, heading_above_applist, heading_below_applist)
             if all(crops is None for crops in crop_coordinates):
-                print(f"Setting all app-specific data to N/A.")
+                print(f"Suitable crop region not detected. Setting all app-specific data to N/A.")
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
                 continue
@@ -1133,7 +1145,8 @@ if __name__ == '__main__':
             cropped_image_no_bars = iOS.erase_value_bars_and_icons(screenshot=current_screenshot,
                                                                    df=cropped_prescan_words,
                                                                    image=cropped_image)
-            scaled_cropped_image = cv2.resize(cropped_image,
+
+            scaled_cropped_image = cv2.resize(cropped_image_no_bars,
                                               dsize=None,
                                               fx=app_area_scale_factor,
                                               fy=app_area_scale_factor,
@@ -1141,15 +1154,12 @@ if __name__ == '__main__':
 
             # Extract app info from cropped image
             app_area_df = extract_app_info(current_screenshot, scaled_cropped_image, crop_coordinates, app_area_scale_factor)
-            if show_images:
-                show_image(app_area_df, scaled_cropped_image)
+
             value_format = misread_time_format if dashboard_category == SCREENTIME else misread_number_format
             confident_text_from_prescan = \
                 cropped_prescan_df[(cropped_prescan_df['right'] > 0.05 * scaled_cropped_image.shape[1]) &
                                    ((cropped_prescan_df['conf'] > 80) |
                                     (cropped_prescan_df['text'].str.fullmatch(value_format) & cropped_prescan_df['conf'] > 50))]
-            print("Confident text from prescan is:")
-            print(confident_text_from_prescan)
             columns_to_scale = ['left', 'top', 'width', 'height']
             confident_text_from_prescan.loc[:, columns_to_scale] = \
                 confident_text_from_prescan.loc[:, columns_to_scale].apply(lambda x: x * app_area_scale_factor).astype(int)
@@ -1163,6 +1173,13 @@ if __name__ == '__main__':
                                                      df=app_area_2_df,
                                                      category=dashboard_category,
                                                      max_apps=max_apps_per_category)
+            if dashboard_category == SCREENTIME:
+                for i in range(1, max_apps_per_category + 1):
+                    if i in app_data.index:  # Make sure the index exists
+                        app_data.loc[i, 'minutes'] = Android.convert_string_time_to_minutes(
+                            str_time=app_data.loc[i, 'number'],
+                            screenshot=current_screenshot)
+
             print("\nApp data found:")
             print(app_data[['name', 'number']])
             print(f"Daily total {dashboard_category}: {daily_total}")
@@ -1176,3 +1193,18 @@ if __name__ == '__main__':
             print("Operating System not detected.")
             current_screenshot.set_app_data(empty_app_data)
             continue
+
+        elapsed_time_in_seconds = time.time() - start_time
+        elapsed_time_min = int(elapsed_time_in_seconds / 60)
+        elapsed_time_s = int(elapsed_time_in_seconds % 60)
+        str_elapsed_s = f"{"0" if elapsed_time_s < 10 else ""}{elapsed_time_s}"
+        print(f"\n\nElapsed time:  {elapsed_time_min}:{str_elapsed_s}")
+        average_time_per_screenshot = elapsed_time_in_seconds / (index - test_lower_bound + 2)
+        estimated_time_remaining = average_time_per_screenshot * (test_upper_bound - index - 1)
+        if estimated_time_remaining > 0:
+            eta_min = int(estimated_time_remaining / 60)
+            eta_s = int(estimated_time_remaining % 60)
+            str_eta_s = f"{"0" if eta_s < 10 else ""}{eta_s}"
+            eta_text = f"{eta_min}:{str_eta_s}"
+            print(f"Estimated time remaining: {eta_text}")
+

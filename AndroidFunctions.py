@@ -56,7 +56,7 @@ KEYWORD_FOR_MIN = {ITA: 'min',
                    FRA: 'min'}
 # Short format for time words
 
-H = 'h'
+H = '[hn]'
 MIN = '(mi?n?)'
 
 KEYWORDS_FOR_2018_SCREENTIME = {ITA: ['DURATA SCHERMO', 'DURATA SCHERMO Altro'],
@@ -628,7 +628,8 @@ def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_sh
     date_rows = screenshot.rows_with_date
     text_df = screenshot.text
     headings_df = screenshot.headings_df
-    dashboard_category = screenshot.category_detected
+    dashboard_category = screenshot.category_detected if screenshot.category_detected is not None else (
+        screenshot.category_submitted)
 
     if android_version == GOOGLE:
         crop_left = int(0.15 * screenshot.width)  # Crop out the app icon area (first 15% of screenshot.width)
@@ -673,7 +674,7 @@ def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_sh
                         text_df['left'][i] + text_df['width'][i] > 0.85 * screenshot.width and \
                         re.search(format_for_time_or_number_eol, text_df['text'][i]):
                     # Row text spans most of the width of the screenshot, and also ends with a time/number
-                    print(f"App row found: {text_df['text'][i]}.  "
+                    print(f"App row found: '{text_df['text'][i]}'.  "
                           f"Setting top of crop region to top of this app row.")
                     crop_top = int(text_df['top'][i] - 0.01 * screenshot.height)
                     index_of_first_app = i
@@ -962,9 +963,9 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                         pd.concat([app_names, new_name_row], ignore_index=True))
                     previous_text = APP
 
-    while app_names.shape[0] < max_apps:
+    while app_names.shape[0] < max_apps + 1:
         app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
-    while app_numbers.shape[0] < max_apps:
+    while app_numbers.shape[0] < max_apps + 1:
         app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
 
     app_names, app_numbers = app_names.drop(app_names.index[0]), app_numbers.drop(app_numbers.index[0])

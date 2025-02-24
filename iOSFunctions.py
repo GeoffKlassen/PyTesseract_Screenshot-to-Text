@@ -334,9 +334,7 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
                 row_conf = round(df.loc[i]['conf'], 4)  # 4 decimal points of precision for the confidence value
 
                 if len(re.findall(value_pattern, row_text)) == 1:
-                    print(f"row text is {row_text}")
                     daily_total_1st_scan, daily_total_1st_scan_conf = filter_time_or_number_text(row_text, row_conf, value_pattern)
-                    print(f"daily total 1st scan is {daily_total_1st_scan}")
                     break
 
             if daily_total_1st_scan_conf == NO_CONF:
@@ -552,7 +550,6 @@ def crop_image_to_app_area(screenshot, heading_above, heading_below):
     # Initialize the crop region -- the 'for' loop below trims it further
 
     headings_df = screenshot.headings_df
-    text_df = screenshot.text
 
     crop_top = 0
     crop_bottom = screenshot.height
@@ -560,7 +557,6 @@ def crop_image_to_app_area(screenshot, heading_above, heading_below):
     crop_right = round(
         0.87 * screenshot.width)  # Symbols (arrows, hourglass) typically appear in the rightmost 87% of the screenshot
 
-    buffer = 18  # A small number of pixels to expand the left edge of the crop rectangle, to increase the chance
     # the crop edge is left of the app names
     if not headings_df.empty and not (headings_df[headings_df['left'] > 0]).empty:
         leftmost_heading_index = headings_df[headings_df['left'] > 0]['left'].idxmin()
@@ -710,15 +706,14 @@ def erase_value_bars_and_icons(screenshot, df, image):
         if start_row < max_height:
             find_and_erase_bar_and_icon(start_row, start_col, h_max=int(1.5*height))
 
-    if top_left_coordinates:
+    if top_left_coordinates and len(top_left_coordinates) > 1:
         # Sometimes pytesseract doesn't read an app name, which is used as reference for erasing the value bar below it,
-        # but we'd still like to have that bar erased.
-        # This section determines the pixel spacing between two successive bars and, if any of the gaps between found-bars
-        # is large enough, it seeks out the missed bar and erases it.
+        # but we'd still like to have that bar erased. This section determines the pixel spacing between two successive
+        # bars and, if any of the gaps between found-bars is large enough, it seeks out the missed bar and erases it.
         median_bar_height = int(np.median([coord[2] for coord in top_left_coordinates]))
         # print("The top left coordinates are")
         # print(top_left_coordinates)
-        average_left = sum(coord[0] for coord in top_left_coordinates) / len(top_left_coordinates)
+        average_left = int(np.median([coord[0] for coord in top_left_coordinates]))
         filtered_coordinates = [coord for coord in top_left_coordinates if abs(coord[0] - average_left) <= 0.01*image_width]
         # print("The filtered left coordinates are:")
         # print(filtered_coordinates)
@@ -853,82 +848,98 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
     :param max_apps: The maximum number of apps to search for
     :return: A dataframe of length max_apps, with app names and numbers, and their respective confidence values.
     """
+
     empty_name_row = pd.DataFrame({'name': [NO_TEXT], 'name_conf': [NO_CONF]})
     empty_number_row = pd.DataFrame({'number': [NO_TEXT], 'number_conf': [NO_CONF]}) if category == SCREENTIME else (
                        pd.DataFrame({'number': [NO_NUMBER], 'number_conf': [NO_CONF]}))
     app_names = empty_name_row.copy()
     app_numbers = empty_number_row.copy()
+    if df.empty:
+        print("No text found in cropped image.")
+    elif "today at" in df['text'].iloc[-1]:  # Need to start a Dictionary of strings like this in all languages
+        print("Final row of text contains 'today at'. No app-level data present.")
 
-    value_format = misread_time_format if category == SCREENTIME else misread_number_format
+    else:
+        value_format = misread_time_format if category == SCREENTIME else misread_number_format
 
-    with (warnings.catch_warnings()):
-        warnings.simplefilter('ignore')
-        
-        # This section determines whether each row in the final app info df is an app name or a number/time
-        # and separates them.
-        regex_format = misread_time_format if category == SCREENTIME else misread_number_format
-        prev_row_type = ''
-        prev_row_top = -1
-        prev_app_height = -1
-        prev_row_bottom = -1
-        num_missed_app_values = 0
-        for i in df.index:
-            cleaned_text = re.sub(r'\W+', '', df['text'][i])
-            if re.match(value_format, cleaned_text, re.IGNORECASE):
-                row_text = cleaned_text
-            else:
-                row_text = df['text'][i]
-            row_conf = round(df['conf'][i], 4)
-            row_height = df['height'][i]
-            row_top = df['top'][i]
+        with ((warnings.catch_warnings())):
+            warnings.simplefilter('ignore')
 
-            if prev_app_height >= 0 and \
-                        row_top - prev_row_bottom > 4*np.mean([row_height, prev_app_height]):
-                print(f"Suspected missing app between '{prev_app_name}' and '{row_text}'. Adding a blank row.")
-                app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
-                app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
+            # This section determines whether each row in the final app info df is an app name or a number/time
+            # and separates them.
+            regex_format = misread_time_format if category == SCREENTIME else misread_number_format
+            prev_row_type = ''
+            prev_row_top = -1
+            prev_app_height = -1
+            prev_row_bottom = -1
+            num_missed_app_values = 0
+            for i in df.index:
+                cleaned_text = re.sub(r'\W+', '', df['text'][i])
+                if re.match(value_format, cleaned_text, re.IGNORECASE):
+                    row_text = cleaned_text
+                else:
+                    row_text = df['text'][i]
+                row_conf = round(df['conf'][i], 4)
+                row_height = df['height'][i]
+                row_top = df['top'][i]
 
-            if (len(str(row_text)) >= 3 or re.match(r'[xX]{1,2}', str(row_text))) and \
-                    not re.match(regex_format, str(row_text), re.IGNORECASE) and \
-                    row_height > 0.75 * df['height'].mean():  # if current row text is app name
-                if prev_row_type == 'name':  # two app names in a row
-                    if len(app_names) <= max_apps:
-                        num_missed_app_values += 1
-                    app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
-                new_name_row = pd.DataFrame({'name': [row_text], 'name_conf': [row_conf]})
-                app_names = pd.concat([app_names, new_name_row], ignore_index=True)
-                prev_row_type = 'name'
-                prev_app_name = row_text
-                prev_app_height = row_height
-            elif (category == SCREENTIME and re.search(misread_time_format, str(row_text), re.IGNORECASE) or  # used to be re.match -- revert if re.search causes issues
-                  category != SCREENTIME and re.search(misread_number_format, str(row_text), re.IGNORECASE)):  # used to be re.match -- revert if re.search causes issues
-                # if current row text is number
-                row_text, row_conf = filter_time_or_number_text(row_text, row_conf, f=regex_format)
-                if prev_row_type != 'name':  # two app numbers in a row, or first datum is a number
-                    if len(app_names) < max_apps:
-                        num_missed_app_values += 1
+                if prev_app_height >= 0 and row_top - prev_row_bottom > 4*np.mean([row_height, prev_app_height]):
+                    print(f"Suspected missing app between '{prev_app_name}' and '{row_text}'. Adding a blank row.")
                     app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
-                new_number_row = pd.DataFrame({'number': [row_text], 'number_conf': [row_conf]})
-                app_numbers = pd.concat([app_numbers, new_number_row], ignore_index=True)
-                prev_row_type = 'number'
-            else:  # row is neither a valid app name nor a number, so discard it
-                pass
-            prev_row_bottom = row_top + row_height
-            prev_row_top = df['top'][i]
-        # Making sure each list is the right length (fill any missing values with NO_TEXT/NO_NUMBER and NO_CONF)
-        while app_names.shape[0] < max_apps:
-            app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
-        while app_numbers.shape[0] < max_apps:
-            app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
+                    app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
 
-        if category == SCREENTIME and app_numbers['number'][0] == screenshot.daily_total and app_numbers['number'][
-            0] != NO_NUMBER:
-            print(f"Daily total {category} matches first app time: {app_numbers['number'][0]}")
-            print(f"Resetting daily total {category} to {NO_NUMBER}.")
-            screenshot.set_daily_total(NO_TEXT, NO_CONF)
-            screenshot.set_daily_total_minutes(NO_NUMBER)
+                if (len(str(row_text)) >= 3 or re.match(r'[xX]{1,2}', str(row_text))) and \
+                        not re.match(regex_format, str(row_text), re.IGNORECASE) and \
+                        row_height > 0.75 * df['height'].mean() and \
+                        str(row_text)[0].isalnum():  # if current row text is app name
+                    if prev_row_type == 'name':  # two app names in a row
+                        if len(app_names) <= max_apps:
+                            num_missed_app_values += 1
+                        app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
+                    new_name_row = pd.DataFrame({'name': [row_text], 'name_conf': [row_conf]})
+                    app_names = pd.concat([app_names, new_name_row], ignore_index=True)
+                    prev_row_type = 'name'
+                    prev_app_name = row_text
+                    prev_app_height = row_height
+                elif (category == SCREENTIME and re.search(misread_time_format, str(row_text), re.IGNORECASE) or  # used to be re.match -- revert if re.search causes issues
+                      category != SCREENTIME and re.search(misread_number_format, str(row_text), re.IGNORECASE) and
+                      len(str(row_text)) < 5):  # used to be re.match -- revert if re.search causes issues
+                    # if current row text is number
+                    # It is unrealistic for a single app to have more than 10000 notifications/pickups in one
+                    # day. However, sometimes the 'hours' row gets read as a number (e.g., 6 12 18), so such rows should
+                    # be ignored.
+                    row_text, row_conf = filter_time_or_number_text(row_text, row_conf, f=regex_format)
 
-    app_names, app_numbers = app_names.drop(app_names.index[0]), app_numbers.drop(app_names.index[0])
+                    if prev_row_type != 'name':  # two app numbers in a row, or first datum is a number
+                        if len(app_names) < max_apps:
+                            num_missed_app_values += 1
+                        app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
+                    new_number_row = pd.DataFrame({'number': [row_text], 'number_conf': [row_conf]})
+                    app_numbers = pd.concat([app_numbers, new_number_row], ignore_index=True)
+                    prev_row_type = 'number'
+                else:  # row is neither a valid app name nor a number, so discard it
+                    pass
+                prev_row_bottom = row_top + row_height
+                prev_row_top = df['top'][i]
+    # Making sure each list is the right length (fill any missing values with NO_TEXT/NO_NUMBER and NO_CONF)
+    while app_names.shape[0] < max_apps + 1:
+        app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
+    while app_numbers.shape[0] < max_apps + 1:
+        app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
+
+    if (category == SCREENTIME and app_numbers['number'][0] == screenshot.daily_total and
+            app_numbers['number'][0] != NO_NUMBER):
+        print(f"Daily total {category} matches first app time: {app_numbers['number'][0]}")
+        print(f"Resetting daily total {category} to {NO_NUMBER}.")
+        screenshot.set_daily_total(NO_TEXT, NO_CONF)
+        screenshot.set_daily_total_minutes(NO_NUMBER)
+
+    if app_names.shape[0] > max_apps:
+        app_names, app_numbers = app_names.drop(app_names.index[0]), app_numbers.drop(app_names.index[0])
+    else:
+        app_names.index = pd.Index([idx + 1 for idx in app_names.index])
+        app_numbers.index = pd.Index([idx + 1 for idx in app_numbers.index])
+
     top_n_app_names_and_numbers = pd.concat(
         [app_names.head(max_apps), app_numbers.head(max_apps)], axis=1)
 
