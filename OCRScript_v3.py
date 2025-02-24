@@ -819,6 +819,7 @@ if __name__ == '__main__':
     screenshots = []
     participants = []
     for index in url_list.index:
+        error_list = []
         if not (test_lower_bound <= index+1 <= test_upper_bound):
             # Only extract data from the images within the bounds specified in RuntimeValues.py
             continue
@@ -845,6 +846,19 @@ if __name__ == '__main__':
         # Download the image (if not using local images) or open the local image
         # Download the image (if not using local images) or open the local image
         grey_image, bw_image = load_and_process_image(current_screenshot, white_threshold=220)  # 226
+
+        # If screenshot cannot be downloaded, set data for its submitted category to N/A
+        if grey_image.size == 0:
+            category_submitted = url_list[IMG_RESPONSE_TYPE][index]
+            print(f"Error reading data from URL. Setting {category_submitted} values to N/A.")
+            current_screenshot.add_error("Error reading data")
+            current_screenshot.set_daily_total(NO_TEXT)
+            if current_screenshot.category_submitted == SCREENTIME:
+                current_screenshot.set_daily_total_minutes(NO_NUMBER)
+            current_screenshot.set_app_data(empty_app_data)
+            current_participant.add_screenshot(current_screenshot)
+            continue
+
         is_light_mode = True if np.mean(grey_image) > 170 else False
         current_screenshot.set_is_light_mode(is_light_mode)
         # Light-mode images have an average pixel brightness above 170 (scale 0 to 255).
@@ -920,7 +934,6 @@ if __name__ == '__main__':
         if current_screenshot.device_os == ANDROID:
             """
             
-            ANDROID  -  Execute the procedure for extracting data from an Android screenshot  
             ANDROID  -  Execute the procedure for extracting data from an Android screenshot  
             
             """

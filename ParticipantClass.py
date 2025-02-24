@@ -79,6 +79,9 @@ class Participant:
         if category in [PICKUPS, UNLOCKS]:
             category = PICKUPS
 
+        if "Error reading data" in ss.errors:
+            print("No data to add to participant's temporal data.")
+            return
         if ss.date_detected is None:
             print("Date not detected. Screenshot data will not be added to participant's temporal data.")
             return

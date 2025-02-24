@@ -51,6 +51,7 @@ class Screenshot:
         self.notifications_subheading_found = None
         self.rows_with_date = None
         self.data_row = initialize_data_row()
+        self.errors = None
 
 
     def __str__(self):
@@ -135,4 +136,10 @@ class Screenshot:
 
     def set_notifications_subheading_found(self, tf):
         self.notifications_subheading_found = tf
+
+    def add_error(self, error):
+        if self.errors is None:
+            self.errors = [error]
+        else:
+            self.errors.append(error)
 
