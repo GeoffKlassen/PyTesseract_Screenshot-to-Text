@@ -170,7 +170,7 @@ class Participant:
                 filtered_ex_values = existing_values_row[existing_values_row != NO_NUMBER]
                 if filtered_ex_values.empty:
                     pass
-                filtered_new_values = new_values[new_values != NO_NUMBER]
+                filtered_new_values = new_values[(new_values != NO_NUMBER) & new_values != NO_TEXT].astype(int)
 
                 min_existing_value = filtered_ex_values.min()
                 max_existing_value = filtered_ex_values.max()
