@@ -786,6 +786,30 @@ def get_dashboard_category(screenshot):
     return category, category_detected
 
 
+def update_eta(most_recent_times):
+    elapsed_time_in_seconds = time.time() - start_time
+    while len(most_recent_times) > 10:
+        del most_recent_times[0]
+    elapsed_time_min = int(elapsed_time_in_seconds / 60)
+    elapsed_time_s = int(elapsed_time_in_seconds % 60)
+    str_elapsed_s = f"{"0" if elapsed_time_s < 10 else ""}{elapsed_time_s}"
+    print(f"\n\nElapsed time:  {elapsed_time_min}:{str_elapsed_s}")
+    if len(most_recent_times) > 0:
+        if len(most_recent_times) > 5:
+            top_5_times = sorted(most_recent_times, reverse=True)[:5]
+            average_time_per_screenshot = sum(top_5_times) / len(top_5_times)
+        else:
+            average_time_per_screenshot = sum(most_recent_times) / len(most_recent_times)
+        estimated_time_remaining = average_time_per_screenshot * (min([test_upper_bound, num_urls]) - index - 1)
+        if estimated_time_remaining > 0:
+            eta_min = int(estimated_time_remaining / 60)
+            eta_s = int(estimated_time_remaining % 60)
+            str_eta_s = f"{"0" if eta_s < 10 else ""}{eta_s}"
+            eta_text = f"{eta_min}:{str_eta_s}"
+            print(f"Estimated time remaining: {eta_text}")
+    return
+
+
 if __name__ == '__main__':
     # Read in the list of URLs for the appropriate Study (as specified in RuntimeValues.py)
     url_list = pd.DataFrame()
@@ -816,16 +840,18 @@ if __name__ == '__main__':
 
     # Time the data extraction process
     start_time = time.time()
+    list_of_recent_times = []
     # Cycle through the images, creating a screenshot object for each one
     screenshots = []
     participants = []
     for index in url_list.index:
-        error_list = []
         if not (test_lower_bound <= index+1 <= test_upper_bound):
             # Only extract data from the images within the bounds specified in RuntimeValues.py
             continue
 
         print(f"\n\nFile {index + 1} of {num_urls}: {url_list[IMG_URL][index]}")
+
+        screenshot_time_start = time.time()
 
         # Load the participant for the current screenshot if they already exist, or create a new participant if not
         current_participant = get_or_create_participant(users=participants,
@@ -858,6 +884,7 @@ if __name__ == '__main__':
                 current_screenshot.set_daily_total_minutes(NO_NUMBER)
             current_screenshot.set_app_data(empty_app_data)
             current_participant.add_screenshot(current_screenshot)
+            update_eta(list_of_recent_times)  # Update the ETA without adding the current screenshot's time to the list
             continue
 
         is_light_mode = True if np.mean(grey_image) > 170 else False
@@ -899,11 +926,13 @@ if __name__ == '__main__':
 
         if text_df.shape[0] == 0:
             print(f"No text found.  Setting {current_screenshot.category_submitted} values to N/A.")
+            current_screenshot.add_error("No text found")
             current_screenshot.set_daily_total(NO_TEXT)
             if current_screenshot.category_submitted == SCREENTIME:
                 current_screenshot.set_daily_total_minutes(NO_NUMBER)
             current_screenshot.set_app_data(empty_app_data)
             current_participant.add_screenshot(current_screenshot)
+            update_eta(list_of_recent_times)  # Update the ETA without adding the current screenshot's time to the list
             continue
 
         # If there was text found, we can keep going
@@ -916,6 +945,8 @@ if __name__ == '__main__':
         current_screenshot.set_date_format(get_date_regex(image_language))
         if language_was_detected:
             current_participant.set_language(image_language)
+        else:
+            current_screenshot.add_error("Language not detected")
 
         # Determine the date in the screenshot
         date_in_screenshot, rows_with_date = get_date_in_screenshot(current_screenshot)
@@ -927,6 +958,8 @@ if __name__ == '__main__':
         if day_type is not None:
             current_screenshot.set_time_period(day_type)
             current_screenshot.set_rows_with_day_type(rows_with_day_type)
+        else:
+            current_screenshot.add_error("Day text not detected")
 
         """
             Here, the phone OS determines which branch of code we run to extract the daily total and app-level data.
@@ -943,11 +976,14 @@ if __name__ == '__main__':
 
             # Determine if the screenshot contains data mis-considered relevant by participant -- if so, skip it
             if Android.screenshot_contains_unrelated_data(current_screenshot):
+                current_screenshot.add_error("Unrelated data detected")
                 current_screenshot.set_daily_total(NO_TEXT if study_category == SCREENTIME else NO_NUMBER)
                 if study_category == SCREENTIME:
                     current_screenshot.set_daily_total_minutes(NO_NUMBER)
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
+                update_eta(list_of_recent_times)
+                # Update the ETA without adding the current screenshot's time to the list
                 continue
 
             if day_type is None and date_in_screenshot is not None:
@@ -976,13 +1012,18 @@ if __name__ == '__main__':
             if dashboard_category_detected:
                 current_screenshot.set_category_detected(dashboard_category)
             else:
+                current_screenshot.add_error("Category not detected")
                 dashboard_category = current_screenshot.category_submitted
 
             daily_total, daily_total_conf = Android.get_daily_total_and_confidence(screenshot=current_screenshot,
                                                                                    image=bw_image_scaled,
                                                                                    heading=dashboard_category)
             current_screenshot.set_daily_total(daily_total, daily_total_conf)
-            dt = "N/A" if daily_total_conf == NO_CONF else daily_total
+            if daily_total_conf == NO_CONF:
+                current_screenshot.add_error("Daily total not found")
+                dt = "N/A"
+            else:
+                dt = daily_total
 
             if dashboard_category == SCREENTIME:
                 daily_total_minutes = Android.convert_string_time_to_minutes(str_time=daily_total,
@@ -1013,6 +1054,9 @@ if __name__ == '__main__':
                     f"Skipping search for app-level data.")
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
+                screenshot_time = time.time() - screenshot_time_start
+                list_of_recent_times.append(screenshot_time)
+                update_eta(list_of_recent_times)
                 continue
 
             if dashboard_category == UNLOCKS and android_version in [SAMSUNG_2024, SAMSUNG_2021, VERSION_2018]:
@@ -1020,13 +1064,11 @@ if __name__ == '__main__':
                       f"Skipping search for app data.")
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
+                screenshot_time = time.time() - screenshot_time_start
+                list_of_recent_times.append(screenshot_time)
+                update_eta(list_of_recent_times)
                 continue
-            """
-            app_area_df, crop_coordinates = Android.crop_image_and_get_app_info(screenshot=current_screenshot,
-                                                                                image=bw_image,
-                                                                                heading_above_apps=heading_above_apps,
-                                                                                time_formats=time_formats)
-            """
+
             # Crop the image to the app-specific region
             cropped_image, crop_coordinates = (
                 Android.crop_image_to_app_area(image=bw_image,
@@ -1034,9 +1076,13 @@ if __name__ == '__main__':
                                                screenshot=current_screenshot,
                                                time_format_short=time_format_short))
             if all(crops is None for crops in crop_coordinates):
+                current_screenshot.add_error("App-level data not detected")
                 print(f"Setting all app-specific data to N/A.")
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
+                screenshot_time = time.time() - screenshot_time_start
+                list_of_recent_times.append(screenshot_time)
+                update_eta(list_of_recent_times)
                 continue
 
             cropped_image = cv2.GaussianBlur(cropped_image, ksize=(3, 3), sigmaX=0)
@@ -1088,6 +1134,8 @@ if __name__ == '__main__':
             dashboard_category, dashboard_category_detected = get_dashboard_category(current_screenshot)
             if dashboard_category_detected:
                 current_screenshot.set_category_detected(dashboard_category)
+            else:
+                current_screenshot.add_error("Category not detected")
 
             # for category in 'categories to search for' loop with 'category' as the 3rd input to function
             # if screentime is in the categories to search for ??
@@ -1095,7 +1143,12 @@ if __name__ == '__main__':
                                                                                bw_image_scaled,
                                                                                dashboard_category)
             current_screenshot.set_daily_total(daily_total, daily_total_conf)
-            dt = "N/A" if daily_total_conf == NO_CONF else daily_total
+            if daily_total_conf == NO_CONF:
+                dt = "N/A"
+                if dashboard_category != PICKUPS:
+                    current_screenshot.add_error("Daily total not found")
+            else:
+                dt = daily_total
 
             if dashboard_category == SCREENTIME:
                 # Get the daily total usage (if it's present in the screenshot)
@@ -1116,7 +1169,11 @@ if __name__ == '__main__':
                 daily_total, daily_total_conf = choose_between_two_values(daily_total, daily_total_conf,
                                                                           daily_total_2nd_loc, daily_total_2nd_loc_conf)
                 current_screenshot.set_daily_total(daily_total, daily_total_conf)
-                dt = "N/A" if daily_total_conf == NO_CONF else daily_total
+                if daily_total_conf == NO_CONF:
+                    current_screenshot.add_error("Daily total not found")
+                    dt = "N/A"
+                else:
+                    dt = daily_total
                 print(f"Daily total {dashboard_category}: {dt}")
 
                 heading_above_applist = FIRST_USED_AFTER_PICKUP_HEADING
@@ -1140,13 +1197,20 @@ if __name__ == '__main__':
                 print(f"Setting all app-specific data to N/A.")
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
+                screenshot_time = time.time() - screenshot_time_start
+                list_of_recent_times.append(screenshot_time)
+                update_eta(list_of_recent_times)
                 continue
             # Crop image to app region
             cropped_image, crop_coordinates = iOS.crop_image_to_app_area(current_screenshot, heading_above_applist, heading_below_applist)
             if all(crops is None for crops in crop_coordinates):
                 print(f"Suitable crop region not detected. Setting all app-specific data to N/A.")
+                current_screenshot.add_error("App-level data not detected")
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
+                screenshot_time = time.time() - screenshot_time_start
+                list_of_recent_times.append(screenshot_time)
+                update_eta(list_of_recent_times)
                 continue
 
             cropped_image = cv2.GaussianBlur(cropped_image, ksize=(3, 3), sigmaX=0)
@@ -1207,22 +1271,23 @@ if __name__ == '__main__':
 
         else:
             print("Operating System not detected.")
+            current_screenshot.add_error("OS not detected")
             current_screenshot.set_app_data(empty_app_data)
+            update_eta(list_of_recent_times)  # Update ETA without adding current screenshot's time to the list
             continue
 
-        elapsed_time_in_seconds = time.time() - start_time
-        elapsed_time_min = int(elapsed_time_in_seconds / 60)
-        elapsed_time_s = int(elapsed_time_in_seconds % 60)
-        str_elapsed_s = f"{"0" if elapsed_time_s < 10 else ""}{elapsed_time_s}"
-        print(f"\n\nElapsed time:  {elapsed_time_min}:{str_elapsed_s}")
-        average_time_per_screenshot = elapsed_time_in_seconds / (index - test_lower_bound + 2)
-        estimated_time_remaining = average_time_per_screenshot * (min([test_upper_bound, num_urls]) - index - 1)
-        if estimated_time_remaining > 0:
-            eta_min = int(estimated_time_remaining / 60)
-            eta_s = int(estimated_time_remaining % 60)
-            str_eta_s = f"{"0" if eta_s < 10 else ""}{eta_s}"
-            eta_text = f"{eta_min}:{str_eta_s}"
-            print(f"Estimated time remaining: {eta_text}")
+        # Count the number of top-3 apps/numbers/times whose confidence is below the confidence threshold
+        count_below_conf_limit = app_data[['name_conf', 'number_conf']].map(
+            lambda x: 0 < x < conf_limit).sum().sum() + (1 if daily_total_conf < conf_limit else 0)
+
+        if count_below_conf_limit > 0:
+            current_screenshot.add_error(f"Values below {conf_limit}% confidence", num=count_below_conf_limit)
+
+        screenshot_time = time.time() - screenshot_time_start
+        list_of_recent_times.append(screenshot_time)
+        update_eta(list_of_recent_times)
+
+        """ End of the for loop of all URLs """
 
     # Initialize a
     all_usage_dataframes = []
@@ -1248,6 +1313,12 @@ if __name__ == '__main__':
         for n in range(1, max_apps_per_category + 1):
             all_screenshots_df.loc[idx, f'app_{n}_name'] = s.app_data['name'][n]
             all_screenshots_df.loc[idx, f'app_{n}_number'] = s.app_data['number'][n]
+        all_screenshots_df.loc[idx, 'num_review_reasons'] = len(s.errors)
+        for col in s.data_row.columns:
+            if col == f"ERR Values below {int(conf_limit)}% confidence":
+                all_screenshots_df.loc[idx, col] = s.num_values_low_conf
+            elif col.startswith("ERR"):
+                all_screenshots_df.loc[idx, col] = True
 
     all_ios_screenshots_df = all_screenshots_df[all_screenshots_df['device_os'] == IOS]
     all_android_screenshots_df = all_screenshots_df[all_screenshots_df['device_os'] == ANDROID]

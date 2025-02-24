@@ -856,71 +856,74 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
     app_numbers = empty_number_row.copy()
     if df.empty:
         print("No text found in cropped image.")
+        screenshot.add_error("App-level data not detected")
     elif "today at" in df['text'].iloc[-1]:  # Need to start a Dictionary of strings like this in all languages
         print("Final row of text contains 'today at'. No app-level data present.")
+        screenshot.add_error("App-level data not detected")
 
     else:
         value_format = misread_time_format if category == SCREENTIME else misread_number_format
 
-        with ((warnings.catch_warnings())):
-            warnings.simplefilter('ignore')
+        # This section determines whether each row in the final app info df is an app name or a number/time
+        # and separates them.
+        regex_format = misread_time_format if category == SCREENTIME else misread_number_format
+        prev_row_type = ''
+        prev_app_name = ''
+        prev_app_height = -1
+        prev_row_bottom = -1
+        num_missed_app_values = 0
+        for i in df.index:
+            cleaned_text = re.sub(r'\W+', '', df['text'][i])
+            if re.match(value_format, cleaned_text, re.IGNORECASE):
+                row_text = cleaned_text
+            else:
+                row_text = df['text'][i]
+            row_conf = round(df['conf'][i], 4)
+            row_height = df['height'][i]
+            row_top = df['top'][i]
 
-            # This section determines whether each row in the final app info df is an app name or a number/time
-            # and separates them.
-            regex_format = misread_time_format if category == SCREENTIME else misread_number_format
-            prev_row_type = ''
-            prev_row_top = -1
-            prev_app_height = -1
-            prev_row_bottom = -1
-            num_missed_app_values = 0
-            for i in df.index:
-                cleaned_text = re.sub(r'\W+', '', df['text'][i])
-                if re.match(value_format, cleaned_text, re.IGNORECASE):
-                    row_text = cleaned_text
-                else:
-                    row_text = df['text'][i]
-                row_conf = round(df['conf'][i], 4)
-                row_height = df['height'][i]
-                row_top = df['top'][i]
+            if prev_app_height >= 0 and row_top - prev_row_bottom > 4*np.mean([row_height, prev_app_height]):
+                print(f"Suspected missing app between '{prev_app_name}' and '{row_text}'. Adding a blank row.")
+                app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
+                app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
+                screenshot.add_error("Suspected missing app(s)")
 
-                if prev_app_height >= 0 and row_top - prev_row_bottom > 4*np.mean([row_height, prev_app_height]):
-                    print(f"Suspected missing app between '{prev_app_name}' and '{row_text}'. Adding a blank row.")
-                    app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
+            if (len(str(row_text)) >= 3 or re.match(r'[xX]{1,2}', str(row_text))) and \
+                    not re.match(regex_format, str(row_text), re.IGNORECASE) and \
+                    row_height > 0.75 * df['height'].mean() and \
+                    str(row_text)[0].isalnum():  # if current row text is app name
+                if prev_row_type == 'name':  # two app names in a row
+                    if len(app_names) <= max_apps:
+                        num_missed_app_values += 1
                     app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
+                new_name_row = pd.DataFrame({'name': [row_text], 'name_conf': [row_conf]})
+                app_names = pd.concat([app_names, new_name_row], ignore_index=True)
+                prev_row_type = 'name'
+                prev_app_name = row_text
+                prev_app_height = row_height
+            elif (category == SCREENTIME and re.search(misread_time_format, str(row_text), re.IGNORECASE) or  # used to be re.match -- revert if re.search causes issues
+                  category != SCREENTIME and re.search(misread_number_format, str(row_text), re.IGNORECASE) and
+                  len(str(row_text)) < 5):  # used to be re.match -- revert if re.search causes issues
+                # if current row text is number
+                # It is unrealistic for a single app to have more than 10000 notifications/pickups in one
+                # day. However, sometimes the 'hours' row gets read as a number (e.g., 6 12 18), so such rows should
+                # be ignored.
+                row_text, row_conf = filter_time_or_number_text(row_text, row_conf, f=regex_format)
 
-                if (len(str(row_text)) >= 3 or re.match(r'[xX]{1,2}', str(row_text))) and \
-                        not re.match(regex_format, str(row_text), re.IGNORECASE) and \
-                        row_height > 0.75 * df['height'].mean() and \
-                        str(row_text)[0].isalnum():  # if current row text is app name
-                    if prev_row_type == 'name':  # two app names in a row
-                        if len(app_names) <= max_apps:
-                            num_missed_app_values += 1
-                        app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
-                    new_name_row = pd.DataFrame({'name': [row_text], 'name_conf': [row_conf]})
-                    app_names = pd.concat([app_names, new_name_row], ignore_index=True)
-                    prev_row_type = 'name'
-                    prev_app_name = row_text
-                    prev_app_height = row_height
-                elif (category == SCREENTIME and re.search(misread_time_format, str(row_text), re.IGNORECASE) or  # used to be re.match -- revert if re.search causes issues
-                      category != SCREENTIME and re.search(misread_number_format, str(row_text), re.IGNORECASE) and
-                      len(str(row_text)) < 5):  # used to be re.match -- revert if re.search causes issues
-                    # if current row text is number
-                    # It is unrealistic for a single app to have more than 10000 notifications/pickups in one
-                    # day. However, sometimes the 'hours' row gets read as a number (e.g., 6 12 18), so such rows should
-                    # be ignored.
-                    row_text, row_conf = filter_time_or_number_text(row_text, row_conf, f=regex_format)
+                if prev_row_type != 'name':  # two app numbers in a row, or first datum is a number
+                    if len(app_names) < max_apps:
+                        num_missed_app_values += 1
+                    app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
+                new_number_row = pd.DataFrame({'number': [row_text], 'number_conf': [row_conf]})
+                app_numbers = pd.concat([app_numbers, new_number_row], ignore_index=True)
+                prev_row_type = 'number'
+            else:  # row is neither a valid app name nor a number, so discard it
+                pass
+            prev_row_bottom = row_top + row_height
 
-                    if prev_row_type != 'name':  # two app numbers in a row, or first datum is a number
-                        if len(app_names) < max_apps:
-                            num_missed_app_values += 1
-                        app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
-                    new_number_row = pd.DataFrame({'number': [row_text], 'number_conf': [row_conf]})
-                    app_numbers = pd.concat([app_numbers, new_number_row], ignore_index=True)
-                    prev_row_type = 'number'
-                else:  # row is neither a valid app name nor a number, so discard it
-                    pass
-                prev_row_bottom = row_top + row_height
-                prev_row_top = df['top'][i]
+        if num_missed_app_values > 0:
+            screenshot.add_error(f"{num_missed_app_values} missed value{"s" if num_missed_app_values > 1 else ""}")
+
     # Making sure each list is the right length (fill any missing values with NO_TEXT/NO_NUMBER and NO_CONF)
     while app_names.shape[0] < max_apps + 1:
         app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
@@ -931,6 +934,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
             screenshot.daily_total != NO_TEXT:
         print(f"Daily total {category} ({screenshot.daily_total}) matches one of the app usage times.")
         print(f"Resetting daily total {category} to {NO_NUMBER}.")
+        screenshot.add_error("Daily total matched an app time")
         screenshot.set_daily_total(NO_TEXT, NO_CONF)
         screenshot.set_daily_total_minutes(NO_NUMBER)
 
