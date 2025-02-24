@@ -344,6 +344,7 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+')
 
     # ...or misreads ".AI" as ".Al"
     df_lines['text'] = df_lines['text'].replace({r'.Al': '.AI'}, regex=True)
+    df_lines['text'] = df_lines['text'].replace({r'openal.com': 'OpenAI.com'}, regex=True)
 
     return df_words, df_lines
 
@@ -788,8 +789,6 @@ def get_dashboard_category(screenshot):
 
 def update_eta(most_recent_times):
     elapsed_time_in_seconds = time.time() - start_time
-    while len(most_recent_times) > 10:
-        del most_recent_times[0]
     elapsed_time_min = int(elapsed_time_in_seconds / 60)
     elapsed_time_s = int(elapsed_time_in_seconds % 60)
     str_elapsed_s = f"{"0" if elapsed_time_s < 10 else ""}{elapsed_time_s}"
@@ -1020,8 +1019,7 @@ if __name__ == '__main__':
                                                                                    heading=dashboard_category)
             current_screenshot.set_daily_total(daily_total, daily_total_conf)
             if daily_total_conf == NO_CONF:
-                if not current_screenshot.total_heading_found:
-                    current_screenshot.add_error("Daily total not found")
+                current_screenshot.add_error("Daily total not found")
                 dt = "N/A"
             else:
                 dt = daily_total
@@ -1146,8 +1144,8 @@ if __name__ == '__main__':
             current_screenshot.set_daily_total(daily_total, daily_total_conf)
             if daily_total_conf == NO_CONF:
                 dt = "N/A"
-                if dashboard_category != PICKUPS:
-                    current_screenshot.add_error("Daily total not found")
+                if current_screenshot.total_heading_found and dashboard_category != PICKUPS:
+                    current_screenshot.add_error("Daily total missed")
             else:
                 dt = daily_total
 
@@ -1171,7 +1169,8 @@ if __name__ == '__main__':
                                                                           daily_total_2nd_loc, daily_total_2nd_loc_conf)
                 current_screenshot.set_daily_total(daily_total, daily_total_conf)
                 if daily_total_conf == NO_CONF:
-                    current_screenshot.add_error("Daily total not found")
+                    if current_screenshot.total_heading_found:
+                        current_screenshot.add_error("Daily total not found")
                     dt = "N/A"
                 else:
                     dt = daily_total

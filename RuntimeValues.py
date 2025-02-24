@@ -13,7 +13,7 @@ from LanguageDictionaries import *
 """
 
 
-study_to_analyze = studies[1]
+study_to_analyze = studies[0]
 # Use studies[0] for the HappyB2.0 study
 # Use studies[1] for the BCH study
 
@@ -41,7 +41,7 @@ else:
     categories_included = [SCREENTIME]
     max_apps_per_category = 8  # The
 
-dir_for_downloaded_images = f"Saved Images\\{study_to_analyze['Name']}"  # Where to store downloaded images (a sub-folder within the CWD)
+dir_for_downloaded_images = "Saved Images"  # Where to store downloaded images (a sub-folder within the CWD)
 use_downloaded_images = True  # If False, local copies of images are not used (all images are downloaded at runtime).
 save_downloaded_images = True  # If True, images downloaded at runtime are saved to a local folder for quicker access.
 
@@ -59,4 +59,4 @@ conf_limit = 80
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Users\gbk546\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'  # At U of S
 
 test_lower_bound = 1
-test_upper_bound = 20
+test_upper_bound = 452
