@@ -887,7 +887,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
                 print(f"Suspected missing app between '{prev_app_name}' and '{row_text}'. Adding a blank row.")
                 app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
                 app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
-                screenshot.add_error("Suspected missing app(s)")
+                if app_names.shape[0] <= max_apps:
+                    screenshot.add_error("Suspected missing app(s)")
 
             if (len(str(row_text)) >= 3 or re.match(r'[xX]{1,2}', str(row_text))) and \
                     not re.match(regex_format, str(row_text), re.IGNORECASE) and \

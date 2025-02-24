@@ -789,16 +789,14 @@ def get_dashboard_category(screenshot):
 
 def update_eta(most_recent_times):
     elapsed_time_in_seconds = time.time() - start_time
+    while len(most_recent_times) > 20:
+        del most_recent_times[0]
     elapsed_time_min = int(elapsed_time_in_seconds / 60)
     elapsed_time_s = int(elapsed_time_in_seconds % 60)
     str_elapsed_s = f"{"0" if elapsed_time_s < 10 else ""}{elapsed_time_s}"
     print(f"\n\nElapsed time:  {elapsed_time_min}:{str_elapsed_s}")
     if len(most_recent_times) > 0:
-        if len(most_recent_times) > 5:
-            top_5_times = sorted(most_recent_times, reverse=True)[:5]
-            average_time_per_screenshot = sum(top_5_times) / len(top_5_times)
-        else:
-            average_time_per_screenshot = sum(most_recent_times) / len(most_recent_times)
+        average_time_per_screenshot = sum(most_recent_times) / len(most_recent_times)
         estimated_time_remaining = average_time_per_screenshot * (min([test_upper_bound, num_urls]) - index - 1)
         if estimated_time_remaining > 0:
             eta_min = int(estimated_time_remaining / 60)
