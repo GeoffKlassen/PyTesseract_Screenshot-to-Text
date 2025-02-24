@@ -437,7 +437,7 @@ def get_date_in_screenshot(screenshot):
     :param screenshot: The screenshot to search for a date.
     :return: The date-format value of the date found in the screenshot text (if any), otherwise 'None'.
     """
-
+    empty_df = pd.DataFrame
     df = screenshot.text
     lang = get_best_language(screenshot)
     # Different languages display dates in different formats. Create the correct regex pattern for the date.
@@ -452,7 +452,7 @@ def get_date_in_screenshot(screenshot):
             date_row_text = dates_df['text'].iloc[0]
             if bool(re.search(week_pattern, date_row_text)):
                 print("Screenshot contains week info.")
-                return None
+                return None, empty_df
 
         # Extract the date, month, and day from that row of text, as strings
         date_detected = re.search(date_pattern, date_row_text, flags=re.IGNORECASE).group()
@@ -486,7 +486,7 @@ def get_date_in_screenshot(screenshot):
     except:
         print("No date text detected.")
 
-    return None, None
+    return None, empty_df
 
 
 def get_day_type_in_screenshot(screenshot):

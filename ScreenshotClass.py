@@ -42,11 +42,11 @@ class Screenshot:
         self.grey_image = None
         self.date_detected = None
         self.category_detected = None
-        self.text = None
-        self.words_df = None
+        self.text = pd.DataFrame
+        self.words_df = pd.DataFrame
         self.time_period = None
-        self.rows_with_day_type = None
-        self.headings_df = None
+        self.rows_with_day_type = pd.DataFrame
+        self.headings_df = pd.DataFrame
         self.daily_total = None
         self.daily_total_conf = None
         self.daily_total_minutes = None
@@ -55,7 +55,7 @@ class Screenshot:
         self.screentime_subheading_found = None
         self.pickups_subheading_found = None
         self.notifications_subheading_found = None
-        self.rows_with_date = None
+        self.rows_with_date = pd.DataFrame
         self.data_row = initialize_data_row()
         self.errors = []
         self.num_values_low_conf = 0

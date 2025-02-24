@@ -92,7 +92,7 @@ def get_headings(screenshot):
     for i in df.index:
         row_text = df['text'][i]
         error_margin = round(np.log(len(str(row_text))))
-        if day_type_rows is not None and i in day_type_rows.index:
+        if not day_type_rows.empty and i in day_type_rows.index:
             df.loc[i, HEADING_COLUMN] = DAY_OR_WEEK_HEADING
         elif re.match(screenshot.date_format, row_text, re.IGNORECASE):
             df.loc[i, HEADING_COLUMN] = DATE_HEADING
@@ -284,7 +284,7 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
             else:
                 row_above_total = heading_row.iloc[-1]
                 using_heading_row = True
-        elif rows_with_day_type is not None:
+        elif not rows_with_day_type.empty:
             if rows_with_day_type.shape[0] == 1:
                 row_above_total = rows_with_day_type.iloc[0]
                 only_one_day_row = True
