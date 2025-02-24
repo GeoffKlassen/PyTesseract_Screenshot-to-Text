@@ -100,7 +100,9 @@ class Participant:
             self.usage_data.loc[date_index] = EMPTY_CELL
 
         if self.usage_data[f'total_{category}'][date_index] == EMPTY_CELL:
-            print(f"Adding data from current screenshot to participant {self.user_id}'s temporal data.")
+            print(f"Data from current screenshot added to participant: {self.user_id}    "
+                  f"date: {ss.date_detected}    "
+                  f"category: '{category}'")
             self.usage_data.loc[date_index, 'participant_id'] = self.user_id
             self.usage_data.loc[date_index, 'language'] = self.language
             self.usage_data.loc[date_index, 'date'] = ss.date_detected
