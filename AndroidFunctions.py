@@ -57,7 +57,7 @@ KEYWORD_FOR_MIN = {ITA: 'min',
 # Short format for time words
 
 H = 'h'
-MIN = 'mi?n?\\b'
+MIN = 'mi?n?'
 
 KEYWORDS_FOR_2018_SCREENTIME = {ITA: ['DURATA SCHERMO', 'DURATA SCHERMO Altro'],
                                 ENG: ['TODO FILL THIS IN'],
@@ -217,6 +217,8 @@ def get_headings(screenshot, time_fmt_short):
         centre_of_row = int(df['left'][i] + 0.5 * df['width'][i])
         moe = round(np.log(len(str(row_text))))
         # margin of error (number of characters two strings can differ by and still be considered the same text)
+        print("time format short is")
+        print(time_fmt_short)
 
         if min(OCRScript_v3.levenshtein_distance(row_text, day) for day in day_types) <= moe:
             # Row contains a day name
@@ -257,7 +259,6 @@ def get_headings(screenshot, time_fmt_short):
             df.loc[i, HEADING_COLUMN] = OLD_MOST_USED_HEADING
         elif OCRScript_v3.levenshtein_distance(row_text, KEYWORDS_FOR_2018_UNLOCKS[lang]) <= moe:
             df.loc[i, HEADING_COLUMN] = OLD_UNLOCKS_HEADING
-
         elif bool(re.match(time_fmt_short, row_text)) and df['left'][i] < 0.15 * screenshot.width or \
                 min(OCRScript_v3.levenshtein_distance(row_text_filtered, key.replace(' ', ''))
                     for key in GOOGLE_SCREENTIME_FORMATS[lang]) <= moe and \

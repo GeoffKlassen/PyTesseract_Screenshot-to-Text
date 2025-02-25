@@ -335,7 +335,7 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
                         df.loc[i]['left'] + df.loc[i]['width'] > (0.8 * screenshot.width):
                     continue
                 row_text = df.loc[i]['text']
-                row_conf = round(df.loc[i]['conf'], 4)  # 4 decimal points of precision for the confidence value
+                row_conf = round(df.loc[i, 'conf'], 4)  # 4 decimal points of precision for the confidence value
 
                 if len(re.findall(value_pattern, row_text)) == 1:
                     daily_total_1st_scan, daily_total_1st_scan_conf = filter_time_or_number_text(row_text, row_conf, value_pattern)
