@@ -557,7 +557,7 @@ def crop_image_to_app_area(screenshot, heading_above, heading_below):
 
     crop_top = 0
     crop_bottom = screenshot.height
-    crop_left = round(0.15 * screenshot.width)  # The app icons are typically within the leftmost 15% of the screenshot
+    crop_left = round(0.14 * screenshot.width)  # The app icons are typically within the leftmost 15% of the screenshot
     crop_right = round(
         0.87 * screenshot.width)  # Symbols (arrows, hourglass) typically appear in the rightmost 87% of the screenshot
 
@@ -886,6 +886,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
             row_height = df['height'][i]
             row_top = df['top'][i]
 
+            row_text = re.sub(r'^[xX]{1,2}$', "X", row_text)  # X (Twitter) may show up here as xX
+
             if prev_app_height >= 0 and row_top - prev_row_bottom > 4*np.mean([row_height, prev_app_height]):
                 print(f"Suspected missing app between '{prev_app_name}' and '{row_text}'. Adding a blank row.")
                 app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
@@ -929,6 +931,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
 
         if num_missed_app_values > 0:
             screenshot.add_error(f"Missed values", num_missed_app_values)
+
+    app_names.loc[app_names['name'] == 'Lite', 'name'] = 'Facebook Lite'  # The app "Facebook Lite" appears as 'Lite'
 
     # Making sure each list is the right length (fill any missing values with NO_TEXT/NO_NUMBER and NO_CONF)
     while app_names.shape[0] < max_apps + 1:

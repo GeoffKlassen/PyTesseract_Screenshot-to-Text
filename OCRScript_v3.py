@@ -899,12 +899,19 @@ if __name__ == '__main__':
         # pytesseract does a better job of extracting text from images if the text isn't too big.
         if grey_image.shape[1] >= 2500:
             screenshot_scale_factor = 1 / 3
+            ksize = (5, 5)
         elif grey_image.shape[1] >= 2000:
             screenshot_scale_factor = 1 / 2
+            ksize = (3, 3)
         elif grey_image.shape[1] >= 1500:
             screenshot_scale_factor = 2 / 3
+            ksize = (3, 3)
+        elif grey_image.shape[1] >= 1000:
+            screenshot_scale_factor = 1
+            ksize = (1, 1)
         else:
             screenshot_scale_factor = 1
+            ksize = (1, 1)
 
         grey_image_scaled = cv2.resize(grey_image,
                                        dsize=None,
@@ -916,8 +923,8 @@ if __name__ == '__main__':
                                      fx=screenshot_scale_factor,
                                      fy=screenshot_scale_factor,
                                      interpolation=cv2.INTER_AREA)
-        if screenshot_scale_factor == 1:
-            bw_image_scaled = cv2.GaussianBlur(bw_image_scaled, ksize=(3, 3), sigmaX=0)
+        if screenshot_scale_factor == 1 and ksize is not None:
+            bw_image_scaled = cv2.GaussianBlur(bw_image_scaled, ksize=ksize, sigmaX=0)
 
         current_screenshot.set_scale_factor(screenshot_scale_factor)
         current_screenshot.set_image(grey_image_scaled)

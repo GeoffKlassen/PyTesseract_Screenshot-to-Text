@@ -752,8 +752,8 @@ def consolidate_overlapping_text(df, time_format_eol):
         current_num_digits = len(re.findall(r'\d', df['text'][i]))
         prev_num_digits = len(re.findall(r'\d', df['text'][i - 1]))
 
-        if calculate_overlap(current_textbox, prev_textbox) > 0.3:
-            # If two text boxes overlap by at least 30%, consider them to be two readings of the same text.
+        if calculate_overlap(current_textbox, prev_textbox) > 0.5:  # TODO Used to be 0.3; revert if it causes issues.
+            # If two text boxes overlap by at least 50%, consider them to be two readings of the same text.
             if (re.search(time_format_eol, df.loc[i, 'text']) and
                     not re.search(time_format_eol, df.loc[i - 1, 'text'])):
                 rows_to_drop.append(i - 1)
@@ -899,6 +899,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
         for row_text, row_conf, row_left in zip(df['text'],
                                                 df['conf'],
                                                 df['left']):
+            row_text = re.sub(r'^[xX]{1,2}$', "X", row_text)  # X (Twitter) may show up here as xX
             if min(OCRScript_v3.levenshtein_distance(row_text, key) for key in
                    KEYWORDS_FOR_SHOW_SITES_YOU_VISIT[img_lang]) < moe_show_sites:
                 # A button saying 'Show sites that you visit' appears below the Google Chrome web browser, which is not
@@ -915,6 +916,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                                                            df['conf'],
                                                            df['left'],
                                                            df['width']):
+            row_text = re.sub(r'^[xX]{1,2}$', "X", row_text)  # X (Twitter) may show up here as xX
             if min(OCRScript_v3.levenshtein_distance(row_text, key) for key in
                    KEYWORDS_FOR_SHOW_SITES_YOU_VISIT[img_lang]) < moe_show_sites:
                 # A button saying 'Show sites that you visit' appears below the Google Chrome web browser, which is not
@@ -942,6 +944,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
             # Only the Google Dashboard has app-level unlocks info;
             # other Dashboard formats only show total unlocks.
             for row_text, row_conf in zip(df['text'], df['conf']):
+                row_text = re.sub(r'^[xX]{1,2}$', "X", row_text)  # X (Twitter) may show up here as xX
                 if min(OCRScript_v3.levenshtein_distance(row_text, key) for key in
                        KEYWORDS_FOR_SHOW_SITES_YOU_VISIT[img_lang]) < moe_show_sites:
                     # A button saying 'Show sites that you visit' appears below the Google Chrome web browser, which is
@@ -988,6 +991,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
         app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
 
     app_names, app_numbers = app_names.drop(app_names.index[0]), app_numbers.drop(app_numbers.index[0])
+    app_names.loc[app_names['name'] == 'Lite', 'name'] = 'Facebook Lite'  # The app "Facebook Lite" appears as 'Lite'
+
     # Having initialized app_names and app_numbers with an empty row (at index 0), the indexes of the app rows
     # line up with the app ordinals. (The 1st app in the screenshot is at index 1, etc.)
     # This makes it easier to compare a row of existing data to a row of new data (when the current screenshot is for
