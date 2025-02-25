@@ -933,6 +933,8 @@ if __name__ == '__main__':
             continue
 
         # If there was text found, we can keep going
+        print("Text found in initial scan:")
+        print(text_df)
         current_screenshot.set_text(text_df)
         current_screenshot.set_words_df(text_df_single_words)
 

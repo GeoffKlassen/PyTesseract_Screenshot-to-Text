@@ -210,6 +210,7 @@ def get_headings(screenshot, time_fmt_short):
     for i in df.index:
         row_text = df['text'][i]
 
+        row_text = re.sub(r'(?<=\d)n', 'h', row_text) # Occasionally 'h' gets read as 'n'
         # Replace numbers with '#' symbol for matching with total screentime/notifications/unlocks formats
         row_text_filtered = re.sub(r'\d+', '#', row_text).replace(' ', '')
 
@@ -217,8 +218,6 @@ def get_headings(screenshot, time_fmt_short):
         centre_of_row = int(df['left'][i] + 0.5 * df['width'][i])
         moe = round(np.log(len(str(row_text))))
         # margin of error (number of characters two strings can differ by and still be considered the same text)
-        print("time format short is")
-        print(time_fmt_short)
 
         if min(OCRScript_v3.levenshtein_distance(row_text, day) for day in day_types) <= moe:
             # Row contains a day name

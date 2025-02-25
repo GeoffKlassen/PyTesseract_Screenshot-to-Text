@@ -58,5 +58,5 @@ conf_limit = 80
 # Location of PyTesseract on local drive
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Users\gbk546\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'  # At U of S
 
-test_lower_bound = 503
+test_lower_bound = 167
 test_upper_bound = 553  # 553 for HappyB2.0
