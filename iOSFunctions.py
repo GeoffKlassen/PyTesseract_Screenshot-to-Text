@@ -932,7 +932,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
         if num_missed_app_values > 0:
             screenshot.add_error(f"Missed values", num_missed_app_values)
 
-    app_names.loc[app_names['name'] == 'Lite', 'name'] = 'Facebook Lite'  # The app "Facebook Lite" appears as 'Lite'
+    # app_names.loc[app_names['name'] == 'Lite', 'name'] = 'Facebook Lite'  # The app "Facebook Lite" appears as 'Lite'
+    app_names['name'] = app_names['name'].apply(lambda x: re.sub(r'\bAl\b', 'AI', x))  # Replace 'Al' with 'AI'
 
     # Making sure each list is the right length (fill any missing values with NO_TEXT/NO_NUMBER and NO_CONF)
     while app_names.shape[0] < max_apps + 1:

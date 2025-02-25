@@ -5,6 +5,7 @@ import ParticipantClass
 import ScreenshotClass
 import iOSFunctions as iOS
 from RuntimeValues import *
+from RuntimeValues import app_area_scale_factor
 from ScreenshotClass import Screenshot
 from ParticipantClass import Participant
 from ConvenienceVariables import *
@@ -267,6 +268,8 @@ def merge_df_rows_by_height(df):
                 df.at[i, 'conf'] = (df.loc[i]['conf'] + df.loc[i - 1]['conf']) / 2
                 rows_to_drop.append(i - 1)
 
+    if 'level' in df.columns:
+        df.drop(columns=['level'], inplace=True)
     if 'level_0' in df.columns:
         df.drop(columns=['level_0'], inplace=True)
     consolidated_df = df.drop(index=rows_to_drop).reset_index()
@@ -706,7 +709,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
                     Merge these app numbers from the initial scan into the rescan."""
     # Select only numbers from the initial scan that have high confidence (above conf_limit)
     # and that lie in the 'app info' cropped region
-    truncated_text_df = text[text['conf'] > 0.5]
+    truncated_text_df = text[(text['conf'] > 0.5) | (text['text'].str.fullmatch(r'[xX]{1,2}'))]
     truncated_text_df.loc[truncated_text_df.index, 'left'] = truncated_text_df['left'] - crop_left
     truncated_text_df.loc[truncated_text_df.index, 'top'] = truncated_text_df['top'] - crop_top
     truncated_text_df = truncated_text_df[(truncated_text_df['left'] > 0) &
@@ -717,9 +720,9 @@ def extract_app_info(screenshot, image, coordinates, scale):
                                               'height'] < crop_bottom - crop_top)]
     # truncated_text_df = OCRScript_v3.merge_df_rows_by_line_num(truncated_text_df)
     # Keep only the rows that contain only digits (a.k.a. notification counts or pickup counts)
-    truncated_text_df = truncated_text_df[truncated_text_df['text'].str.isdigit()]
+    truncated_text_df = truncated_text_df[(truncated_text_df['text'].str.isdigit()) | (truncated_text_df['text'].str.fullmatch(r'[xX]{1,2}'))]
 
-    print(f"\nApp numbers from initial scan, where conf > 0.5:")
+    print(f"\nApp numbers from initial scan, where conf > 0.5, plus any instances of X (Twitter):")
     print(truncated_text_df[['left', 'top', 'width', 'height', 'conf', 'text']])
 
     cols_to_scale = ['left', 'top', 'width', 'height']
@@ -910,8 +913,8 @@ if __name__ == '__main__':
             screenshot_scale_factor = 1
             ksize = (1, 1)
         else:
-            screenshot_scale_factor = 1
-            ksize = (1, 1)
+            screenshot_scale_factor = 2
+            ksize = (3, 3)
 
         grey_image_scaled = cv2.resize(grey_image,
                                        dsize=None,
@@ -1085,7 +1088,7 @@ if __name__ == '__main__':
 
             # Crop the image to the app-specific region
             cropped_image, crop_coordinates = (
-                Android.crop_image_to_app_area(image=bw_image,
+                Android.crop_image_to_app_area(image=bw_image_scaled,
                                                heading_above_apps=heading_above_apps,
                                                screenshot=current_screenshot,
                                                time_format_short=time_format_short))
@@ -1099,6 +1102,10 @@ if __name__ == '__main__':
                 update_eta(list_of_recent_times)
                 continue
 
+            (app_area_crop_top, app_area_crop_left,
+             app_area_crop_bottom, app_area_crop_right) = (crop_coordinates[0], crop_coordinates[1],
+                                                           crop_coordinates[2], crop_coordinates[3])
+
             cropped_image = cv2.GaussianBlur(cropped_image, ksize=(3, 3), sigmaX=0)
             scaled_cropped_image = cv2.resize(cropped_image,
                                               dsize=None,
@@ -1108,6 +1115,13 @@ if __name__ == '__main__':
 
             # Extract app info from cropped image
             app_area_df = extract_app_info(current_screenshot, scaled_cropped_image, crop_coordinates, app_area_scale_factor)
+
+            # twitter_in_initial_scan_df = text_df[text_df['text'].str.fullmatch(r'[xX]{1,2}')]
+            # twitter_in_initial_scan_df['left'] = ((twitter_in_initial_scan_df['left'] - app_area_crop_left) * app_area_scale_factor).astype(int)
+            # twitter_in_initial_scan_df['top'] = ((twitter_in_initial_scan_df['top'] - app_area_crop_top) * app_area_scale_factor).astype(int)
+            # twitter_in_initial_scan_df = twitter_in_initial_scan_df[(twitter_in_initial_scan_df['left'] > 0 &
+            #                                                          twitter_in_initial_scan_df['top'] > 0)]
+            # app_area_df = merge_df_rows_by_height(pd.concat([app_area_df, twitter_in_initial_scan_df]))
             if show_images:
                 show_image(app_area_df, scaled_cropped_image)
 
@@ -1228,6 +1242,10 @@ if __name__ == '__main__':
                 update_eta(list_of_recent_times)
                 continue
 
+            (app_area_crop_top, app_area_crop_left,
+             app_area_crop_bottom, app_area_crop_right) = (crop_coordinates[0], crop_coordinates[1],
+                                                           crop_coordinates[2], crop_coordinates[3])
+
             cropped_image = cv2.GaussianBlur(cropped_image, ksize=(3, 3), sigmaX=0)
 
             # Perform pre-scan to remove value bars below app names and fragments of app icons left of app names
@@ -1237,6 +1255,15 @@ if __name__ == '__main__':
             cropped_prescan_df['text'] = cropped_prescan_df['text'].astype(str)
             cropped_prescan_words = cropped_prescan_words[cropped_prescan_words['text'].str.fullmatch(r'[a-zA-Z0-9]+', na=False)]
             cropped_prescan_words = cropped_prescan_words.reset_index(drop=True)
+
+            # twitter_in_initial_scan_df = text_df[text_df['text'].str.fullmatch(r'[xX]{1,2}')]
+            # twitter_in_initial_scan_df['left'] = twitter_in_initial_scan_df['left'] - app_area_crop_left
+            # twitter_in_initial_scan_df['top'] = twitter_in_initial_scan_df['top'] - app_area_crop_top
+            # twitter_in_initial_scan_df = twitter_in_initial_scan_df[(twitter_in_initial_scan_df['left'] > 0) &
+            #                                                         (twitter_in_initial_scan_df['top'] > 0)]
+            # cropped_prescan_words = iOS.consolidate_overlapping_text(pd.concat([cropped_prescan_words, twitter_in_initial_scan_df]))
+            # cropped_prescan_df = iOS.consolidate_overlapping_text(pd.concat([cropped_prescan_df, twitter_in_initial_scan_df]))
+
             cropped_image_no_bars = iOS.erase_value_bars_and_icons(screenshot=current_screenshot,
                                                                    df=cropped_prescan_words,
                                                                    image=cropped_image)
@@ -1254,7 +1281,8 @@ if __name__ == '__main__':
             confident_text_from_prescan = \
                 cropped_prescan_df[(cropped_prescan_df['right'] > 0.05 * scaled_cropped_image.shape[1]) &
                                    ((cropped_prescan_df['conf'] > 80) |
-                                    (cropped_prescan_df['text'].str.fullmatch(value_format) & cropped_prescan_df['conf'] > 50))]
+                                    (cropped_prescan_df['text'].str.fullmatch(value_format) & cropped_prescan_df['conf'] > 50)) |
+                                   (cropped_prescan_df['text'].str.fullmatch(r'[xX]{1,2}'))]
             columns_to_scale = ['left', 'top', 'width', 'height']
             confident_text_from_prescan.loc[:, columns_to_scale] = \
                 confident_text_from_prescan.loc[:, columns_to_scale].apply(lambda x: x * app_area_scale_factor).astype(int)

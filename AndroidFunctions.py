@@ -8,7 +8,7 @@ import re
 import pandas as pd
 
 import OCRScript_v3
-from OCRScript_v3 import get_best_language
+from OCRScript_v3 import get_best_language, levenshtein_distance
 from RuntimeValues import *
 
 """
@@ -46,18 +46,18 @@ KEYWORDS_FOR_MINUTES = {ITA: ['minuti', 'minuto'],
                         FRA: ['minutes', 'minute']}
 # Long format for time words
 
-KEYWORD_FOR_HR = {ITA: 'h e',
-                  ENG: 'hr',
-                  GER: 'Std',
-                  FRA: 'h et'}
-KEYWORD_FOR_MIN = {ITA: 'min',
-                   ENG: 'min',
-                   GER: 'Min',
-                   FRA: 'min'}
+KEYWORDS_FOR_HR = {ITA: ['h e'],
+                   ENG: ['hrs', 'hr'],
+                   GER: ['Std'],
+                   FRA: ['h et']}
+KEYWORDS_FOR_MIN = {ITA: ['min'],
+                    ENG: ['mins', 'min'],
+                    GER: ['Min'],
+                    FRA: ['min']}
 # Short format for time words
 
-H = 'h'
-MIN = 'mi?n?'
+H = 'hr?'
+MIN = 'mi?n?s?'
 
 KEYWORDS_FOR_2018_SCREENTIME = {ITA: ['DURATA SCHERMO', 'DURATA SCHERMO Altro'],
                                 ENG: ['TODO FILL THIS IN'],
@@ -100,7 +100,7 @@ KEYWORDS_FOR_VIEW_MORE = {ITA: ['Visualizza altro'],
                           FRA: ['Afficher plus']}
 
 GOOGLE_SCREENTIME_FORMATS = {ITA: ['# ora', '# h e # min', '# minuti', '1 minuto', 'Meno di 1 minuto'],
-                             ENG: ['# hours', '# hr # min', '# minutes', '1 minute', 'Less than 1 minute'],
+                             ENG: ['# hours', '# hrs # mins', '# hr # mins', '# hrs # min', '# hr # min', '# minutes', '1 minute', 'Less than 1 minute'],
                              GER: ['# Stunde', '# Std # Min', '# Minuten', '1 Minute', 'Weniger als 1 Minute'],
                              FRA: ['# heures', '# h et # min', '# minutes', '1 minute', 'Moins de 1 minute']}
 GOOGLE_NOTIFICATIONS_FORMATS = {ITA: ['# notifiche'],
@@ -175,8 +175,8 @@ def get_time_formats_in_lang(lang):
     """
     short_format = re.sub('HHH|hhh', H, re.sub('MMM|mmm', MIN, '|'.join(TIME_FORMATS)))
 
-    long_format = re.sub('hhh', KEYWORD_FOR_HR[lang], '|'.join(TIME_FORMATS))
-    long_format = re.sub('mmm', KEYWORD_FOR_MIN[lang], long_format)
+    long_format = re.sub('hhh', "(" + '|'.join(KEYWORDS_FOR_HR[lang]) + ")", '|'.join(TIME_FORMATS))
+    long_format = re.sub('mmm', "(" + '|'.join(KEYWORDS_FOR_MIN[lang]) + ")", long_format)
     long_format = re.sub('HHH', "(" + '|'.join(KEYWORDS_FOR_HOURS[lang]) + ")", long_format)
     long_format = re.sub('MMM', "(" + '|'.join(KEYWORDS_FOR_MINUTES[lang]) + ")", long_format)
     long_format = long_format.replace(" ", r"\s?")
@@ -213,7 +213,7 @@ def get_headings(screenshot, time_fmt_short):
         row_text = re.sub(r'(?<=\d)n', 'h', row_text) # Occasionally 'h' gets read as 'n'
         # Replace numbers with '#' symbol for matching with total screentime/notifications/unlocks formats
         row_text_filtered = re.sub(r'\d+', '#', row_text).replace(' ', '')
-
+        # debug
         row_text_contains_digits = bool(re.search(r'\d+', row_text))
         centre_of_row = int(df['left'][i] + 0.5 * df['width'][i])
         moe = round(np.log(len(str(row_text))))
@@ -258,11 +258,11 @@ def get_headings(screenshot, time_fmt_short):
             df.loc[i, HEADING_COLUMN] = OLD_MOST_USED_HEADING
         elif OCRScript_v3.levenshtein_distance(row_text, KEYWORDS_FOR_2018_UNLOCKS[lang]) <= moe:
             df.loc[i, HEADING_COLUMN] = OLD_UNLOCKS_HEADING
-        elif bool(re.match(time_fmt_short, row_text)) and df['left'][i] < 0.15 * screenshot.width or \
-                min(OCRScript_v3.levenshtein_distance(row_text_filtered, key.replace(' ', ''))
-                    for key in GOOGLE_SCREENTIME_FORMATS[lang]) <= moe and \
-                abs(centre_of_row - (0.5 * screenshot.width)) < (0.1 * screenshot.width) and \
-                not df[HEADING_COLUMN].str.contains(TOTAL_SCREENTIME).any():
+        elif (bool(re.match(time_fmt_short, row_text)) and df['left'][i] < 0.15 * screenshot.width or
+                (min(OCRScript_v3.levenshtein_distance(row_text_filtered, key.replace(' ', ''))
+                     for key in GOOGLE_SCREENTIME_FORMATS[lang]) <= moe and
+                 abs(centre_of_row - (0.5 * screenshot.width)) < (0.1 * screenshot.width))) and \
+                 not df[HEADING_COLUMN].str.contains(TOTAL_SCREENTIME).any():
             # Row text starts with a short-format time length (e.g. 1h5m) and is left-aligned (Samsung style), or
             # Row text matches a long-format time length (e.g. 1 hr 5 min) and is centred (Google style)
             df.loc[i, HEADING_COLUMN] = TOTAL_SCREENTIME
@@ -281,7 +281,7 @@ def get_headings(screenshot, time_fmt_short):
             # Row text matches a 'total unlocks' format and is either left-aligned (Samsung) or centred (Google)
             df.loc[i, HEADING_COLUMN] = TOTAL_UNLOCKS
 
-        elif (min(OCRScript_v3.levenshtein_distance(row_text_filtered, key) for key in KEYWORDS_FOR_REST_OF_THE_DAY[lang])) < moe:
+        elif (min(OCRScript_v3.levenshtein_distance(row_text[-len(key):], key) for key in KEYWORDS_FOR_REST_OF_THE_DAY[lang])) < moe:
             df.loc[i, HEADING_COLUMN] = REST_OF_THE_DAY
         else:
             df = df.drop(i)
@@ -571,9 +571,9 @@ def get_daily_total_and_confidence(screenshot, image, heading):
             total_value_filtered = filter_number_text(total_value_filtered)
     else:
         if android_version == GOOGLE:
-            hours_format = '|'.join([('|'.join(KEYWORDS_FOR_HOURS[img_lang])), KEYWORD_FOR_HR[img_lang]]).replace(" ",
+            hours_format = '|'.join([('|'.join(KEYWORDS_FOR_HOURS[img_lang])), '|'.join(KEYWORDS_FOR_HR[img_lang])]).replace(" ",
                                                                                                                   r"\s?")
-            minutes_format = '|'.join([('|'.join(KEYWORDS_FOR_MINUTES[img_lang])), KEYWORD_FOR_MIN[img_lang]])
+            minutes_format = '|'.join([('|'.join(KEYWORDS_FOR_MINUTES[img_lang])), '|'.join(KEYWORDS_FOR_MIN[img_lang])])
         else:
             hours_format = H
             minutes_format = MIN
@@ -617,8 +617,12 @@ def convert_string_time_to_minutes(str_time, screenshot):
         return time_int, leftover_str
 
     if android_version == GOOGLE:
-        hours_format = '|'.join([('|'.join(KEYWORDS_FOR_HOURS[lang])), KEYWORD_FOR_HR[lang]]).replace(" ", r"\s?")
-        minutes_format = '|'.join([('|'.join(KEYWORDS_FOR_MINUTES[lang])), KEYWORD_FOR_MIN[lang]])
+        # hours_format = '|'.join([('|'.join(KEYWORDS_FOR_HOURS[lang])), KEYWORD_FOR_HR[lang]]).replace(" ", r"\s?")
+        # minutes_format = '|'.join([('|'.join(KEYWORDS_FOR_MINUTES[lang])), KEYWORD_FOR_MIN[lang]])
+        hours_format = '|'.join(
+            [('|'.join(KEYWORDS_FOR_HOURS[lang])), '|'.join(KEYWORDS_FOR_HR[lang])]).replace(" ",r"\s?")
+        minutes_format = '|'.join([('|'.join(KEYWORDS_FOR_MINUTES[lang])), '|'.join(KEYWORDS_FOR_MIN[lang])])
+
     else:
         hours_format = H
         minutes_format = MIN
@@ -640,6 +644,7 @@ def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_sh
     :param time_format_short:
     :return:
     """
+    lang = get_best_language(screenshot)
     android_version = screenshot.android_version
     date_rows = screenshot.rows_with_date
     text_df = screenshot.text
@@ -648,9 +653,35 @@ def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_sh
         screenshot.category_submitted)
 
     if android_version == GOOGLE:
-        crop_left = int(0.15 * screenshot.width)  # Crop out the app icon area (first 15% of screenshot.width)
-        crop_right = int(0.79 * screenshot.width)  # Crop out the hourglass area (last 79% of screenshot.width)
-        if not date_rows.empty:
+        value_formats = (GOOGLE_SCREENTIME_FORMATS[lang] +
+                         GOOGLE_NOTIFICATIONS_FORMATS[lang] +
+                         GOOGLE_UNLOCKS_FORMATS[lang])
+        last_index_headings = headings_df.index[-1]
+        moe = 3
+        text_df['filtered_text'] = text_df['text'].str.replace(r'\d+', '#', regex=True)
+
+        def matches_any_pattern(text, patterns, m):
+            for pattern in patterns:
+                if levenshtein_distance(text, pattern) < m:
+                    return True
+            return False
+
+        filtered_text_df = text_df[(text_df.index > last_index_headings) &
+                                   (text_df['filtered_text'].apply(lambda x: matches_any_pattern(x, value_formats, moe)))]
+        if not filtered_text_df.empty:
+            print("Filtered text df is:")
+            print(filtered_text_df)
+            crop_left = filtered_text_df.iloc[0]['left'] - int(0.02 * screenshot.width)
+            crop_right = screenshot.width - crop_left - int(0.02 * screenshot.width)
+        else:
+            crop_left = int(0.15 * screenshot.width)  # Crop out the app icon area (first 15% of screenshot.width)
+            crop_right = int(0.79 * screenshot.width)  # Crop out the hourglass area (last 79% of screenshot.width)
+
+        if REST_OF_THE_DAY in headings_df[HEADING_COLUMN].values:
+            row_above_apps = headings_df[headings_df[HEADING_COLUMN] == REST_OF_THE_DAY].iloc[-1]
+            crop_top = row_above_apps['top'] + row_above_apps['height']
+            crop_bottom = screenshot.height
+        elif not date_rows.empty:
             crop_top = date_rows.iloc[-1]['top'] + (2 * date_rows.iloc[-1]['height'])
             crop_bottom = screenshot.height
         else:
@@ -658,6 +689,7 @@ def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_sh
             crop_top = 0
             crop_bottom = screenshot.height
 
+        text_df.drop(columns=['filtered_text'], inplace=True)
         cropped_image = image[crop_top:crop_bottom, crop_left:crop_right]
 
     elif android_version in [SAMSUNG_2024, SAMSUNG_2021, VERSION_2018]:
@@ -688,11 +720,14 @@ def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_sh
             for i in range(index_of_closest_heading, text_df.shape[0]):
                 if text_df['left'][i] < 0.25 * screenshot.width and \
                         text_df['left'][i] + text_df['width'][i] > 0.85 * screenshot.width and \
-                        re.search(format_for_time_or_number_eol, text_df['text'][i]):
-                    # Row text spans most of the width of the screenshot, and also ends with a time/number
+                        re.search(format_for_time_or_number_eol, text_df['text'][i]) and \
+                        text_df['height'][i] < 0.08 * screenshot.width:  # 0.08 settled on through trial and error
+                    # Row text spans most of the width of the screenshot, and also ends with a time/number, and also
+                    # isn't too tall (sometimes a line with a graph bar + a graph axis number is interpreted as text)
                     print(f"App row found: '{text_df['text'][i]}'.  "
                           f"Setting top of crop region to top of this app row.")
-                    crop_top = int(text_df['top'][i] - 0.01 * screenshot.height)
+                    crop_top = int(text_df['top'][i] - 0.01 * screenshot.width)
+                    crop_left = int(text_df['left'][i] - 0.02 * screenshot.width)
                     index_of_first_app = i
                     break
 
@@ -703,12 +738,20 @@ def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_sh
             else:
                 crop_bottom = screenshot.height
 
+        if crop_top == 0 and crop_bottom == screenshot.height:
+            print("Could not determine suitable crop area; image will not be cropped.")
+            return image, [None, None, None, None]
+
         cropped_image = image[crop_top:crop_bottom, crop_left:crop_right]
     else:
         print(f"Android version not detected; image will not be cropped.")
         return image, [None, None, None, None]
 
-    return cropped_image, [crop_top, crop_left, crop_bottom, crop_right]
+    if crop_top >= crop_bottom or crop_left >= crop_right:
+        # In case the crop region is invalid
+        return cropped_image, [None, None, None, None]
+    else:
+        return cropped_image, [crop_top, crop_left, crop_bottom, crop_right]
 
 
 def consolidate_overlapping_text(df, time_format_eol):
@@ -795,6 +838,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
     android_version = screenshot.android_version
     time_short, time_long, time_eol = time_formats[0], time_formats[1], time_formats[2]
     crop_top, crop_left, crop_bottom, crop_right = coordinates[0], coordinates[1], coordinates[2], coordinates[3]
+    crop_height = crop_bottom - crop_top
     img_lang = get_best_language(screenshot)
     empty_name_row = pd.DataFrame({'name': [NO_TEXT], 'name_conf': [NO_CONF]})
     empty_number_row = pd.DataFrame({'number': [NO_TEXT], 'number_conf': [NO_CONF]}) if category == SCREENTIME else (
@@ -867,9 +911,9 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
             name = split_text[0].strip()
             time = s.replace(name, "").strip()
 
-        hours_format = '|'.join([H, KEYWORD_FOR_HR[img_lang], ('|'.join(KEYWORDS_FOR_HOURS[img_lang]))]).replace(" ",
+        hours_format = '|'.join([H, '|'.join(KEYWORDS_FOR_HR[img_lang]), ('|'.join(KEYWORDS_FOR_HOURS[img_lang]))]).replace(" ",
                                                                                                                  r"\s?")
-        minutes_format = '|'.join([MIN, KEYWORD_FOR_MIN[img_lang], ('|'.join(KEYWORDS_FOR_MINUTES[img_lang]))])
+        minutes_format = '|'.join([MIN, '|'.join(KEYWORDS_FOR_MIN[img_lang]), ('|'.join(KEYWORDS_FOR_MINUTES[img_lang]))])
         time_filtered, _ = filter_time_text(time, NO_CONF, hours_format, minutes_format)
 
         return name, time_filtered
@@ -896,9 +940,12 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
     previous_text = NUMBER  # initialize to handle the first text beginning with an app name (most likely case)
 
     if category == SCREENTIME:
-        for row_text, row_conf, row_left in zip(df['text'],
-                                                df['conf'],
-                                                df['left']):
+        prev_row_bottom = -1
+        for row_text, row_conf, row_left, row_top, row_bottom in zip(df['text'],
+                                                                     df['conf'],
+                                                                     df['left'],
+                                                                     df['top'],
+                                                                     (df['top'] + df['height'])):
             row_text = re.sub(r'^[xX]{1,2}$', "X", row_text)  # X (Twitter) may show up here as xX
             if min(OCRScript_v3.levenshtein_distance(row_text, key) for key in
                    KEYWORDS_FOR_SHOW_SITES_YOU_VISIT[img_lang]) < moe_show_sites:
@@ -906,11 +953,15 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                 # an app name, so it should be ignored
                 continue
             app_name, app_number = split_app_name_and_screen_time(row_text)
-            if app_name != '' and app_number == '' and row_left + crop_left > (0.4 * screenshot.width):
+            if app_name != '' and (app_number == '' and row_left + crop_left > (0.4 * screenshot.width) or (
+                    previous_text == APP and row_top - prev_row_bottom < int(0.01*crop_height))):
                 # Sometimes there are 'pill' shapes above the app time; these can be misread as app names.
                 # Ignore such apparent app names whose left edges lie beyond 40% of the screenshot width.
+                # Also, sometimes an app time that appears just below an app name can be interpreted as an app name,
+                # even after filtering. Ignore such misread app times.
                 continue
             build_app_and_number_dfs(app_name, app_number)
+            prev_row_bottom = row_bottom
     elif category == NOTIFICATIONS:
         for row_text, row_conf, row_left, row_width in zip(df['text'],
                                                            df['conf'],
@@ -990,8 +1041,10 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
     while app_numbers.shape[0] < max_apps + 1:
         app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
 
+    app_names['name'] = app_names['name'].apply(lambda x: re.sub(r'\bAl\b', 'AI', x))
     app_names, app_numbers = app_names.drop(app_names.index[0]), app_numbers.drop(app_numbers.index[0])
-    app_names.loc[app_names['name'] == 'Lite', 'name'] = 'Facebook Lite'  # The app "Facebook Lite" appears as 'Lite'
+
+    # app_names.loc[app_names['name'] == 'Lite', 'name'] = 'Facebook Lite'  # The app "Facebook Lite" appears as 'Lite'
 
     # Having initialized app_names and app_numbers with an empty row (at index 0), the indexes of the app rows
     # line up with the app ordinals. (The 1st app in the screenshot is at index 1, etc.)
