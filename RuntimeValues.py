@@ -13,9 +13,10 @@ from LanguageDictionaries import *
 """
 
 
-study_to_analyze = studies[0]
-# Use studies[0] for the HappyB2.0 study
-# Use studies[1] for the BCH study
+study_to_analyze = studies[1]
+# Use studies[0] for the HappyB2.0 study (pre-launch prep)
+# Use studies[1] for the HappyB2.0 study (2024 Aug-Dec)
+# Use studies[2] for the BCH study
 
 if study_to_analyze in studies:
     os.chdir(study_to_analyze['Directory'])
@@ -23,6 +24,9 @@ if study_to_analyze in studies:
     survey_list = study_to_analyze['Survey List']
     categories_included = study_to_analyze['Categories']
     max_apps_per_category = study_to_analyze['Maximum Apps per Category']
+    date_record_col_name = study_to_analyze['Date Column Name']
+    device_id_col_name = study_to_analyze['Device ID Column Name']
+    user_id_col_name = study_to_analyze['User ID Column Name']
 
 else:
 
@@ -58,5 +62,8 @@ conf_limit = 80
 # Location of PyTesseract on local drive
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Users\gbk546\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'  # At U of S
 
-test_lower_bound = 167
-test_upper_bound = 553  # 553 for HappyB2.0
+test_lower_bound = 1
+test_upper_bound = 19313
+# 553 for HappyB2.0 (pre-launch)
+# 19313 URLs for HappyB2.0 2024 Aug-Dec
+# 452 for BCH study

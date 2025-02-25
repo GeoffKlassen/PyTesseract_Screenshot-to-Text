@@ -801,8 +801,13 @@ def update_eta(most_recent_times):
         if estimated_time_remaining > 0:
             eta_min = int(estimated_time_remaining / 60)
             eta_s = int(estimated_time_remaining % 60)
+            eta_hr = int(eta_min / 60)
+            eta_min = int(eta_min % 60)
+
+            str_eta_hr = f"{(str(eta_hr) + ":") if eta_hr > 0 else ""}"
+            str_eta_min = f"{"0" if (eta_min < 10 and eta_hr > 0) else ""}{eta_min}"
             str_eta_s = f"{"0" if eta_s < 10 else ""}{eta_s}"
-            eta_text = f"{eta_min}:{str_eta_s}"
+            eta_text = f"{str_eta_hr}{str_eta_min}:{str_eta_s}"
             print(f"Estimated time remaining: {eta_text}")
     return
 
@@ -813,7 +818,10 @@ if __name__ == '__main__':
     for survey in survey_list:
         print(f"Compiling URLs from {survey[CSV_FILE]}...", end='')
         survey_csv = pd.read_csv(survey[CSV_FILE])
-        current_list = compile_list_of_urls(survey_csv, survey[URL_COLUMNS])
+        current_list = compile_list_of_urls(survey_csv, survey[URL_COLUMNS],
+                                            date_col=date_record_col_name,
+                                            id_col=user_id_col_name,
+                                            device_id_col=device_id_col_name)
         print(f"Done.\n{current_list.shape[0]} URLs found.")
         url_list = pd.concat([url_list, current_list], ignore_index=True)
 
