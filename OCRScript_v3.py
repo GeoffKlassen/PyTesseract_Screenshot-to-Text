@@ -1315,7 +1315,8 @@ if __name__ == '__main__':
                         app_data.loc[i, 'minutes'] = Android.convert_string_time_to_minutes(
                             str_time=app_data.loc[i, 'number'],
                             screenshot=current_screenshot)
-                print(app_data[['name', 'number']])
+                app_data['minutes'] = app_data['minutes'].astype(int)
+                print(app_data[['name', 'number', 'minutes']])
                 print(f"Daily total {dashboard_category}: {current_screenshot.daily_total} {dtm}")
             else:
                 print(app_data[['name', 'number']])

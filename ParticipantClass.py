@@ -244,6 +244,7 @@ class Participant:
 
             print("\nTable of app comparisons to be made:")
             print(compare_df[['ex_name', 'ex_number', 'new_name', 'new_number']][1:])
+            print()
 
             for i in range(1, MAX_APPS + 1):
                 if compare_df.loc[i, 'ex_name'] == NO_TEXT and compare_df.loc[i, 'new_name'] == NO_TEXT:
