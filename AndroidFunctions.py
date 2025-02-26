@@ -10,6 +10,7 @@ import pandas as pd
 import OCRScript_v3
 from OCRScript_v3 import get_best_language, levenshtein_distance
 from RuntimeValues import *
+from iOSFunctions import filter_time_or_number_text
 
 """
     Android-Specific dictionaries
@@ -100,7 +101,8 @@ KEYWORDS_FOR_VIEW_MORE = {ITA: ['Visualizza altro'],
                           FRA: ['Afficher plus']}
 
 GOOGLE_SCREENTIME_FORMATS = {ITA: ['# ora', '# h e # min', '# minuti', '1 minuto', 'Meno di 1 minuto'],
-                             ENG: ['# hours', '# hrs # mins', '# hr # mins', '# hrs # min', '# hr # min', '#h #m', '# minutes', '1 minute', 'Less than 1 minute'],
+                             ENG: ['# hours', '# hrs # mins', '# hr # mins', '# hrs # min', '# hr # min', '#h #m',
+                                   '# minutes', '1 minute', 'Less than 1 minute', '< 1 minute'],
                              GER: ['# Stunde', '# Std # Min', '# Minuten', '1 Minute', 'Weniger als 1 Minute'],
                              FRA: ['# heures', '# h et # min', '# minutes', '1 minute', 'Moins de 1 minute']}
 GOOGLE_NOTIFICATIONS_FORMATS = {ITA: ['# notifiche'],
@@ -209,6 +211,7 @@ def get_headings(screenshot, time_fmt_short):
 
     for i in df.index:
         row_text = df['text'][i]
+        row_words = set(df['text'][i].split())
 
         row_text = re.sub(r'(?<=\d)n', 'h', row_text) # Occasionally 'h' gets read as 'n'
         # Replace numbers with '#' symbol for matching with total screentime/notifications/unlocks formats
@@ -227,6 +230,8 @@ def get_headings(screenshot, time_fmt_short):
             df.loc[i, HEADING_COLUMN] = DATE_HEADING
         # elif dates_df is not None and i in dates_df.index:  # If this isn't needed, you can get rid of dates_df
         #     df.loc[i, HEADING_COLUMN] = DATE_HEADING
+        elif len(row_words.intersection(DAY_ABBREVIATIONS[lang])) >= 3:
+            df.loc[i, HEADING_COLUMN] = DAYS_AXIS_HEADING
         elif min(OCRScript_v3.levenshtein_distance(row_text, key)
                  for key in KEYWORDS_FOR_SCREEN_TIME[lang]) <= moe:
             # Row contains 'Screen time'
@@ -259,7 +264,8 @@ def get_headings(screenshot, time_fmt_short):
         elif OCRScript_v3.levenshtein_distance(row_text, KEYWORDS_FOR_2018_UNLOCKS[lang]) <= moe:
             df.loc[i, HEADING_COLUMN] = OLD_UNLOCKS_HEADING
         elif (bool(re.match(time_fmt_short, row_text)) and df['left'][i] < 0.15 * screenshot.width or
-                (min(OCRScript_v3.levenshtein_distance(row_text_filtered, key.replace(' ', ''))
+                (not re.fullmatch(r'#+', row_text_filtered) and
+                 min(OCRScript_v3.levenshtein_distance(row_text_filtered, key.replace(' ', ''))
                      for key in GOOGLE_SCREENTIME_FORMATS[lang]) <= moe and
                  abs(centre_of_row - (0.5 * screenshot.width)) < (0.1 * screenshot.width))) and \
                  not df[HEADING_COLUMN].str.contains(TOTAL_SCREENTIME).any():
@@ -311,7 +317,8 @@ def get_android_version(screenshot):
     :return: The version of Android
     """
     img_lang = screenshot.language
-    heads_df = screenshot.headings_df[~(screenshot.headings_df[HEADING_COLUMN] == REST_OF_THE_DAY)]
+    heads_df = screenshot.headings_df[~(screenshot.headings_df[HEADING_COLUMN] == REST_OF_THE_DAY) &
+                                      ~(screenshot.headings_df[HEADING_COLUMN] == DAYS_AXIS_HEADING)]
     samsung_2021_headings = [SCREENTIME_HEADING, MOST_USED_HEADING,
                              NOTIFICATIONS_HEADING, MOST_NOTIFICATIONS_HEADING,
                              UNLOCKS_HEADING]
@@ -323,7 +330,7 @@ def get_android_version(screenshot):
         return None, None
     elif not heads_df[heads_df['text'].str.isupper()].empty:
         android_ver = VERSION_2018  # TODO: not sure on the year
-    elif max(abs(heads_df['left'] + 0.5 * heads_df['width'] - (0.5 * screenshot.width))) < (0.1 * screenshot.width):
+    elif max(abs(heads_df['left'] + 0.5 * heads_df['width'] - (0.5 * screenshot.width))) < (0.11 * screenshot.width):
         # All the headings found are centred
         android_ver = GOOGLE
     elif not (heads_df['heading'].isin(samsung_2021_headings)).any():
@@ -438,12 +445,13 @@ def filter_time_text(text, conf, hr_f, min_f):
         """
         # Replaces a 'misread' digit with the 'actual' digit, but only if it is followed by a time word/character
         # (hours or minutes) in the relevant language
-        pattern = re.compile(''.join([misread, r"(?=[0-9tails]?\s?(", hr_f, "|", min_f, "))"]), flags=re.IGNORECASE)
+        pattern = re.compile(''.join([misread, r"(?=\s?[0-9tails]?\s?(", hr_f, "|", min_f, "))"]), flags=re.IGNORECASE)
         filtered_str = re.sub(pattern, actual, s)
         return filtered_str
 
+    text2 = text.replace("br", "hr")
     # Replace common misread characters (e.g. pytesseract sometimes misreads '1h' as 'Th'/'th').
-    text2 = replace_misread_digit('(t|T)', '1', text)
+    text2 = replace_misread_digit('(t|T)', '1', text2)
     text2 = replace_misread_digit('(a|A)', '4', text2)
     text2 = replace_misread_digit('(i|I)', '1', text2)
     text2 = replace_misread_digit('(l|L)', '1', text2)
@@ -697,13 +705,13 @@ def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_sh
         cropped_image = image[crop_top:crop_bottom, crop_left:crop_right]
 
     elif android_version in [SAMSUNG_2024, SAMSUNG_2021, VERSION_2018]:
-        crop_left = int(0.1 * screenshot.width) if android_version == SAMSUNG_2024 else int(
+        crop_left = int(0.08 * screenshot.width) if android_version == SAMSUNG_2024 else int(
             0.17 * screenshot.width)  # Crop out the app icon area (first 17% of screenshot.width)
         # Crop out the > arrows to the right of each app (these appear in the Samsung 2018 version of Dashboard)
         crop_right = int(0.9 * screenshot.width) if android_version == VERSION_2018 else screenshot.width
 
-        if headings_df[HEADING_COLUMN].isin([heading_above_apps, REST_OF_THE_DAY]).any():
-            row_above_apps = headings_df[headings_df[HEADING_COLUMN].isin([heading_above_apps, REST_OF_THE_DAY])].iloc[-1]
+        if headings_df[HEADING_COLUMN].isin([heading_above_apps, DAYS_AXIS_HEADING]).any():
+            row_above_apps = headings_df[headings_df[HEADING_COLUMN].isin([heading_above_apps, DAYS_AXIS_HEADING])].iloc[-1]
             crop_top = row_above_apps['top'] + row_above_apps['height']
             headings_below_apps_df = headings_df[headings_df.index > row_above_apps.name]
             if not headings_below_apps_df.empty:
@@ -924,12 +932,18 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                                                                                                                  r"\s?")
         minutes_format = '|'.join([MIN, '|'.join(KEYWORDS_FOR_MIN[img_lang]), ('|'.join(KEYWORDS_FOR_MINUTES[img_lang]))])
         time_filtered, _ = filter_time_text(time, NO_CONF, hours_format, minutes_format)
-
-        return name, time_filtered
+        # Sometimes a time like '1 hr 14 min' gets misread as '1 br 14 min', which gets split into an app name (1 br)
+        # and a time (14 min), but this is a mistake. If the filtered 'app name' matches a time format, then merge the
+        # 'name' and time back together, and return this as the time.
+        name_filtered, _ = filter_time_text(name, NO_CONF, hours_format, minutes_format)
+        if re.match('|'.join([time_short, time_long]), name_filtered):
+            return '', " ".join([name_filtered, time_filtered])
+        else:
+            return name, time_filtered
 
     def split_app_name_and_notifications(s):
         # Find all the numbers in the string
-        numbers = re.findall(r'\d+', s)
+        numbers = re.findall(misread_number_format, s)
         if not (numbers or s[-1].isdigit()):
             # If there are no numbers, return the original string and an empty string
             return s, ''
@@ -940,7 +954,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
         index = s.rfind(last_number)
 
         name = s[:index].rstrip()
-        number = re.split(r'\s|[a-zA-Z]', s[index:])[0]
+        s_filtered, _ = filter_time_or_number_text(s[index:], NO_CONF, misread_number_format)
+        number = re.split(r'\s|[a-zA-Z]', s_filtered)[0]
         # Split the string at the index of the first digit of the last number
 
         return name, number
@@ -1015,7 +1030,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                 moe_unlocks = round(np.log(len(row_text)))
                 row_text_filtered = re.sub(r'\d+', '#', row_text)
                 if min(OCRScript_v3.levenshtein_distance(row_text_filtered, key) for key in
-                       GOOGLE_UNLOCKS_FORMATS[img_lang]) < moe_unlocks:
+                       GOOGLE_UNLOCKS_FORMATS[img_lang]) <= moe_unlocks:
                     # Row text contains an unlocks value
                     try:
                         app_number = re.findall(r'\d+', row_text)[0]

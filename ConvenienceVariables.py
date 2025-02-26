@@ -34,6 +34,7 @@ TOTAL_SCREENTIME = 'total screentime'
 TOTAL_NOTIFICATIONS = 'total notifications'
 MOST_NOTIFICATIONS_HEADING = 'most notifications'
 UNLOCKS_HEADING = UNLOCKS
+DAYS_AXIS_HEADING = 'day axis'
 TOTAL_UNLOCKS = 'total unlocks'
 DAY_NAME_HEADING = 'day name'
 VIEW_MORE_HEADING = 'view more'

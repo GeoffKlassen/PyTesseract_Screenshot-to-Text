@@ -700,6 +700,8 @@ def extract_app_info(screenshot, image, coordinates, scale):
     :return:
     """
     text = screenshot.text
+    bg_colour = WHITE if is_light_mode else BLACK
+    lang = get_best_language(screenshot)
     crop_top, crop_left, crop_bottom, crop_right = coordinates[0], coordinates[1], coordinates[2], coordinates[3]
     remove_chars = "[^a-zA-Z0-9+é:.!,()'&-]+" if screenshot.device_os == IOS else '[^a-zA-Z0-9+\\(\\)\\-\\.é]+'
     # Android needs characters like commas (,) removed because they appear in screentime values
@@ -719,7 +721,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
                                           (truncated_text_df['top'] + truncated_text_df[
                                               'height'] < crop_bottom - crop_top)]
     # truncated_text_df = OCRScript_v3.merge_df_rows_by_line_num(truncated_text_df)
-    # Keep only the rows that contain only digits (a.k.a. notification counts or pickup counts)
+    # Keep only the rows that contain only digits (a.k.a. notification counts or pickup counts) or 'X' (Twitter)
     truncated_text_df = truncated_text_df[(truncated_text_df['text'].str.isdigit()) | (truncated_text_df['text'].str.fullmatch(r'[xX]{1,2}'))]
 
     print(f"\nApp numbers from initial scan, where conf > 0.5, plus any instances of X (Twitter):")
@@ -732,6 +734,12 @@ def extract_app_info(screenshot, image, coordinates, scale):
         Android.consolidate_overlapping_text(overlapped_text, time_format_eol))
     app_info_scan_1 = app_info_scan_1.sort_values(by=['top', 'left']).reset_index(drop=True)
 
+    index_of_day_axis = next((idx for idx, row in app_info_scan_1.iterrows() if len(set(row['text'].split()).intersection(DAY_ABBREVIATIONS[lang])) > 3), None)
+    if index_of_day_axis is not None:
+        # If the initial scan failed to find the 'DAY AXIS' row but it was found on the cropped region,
+        # Erase the area above this DAY AXIS and remove any text above it.
+        app_info_scan_1 = app_info_scan_1.iloc[index_of_day_axis + 1: ]
+        image = cv2.rectangle(image, (0, 0), (screenshot.width, app_info_scan_1.iloc[0]['top']), bg_colour, -1)
     if show_images:
         show_image(app_info_scan_1, image)
 
@@ -742,7 +750,6 @@ def extract_app_info(screenshot, image, coordinates, scale):
         upper_left_corner = (app_info_scan_1['left'][i] - 1, app_info_scan_1['top'][i] - 1)
         bottom_right_corner = (app_info_scan_1['left'][i] + app_info_scan_1['width'][i] + 1,
                                app_info_scan_1['top'][i] + app_info_scan_1['height'][i] + 1)
-        bg_colour = WHITE if is_light_mode else BLACK
         cv2.rectangle(image_missed_text, upper_left_corner, bottom_right_corner, bg_colour, -1)
 
     _, app_info_scan_2 = extract_text_from_image(image_missed_text, remove_chars=remove_chars)
