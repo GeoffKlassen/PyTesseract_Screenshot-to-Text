@@ -128,7 +128,7 @@ SAMSUNG_UNLOCKS_FORMAT = {ITA: ['# volte', '# in totale'],
 # "You can set daily timers" is a tip box that appears in the Google version of Dashboard, until a user clears it.
 
 KEYWORDS_FOR_REST_OF_THE_DAY = {ITA: ['giornata'],  # full phrase is 'resto della giornata' but 'giornata' is sometimes its own line
-                                ENG: ['rest of the day'],
+                                ENG: ['rest of the day', 'of the day', 'the day'],
                                 GER: ['Rest des Tages pausiert'],
                                 FRA: ['']}  # TODO Fill this in
 # "rest of the day" is the last text in the dialogue box for "You can set daily timers".
@@ -310,7 +310,7 @@ def get_android_version(screenshot):
     :return: The version of Android
     """
     img_lang = screenshot.language
-    heads_df = screenshot.headings_df
+    heads_df = screenshot.headings_df[~(screenshot.headings_df[HEADING_COLUMN] == REST_OF_THE_DAY)]
     samsung_2021_headings = [SCREENTIME_HEADING, MOST_USED_HEADING,
                              NOTIFICATIONS_HEADING, MOST_NOTIFICATIONS_HEADING,
                              UNLOCKS_HEADING]
@@ -403,6 +403,8 @@ def get_dashboard_category(screenshot):
         print(f"Category submitted: {category_submitted}    Categories detected: {categories_found}")
         if category_submitted in categories_found:
             category_found = category_submitted
+        elif category_submitted == PICKUPS and UNLOCKS in categories_found:
+            category_found = UNLOCKS
         else:
             category_found = categories_found[0]
             print(f"Screenshot submitted under '{category_submitted}' category, but found '{category_found}' instead.")
@@ -669,8 +671,6 @@ def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_sh
         filtered_text_df = text_df[(text_df.index > last_index_headings) &
                                    (text_df['filtered_text'].apply(lambda x: matches_any_pattern(x, value_formats, moe)))]
         if not filtered_text_df.empty:
-            print("Filtered text df is:")
-            print(filtered_text_df)
             crop_left = filtered_text_df.iloc[0]['left'] - int(0.02 * screenshot.width)
             crop_right = screenshot.width - crop_left - int(0.02 * screenshot.width)
         else:
@@ -683,6 +683,9 @@ def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_sh
             crop_bottom = screenshot.height
         elif not date_rows.empty:
             crop_top = date_rows.iloc[-1]['top'] + (2 * date_rows.iloc[-1]['height'])
+            crop_bottom = screenshot.height
+        elif not filtered_text_df.empty:
+            crop_top = filtered_text_df.iloc[0]['top'] - 3*int(filtered_text_df.iloc[0]['height'])
             crop_bottom = screenshot.height
         else:
             # TODO Leaving this as a catch-all for now -- debug later if this condition is used
@@ -749,8 +752,13 @@ def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_sh
 
     if crop_top >= crop_bottom or crop_left >= crop_right:
         # In case the crop region is invalid
-        return cropped_image, [None, None, None, None]
+        return image, [None, None, None, None]
     else:
+        # if screenshot.is_light_mode:
+        #     _, cropped_filtered_image = cv2.threshold(cropped_grey_image, 210, 255, cv2.THRESH_BINARY)
+        # else:
+        #     _, cropped_filtered_image = cv2.threshold(cropped_grey_image, 50, 180, cv2.THRESH_BINARY)
+
         return cropped_image, [crop_top, crop_left, crop_bottom, crop_right]
 
 
