@@ -449,7 +449,7 @@ def filter_time_text(text, conf, hr_f, min_f):
         filtered_str = re.sub(pattern, actual, s)
         return filtered_str
 
-    text2 = text.replace("br", "hr")
+    text2 = re.sub(r"bre|br", "hr", text)
     # Replace common misread characters (e.g. pytesseract sometimes misreads '1h' as 'Th'/'th').
     text2 = replace_misread_digit('(t|T)', '1', text2)
     text2 = replace_misread_digit('(a|A)', '4', text2)
