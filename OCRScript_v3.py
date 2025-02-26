@@ -518,7 +518,7 @@ def get_day_type_in_screenshot(screenshot):
         rows_with_today = df[(df['text'].apply(
             # Row contains today, and (1) also contains date, or (2) the next row contains a date, or (3) is Android
             lambda x: min(levenshtein_distance(row_word[:len(key)], key)
-                          for row_word in str.split(x)
+                          for row_word in str.split(x)[:2]
                           for key in KEYWORDS_FOR_TODAY[lang])) <= moe_today) &
                               ((device_os == ANDROID) |
                                (df['text'].str.contains(date_pattern, case=False)) |

@@ -1062,6 +1062,13 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
     if num_missed_app_values > 0:
         screenshot.add_error(f"Missed values", num_missed_app_values)
 
+    if (~app_numbers['number_conf'].eq(NO_CONF)).any() and screenshot.category_detected is None:
+        # Sometimes the dashboard category is not detected, but app-level data from the correct category is extracted.
+        # In this case, we can set the detected category to the same category as the data extracted.
+        print(f"Dashboard category not detected, but {category} data extracted. "
+              f"Setting detected category to '{category}'.")
+        screenshot.set_category_detected(category)
+
     while app_names.shape[0] < max_apps + 1:
         app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
     while app_numbers.shape[0] < max_apps + 1:
