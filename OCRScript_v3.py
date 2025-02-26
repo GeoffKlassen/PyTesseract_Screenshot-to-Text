@@ -1140,6 +1140,7 @@ if __name__ == '__main__':
                                                          max_apps=max_apps_per_category,
                                                          time_formats=time_formats,
                                                          coordinates=crop_coordinates)
+            dt = current_screenshot.daily_total if str(current_screenshot.daily_total) != NO_TEXT else "N/A"
             print("\nApp data found:")
             if dashboard_category == SCREENTIME:
                 for i in range(1, max_apps_per_category + 1):
@@ -1150,10 +1151,10 @@ if __name__ == '__main__':
                 app_data['minutes'] = app_data['minutes'].astype(int)
 
                 print(app_data[['name', 'number', 'minutes']])
-                print(f"Daily total {dashboard_category}: {daily_total} {dtm}")
+                print(f"Daily total {dashboard_category}: {dt} {dtm}")
             else:
                 print(app_data[['name', 'number']])
-                print(f"Daily total {dashboard_category}: {daily_total}")
+                print(f"Daily total {dashboard_category}: {dt}")
 
             current_screenshot.set_app_data(app_data)
             current_participant.add_screenshot(current_screenshot)
@@ -1189,6 +1190,7 @@ if __name__ == '__main__':
                     current_screenshot.add_error("Daily total missed")
             else:
                 dt = daily_total
+            dtm = ''
 
             if dashboard_category == SCREENTIME:
                 # Get the daily total usage (if it's present in the screenshot)
@@ -1308,6 +1310,7 @@ if __name__ == '__main__':
                                                      df=app_area_2_df,
                                                      category=dashboard_category,
                                                      max_apps=max_apps_per_category)
+            dt = current_screenshot.daily_total if str(current_screenshot.daily_total) != NO_TEXT else "N/A"
             print("\nApp data found:")
             if dashboard_category == SCREENTIME:
                 for i in range(1, max_apps_per_category + 1):
@@ -1317,10 +1320,10 @@ if __name__ == '__main__':
                             screenshot=current_screenshot)
                 app_data['minutes'] = app_data['minutes'].astype(int)
                 print(app_data[['name', 'number', 'minutes']])
-                print(f"Daily total {dashboard_category}: {current_screenshot.daily_total} {dtm}")
+                print(f"Daily total {dashboard_category}: {dt}{dtm}")
             else:
                 print(app_data[['name', 'number']])
-                print(f"Daily total {dashboard_category}: {current_screenshot.daily_total}")
+                print(f"Daily total {dashboard_category}: {dt}")
 
             current_screenshot.set_app_data(app_data)
             current_participant.add_screenshot(current_screenshot)
