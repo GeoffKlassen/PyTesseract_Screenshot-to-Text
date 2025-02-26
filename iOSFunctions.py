@@ -100,7 +100,7 @@ def get_headings(screenshot):
             df.loc[i, HEADING_COLUMN] = SCREENTIME_HEADING
         elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_LIMITATIONS[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = LIMITS_HEADING
-        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_MOST_USED[lang]) <= error_margin:
+        elif min(OCRScript_v3.levenshtein_distance(row_text[:len(keyword)], keyword) for keyword in KEYWORDS_FOR_MOST_USED[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = MOST_USED_HEADING
         elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_PICKUPS[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = PICKUPS_HEADING

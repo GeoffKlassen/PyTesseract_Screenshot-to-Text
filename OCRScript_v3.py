@@ -1042,6 +1042,7 @@ if __name__ == '__main__':
             else:
                 dt = daily_total
 
+            dtm = ''  # Initialize
             if dashboard_category == SCREENTIME:
                 daily_total_minutes = Android.convert_string_time_to_minutes(str_time=daily_total,
                                                                              screenshot=current_screenshot)
@@ -1132,16 +1133,20 @@ if __name__ == '__main__':
                                                          max_apps=max_apps_per_category,
                                                          time_formats=time_formats,
                                                          coordinates=crop_coordinates)
-
+            print("\nApp data found:")
             if dashboard_category == SCREENTIME:
                 for i in range(1, max_apps_per_category + 1):
                     if i in app_data.index:  # Make sure the index exists
                         app_data.loc[i, 'minutes'] = Android.convert_string_time_to_minutes(
                             str_time=app_data.loc[i, 'number'],
                             screenshot=current_screenshot)
-            print("\nApp data found:")
-            print(app_data[['name', 'number']])
-            print(f"Daily total {dashboard_category}: {daily_total}")
+                app_data['minutes'] = app_data['minutes'].astype(int)
+
+                print(app_data[['name', 'number', 'minutes']])
+                print(f"Daily total {dashboard_category}: {daily_total} {dtm}")
+            else:
+                print(app_data[['name', 'number']])
+                print(f"Daily total {dashboard_category}: {daily_total}")
 
             current_screenshot.set_app_data(app_data)
             current_participant.add_screenshot(current_screenshot)
@@ -1296,16 +1301,18 @@ if __name__ == '__main__':
                                                      df=app_area_2_df,
                                                      category=dashboard_category,
                                                      max_apps=max_apps_per_category)
+            print("\nApp data found:")
             if dashboard_category == SCREENTIME:
                 for i in range(1, max_apps_per_category + 1):
                     if i in app_data.index:  # Make sure the index exists
                         app_data.loc[i, 'minutes'] = Android.convert_string_time_to_minutes(
                             str_time=app_data.loc[i, 'number'],
                             screenshot=current_screenshot)
-
-            print("\nApp data found:")
-            print(app_data[['name', 'number']])
-            print(f"Daily total {dashboard_category}: {current_screenshot.daily_total}")
+                print(app_data[['name', 'number']])
+                print(f"Daily total {dashboard_category}: {current_screenshot.daily_total} {dtm}")
+            else:
+                print(app_data[['name', 'number']])
+                print(f"Daily total {dashboard_category}: {current_screenshot.daily_total}")
 
             current_screenshot.set_app_data(app_data)
             current_participant.add_screenshot(current_screenshot)

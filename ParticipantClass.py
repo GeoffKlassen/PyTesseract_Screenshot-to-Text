@@ -82,12 +82,13 @@ class Participant:
         if "Error reading data" in ss.errors:
             print("No data to add to participant's temporal data.")
             return
-        if ss.date_detected is None:
-            print("Date not detected. Screenshot data will not be added to participant's temporal data.")
-            return
-        elif ss.time_period not in [ConvenienceVariables.YESTERDAY, ConvenienceVariables.DAY_OF_THE_WEEK]:
+
+        if ss.time_period not in [ConvenienceVariables.YESTERDAY, ConvenienceVariables.DAY_OF_THE_WEEK]:
             print("Screenshot does not contain data for a previous day. "
                   "Screenshot data will not be added to participant's temporal data.")
+            return
+        elif ss.date_detected is None:
+            print("Date not detected. Screenshot data will not be added to participant's temporal data.")
             return
         elif category is None:
             print("Category not detected. Screenshot data will not be added to participant's temporal data.")

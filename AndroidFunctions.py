@@ -47,11 +47,11 @@ KEYWORDS_FOR_MINUTES = {ITA: ['minuti', 'minuto'],
 # Long format for time words
 
 KEYWORDS_FOR_HR = {ITA: ['h e'],
-                   ENG: ['hrs', 'hr'],
+                   ENG: ['hrs', 'hr', 'h'],
                    GER: ['Std'],
                    FRA: ['h et']}
 KEYWORDS_FOR_MIN = {ITA: ['min'],
-                    ENG: ['mins', 'min'],
+                    ENG: ['mins', 'min', 'm'],
                     GER: ['Min'],
                     FRA: ['min']}
 # Short format for time words
@@ -100,7 +100,7 @@ KEYWORDS_FOR_VIEW_MORE = {ITA: ['Visualizza altro'],
                           FRA: ['Afficher plus']}
 
 GOOGLE_SCREENTIME_FORMATS = {ITA: ['# ora', '# h e # min', '# minuti', '1 minuto', 'Meno di 1 minuto'],
-                             ENG: ['# hours', '# hrs # mins', '# hr # mins', '# hrs # min', '# hr # min', '# minutes', '1 minute', 'Less than 1 minute'],
+                             ENG: ['# hours', '# hrs # mins', '# hr # mins', '# hrs # min', '# hr # min', '#h #m', '# minutes', '1 minute', 'Less than 1 minute'],
                              GER: ['# Stunde', '# Std # Min', '# Minuten', '1 Minute', 'Weniger als 1 Minute'],
                              FRA: ['# heures', '# h et # min', '# minutes', '1 minute', 'Moins de 1 minute']}
 GOOGLE_NOTIFICATIONS_FORMATS = {ITA: ['# notifiche'],
@@ -128,7 +128,7 @@ SAMSUNG_UNLOCKS_FORMAT = {ITA: ['# volte', '# in totale'],
 # "You can set daily timers" is a tip box that appears in the Google version of Dashboard, until a user clears it.
 
 KEYWORDS_FOR_REST_OF_THE_DAY = {ITA: ['giornata'],  # full phrase is 'resto della giornata' but 'giornata' is sometimes its own line
-                                ENG: ['rest of the day', 'of the day', 'the day'],
+                                ENG: ['rest of the day', 'rest of the', 'of the day', 'the day'],
                                 GER: ['Rest des Tages pausiert'],
                                 FRA: ['']}  # TODO Fill this in
 # "rest of the day" is the last text in the dialogue box for "You can set daily timers".
@@ -160,7 +160,7 @@ def screenshot_contains_unrelated_data(ss):
     
     if any(text_df['text'].apply(lambda x: min(OCRScript_v3.levenshtein_distance(x[0:len(key)], key)
                                                for key in KEYWORDS_FOR_UNRELATED_SCREENSHOTS[lang])) < moe):
-        print("Did not detect data relevant to the study.")
+        print("Detected data irrelevant to the study.")
         # One of the rows of text_df starts with one of the keywords for unrelated screenshots
         return True
 
@@ -270,6 +270,7 @@ def get_headings(screenshot, time_fmt_short):
                   (GOOGLE_NOTIFICATIONS_FORMATS[lang] + SAMSUNG_NOTIFICATIONS_FORMATS[lang])) <= moe and
               (df['left'][i] < 0.15 * screenshot.width or
                abs(centre_of_row - (0.5 * screenshot.width)) < (0.1 * screenshot.width))) and \
+                not row_text_filtered.startswith(('N', 'n')) and \
                 not df[HEADING_COLUMN].str.contains(TOTAL_NOTIFICATIONS).any():
             # Row text matches a 'total notifications' format and is either left-aligned (Samsung) or centred (Google)
             df.loc[i, HEADING_COLUMN] = TOTAL_NOTIFICATIONS
@@ -679,7 +680,7 @@ def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_sh
 
         if REST_OF_THE_DAY in headings_df[HEADING_COLUMN].values:
             row_above_apps = headings_df[headings_df[HEADING_COLUMN] == REST_OF_THE_DAY].iloc[-1]
-            crop_top = row_above_apps['top'] + row_above_apps['height']
+            crop_top = row_above_apps['top'] + int(2.5 * row_above_apps['height'])
             crop_bottom = screenshot.height
         elif not date_rows.empty:
             crop_top = date_rows.iloc[-1]['top'] + (2 * date_rows.iloc[-1]['height'])
@@ -982,8 +983,10 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                 # an app name, so it should be ignored
                 continue
             app_name, app_number = split_app_name_and_notifications(row_text)
-            if app_name != '' and app_number == '' and row_left + crop_left > (0.4 * screenshot.width):
-                # See 'pill' comment in similar line above
+            if app_name != '' and app_number == '' and (row_left + crop_left > (0.4 * screenshot.width) or
+                                                        min(levenshtein_distance("# " + app_name, key) for key in GOOGLE_NOTIFICATIONS_FORMATS[img_lang]) < 3):
+                # See 'pill' comment in similar line above;
+                # plus, sometimes in '## notifications', only 'notifications' is read.
                 continue
             elif app_name != '' and app_number == '' and app_name.split()[
                 -1].isdigit() and row_left + crop_left + row_width > 0.85 * screenshot.width:
