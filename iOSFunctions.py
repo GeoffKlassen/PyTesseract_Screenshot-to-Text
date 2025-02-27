@@ -59,7 +59,7 @@ KEYWORDS_FOR_NOTIFICATIONS = {ITA: ['NOTIFICHE'],
                               FRA: ['NOTIFICATIONS', 'NOTIFICATIONS RECUES', 'RECUES']}
 
 KEYWORDS_FOR_HOURS_AXIS = ['00 06', '06 12', '12 18',
-                           '6 12 ', '6 18 ', '42 48',
+                           '6 12 ', '6 18 ', '0 18', '42 48',
                            '00h 06h', '06h 12h', '12h 18h',
                            r'12\s?AM 6', r'6\s?AM 12', r'12\s?PM 6',
                            'AM 6AM', 'AM 12PM', 'PM 6PM',
@@ -720,29 +720,30 @@ def erase_value_bars_and_icons(screenshot, df, image):
         # print(top_left_coordinates)
         average_left = int(np.median([coord[0] for coord in top_left_coordinates]))
         filtered_coordinates = [coord for coord in top_left_coordinates if abs(coord[0] - average_left) <= 0.01*image_width]
-        # print("The filtered left coordinates are:")
-        # print(filtered_coordinates)
-        top_coords = [coord[1] for coord in filtered_coordinates]
-        differences = [abs(top_coords[i] - top_coords[i - 1]) for i in range(1, len(top_coords))]
-        smallest_difference = min(differences)
-        # print(f"of the differences in {differences} the smallest is {smallest_difference}")
-        prev_top = -1
-        for i, top_left in enumerate(filtered_coordinates):
-            # cv2.rectangle(image, (top_left[0], top_left[1]),  (top_left[0] + 5, top_left[1] + 5), BROWN, -1)
-            # OCRScript_v3.show_image(df, image)
-            if (i == 0 and top_left[1] - smallest_difference > 0) or \
-                    (i > 0 and top_left[1] - prev_top > 1.5*smallest_difference):
-                prev_bar_top = top_left[1] - smallest_difference
-                find_and_erase_bar_and_icon(prev_bar_top - int(0.005*image_height),
-                                            top_left[0] + int(0.015*image_width),
-                                            median_bar_height,
-                                            erase_icon=False)
-                if prev_bar_top - smallest_difference - int(0.005*image_height) > 0:
-                    find_and_erase_bar_and_icon(prev_bar_top - smallest_difference - int(0.005 * image_height),
-                                                top_left[0] + int(0.015 * image_width),
+        if filtered_coordinates:
+            # print("The filtered left coordinates are:")
+            # print(filtered_coordinates)
+            top_coords = [coord[1] for coord in filtered_coordinates]
+            differences = [abs(top_coords[i] - top_coords[i - 1]) for i in range(1, len(top_coords))]
+            smallest_difference = min(differences)
+            # print(f"of the differences in {differences} the smallest is {smallest_difference}")
+            prev_top = -1
+            for i, top_left in enumerate(filtered_coordinates):
+                # cv2.rectangle(image, (top_left[0], top_left[1]),  (top_left[0] + 5, top_left[1] + 5), BROWN, -1)
+                # OCRScript_v3.show_image(df, image)
+                if (i == 0 and top_left[1] - smallest_difference > 0) or \
+                        (i > 0 and top_left[1] - prev_top > 1.5*smallest_difference):
+                    prev_bar_top = top_left[1] - smallest_difference
+                    find_and_erase_bar_and_icon(prev_bar_top - int(0.005*image_height),
+                                                top_left[0] + int(0.015*image_width),
                                                 median_bar_height,
                                                 erase_icon=False)
-            prev_top = top_left[1]
+                    if prev_bar_top - smallest_difference - int(0.005*image_height) > 0:
+                        find_and_erase_bar_and_icon(prev_bar_top - smallest_difference - int(0.005 * image_height),
+                                                    top_left[0] + int(0.015 * image_width),
+                                                    median_bar_height,
+                                                    erase_icon=False)
+                prev_top = top_left[1]
 
     return image
 
@@ -918,6 +919,12 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
                 # day. However, sometimes the 'hours' row gets read as a number (e.g., 6 12 18), so such rows should
                 # be ignored.
                 row_text, row_conf = filter_time_or_number_text(row_text, row_conf, f=regex_format)
+                try:
+                    row_text = int(row_text) if category != SCREENTIME else row_text
+                except ValueError:
+                    print(f"Error converting {row_text} to integer. Number will be set to {NO_NUMBER} (conf = {NO_CONF}).")
+                    row_text = NO_NUMBER
+                    row_conf = NO_CONF
 
                 if prev_row_type != 'name':  # two app numbers in a row, or first datum is a number
                     if len(app_names) < max_apps:

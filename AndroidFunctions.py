@@ -982,6 +982,11 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
         name = s[:index].rstrip()
         s_filtered, _ = filter_time_or_number_text(s[index:], NO_CONF, misread_number_format)
         number = re.split(r'\s|[a-zA-Z]', s_filtered)[0]
+        try:
+            number = int(number)
+        except ValueError:
+            print(f"Error: could not convert {number} to an integer. Number will be set to {NO_NUMBER}.")
+            number = NO_NUMBER
         # Split the string at the index of the first digit of the last number
 
         return name, number
@@ -1062,8 +1067,10 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                     # Row text contains an unlocks value
                     try:
                         app_number = re.findall(r'\d+', row_text)[0]
+                        app_number = int(app_number)
                         conf = row_conf
-                    except IndexError:
+                    except (IndexError, ValueError) as e:
+                        print(f"Error: {e}. App number will be set to {NO_NUMBER} (conf = {NO_CONF}).")
                         app_number = NO_NUMBER
                         conf = NO_CONF
                     if previous_text == NUMBER:

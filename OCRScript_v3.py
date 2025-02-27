@@ -637,8 +637,10 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False)
     :param value_is_number:
     :return:
     """
-    t1 = f"'{str(text1)}'" if conf1 != NO_CONF else "N/A"
-    t2 = f"'{str(text2)}'" if conf2 != NO_CONF else "N/A"
+    str_text1 = str(text1)
+    str_text2 = str(text2)
+    t1 = f"'{str_text1}'" if conf1 != NO_CONF else "N/A"
+    t2 = f"'{str_text2}'" if conf2 != NO_CONF else "N/A"
     c1 = f"(conf = {conf1})" if conf1 != NO_CONF else ""
     c2 = f"(conf = {conf2})" if conf2 != NO_CONF else ""
 
@@ -647,23 +649,23 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False)
 
     print(f"Comparing scan 1: {t1} {c1}\n       vs scan 2: {t2} {c2}  ——  ", end='')
     if conf1 != NO_CONF and conf2 != NO_CONF:
-        if bool(re.search(val_fmt, text1)) and bool(re.search(val_fmt, text2)) and text1 != text2:
-            if text1 in text2:
+        if bool(re.search(val_fmt, str_text1)) and bool(re.search(val_fmt, str_text2)) and str_text1 != str_text2:
+            if str_text1 in str_text2:
                 print(f"{t2} contains {t1}. Using {t2}.")
                 return text2, conf2
-            elif text2 in text1:
+            elif str_text2 in str_text1:
                 print(f"{t1} contains {t2}. Keeping {t1}.")
                 return text1, conf1
-        if bool(re.search(val_fmt, text1)) and not bool(re.search(val_fmt, text2)):
+        if bool(re.search(val_fmt, str_text1)) and not bool(re.search(val_fmt, str_text2)):
             print(f"Only {t1} matches a proper {format_name} format. Keeping {t1}.")
             return text1, conf1
-        elif not bool(re.search(val_fmt, text1)) and bool(re.search(val_fmt, text2)):
+        elif not bool(re.search(val_fmt, str_text1)) and bool(re.search(val_fmt, str_text2)):
             print(f"Only {t2} matches a proper {format_name} format. Using {t2}.")
             return text2, conf2
-        elif len(text1) > len(text2) and value_is_number:
+        elif len(str_text1) > len(str_text2) and value_is_number:
             print(f"{t1} has more characters than {t2}. Keeping {t1}.")
             return text1, conf1
-        elif len(text1) < len(text2) and value_is_number:
+        elif len(str_text1) < len(str_text2) and value_is_number:
             print(f"{t2} has more characters than {t1}. Using {t2}.")
             return text2, conf2
         else:
@@ -674,13 +676,13 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False)
                 print("2nd scan has higher confidence. Using 2nd scan.")
                 return text2, conf2
     elif conf1 != NO_CONF:
-        if value_is_number and not bool(re.search(val_fmt, text1)):
+        if value_is_number and not bool(re.search(val_fmt, str_text1)):
             print(f"Improper number format found in {t1}; no text found in {t2}.")
             return NO_NUMBER, NO_CONF
         print(f"No text found in 2nd scan. Keeping {t1}.")
         return text1, conf1
     elif conf2 != NO_CONF:
-        if value_is_number and not bool(re.search(val_fmt, text2)):
+        if value_is_number and not bool(re.search(val_fmt, str_text2)):
             print(f"No text found in {t1}; improper number format found in {t2}.")
             return NO_NUMBER, NO_CONF
         print(f"No text found on 1st scan. Using {t2}.")
