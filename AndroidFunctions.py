@@ -689,7 +689,7 @@ def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_sh
 
         def matches_any_pattern(text, patterns, m):
             for pattern in patterns:
-                if levenshtein_distance(text, pattern) < m:
+                if levenshtein_distance(text, pattern) < m and ('#' in text):
                     return True
             return False
 
