@@ -335,8 +335,8 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+')
     df_words = df_words.replace({remove_chars: ''}, regex=True)
     df_words = df_words.replace({r'é': 'e'}, regex=True)  # For app name "Pokémon GO", etc.
     df_words = df_words[df_words['conf'] > 0]
-    df_words = df_words[(df_words['text'] != '') & (df_words['text'] != ' ')]
     df_words = df_words.fillna('')
+    df_words = df_words[(df_words['text'] != '') & (df_words['text'] != ' ')]
     df_words['text'] = (df_words['text'].apply(ensure_text_is_string))
     df_words = df_words[~df_words['text'].str.contains('^[aemu]+$')] if df_words.shape[0] > 0 else df_words
 
@@ -740,10 +740,27 @@ def extract_app_info(screenshot, image, coordinates, scale):
         # Erase the area above this DAY AXIS and remove any text above it.
         app_info_scan_1 = app_info_scan_1.iloc[index_of_day_axis + 1: ]
         image = cv2.rectangle(image, (0, 0), (screenshot.width, app_info_scan_1.iloc[0]['top']), bg_colour, -1)
+
     if show_images:
         show_image(app_info_scan_1, image)
 
-    image_missed_text = image.copy()
+    if screenshot.device_os == ANDROID:
+        if bg_colour == WHITE:
+            bw_threshold = 210
+            max_value = 255
+        elif bg_colour == BLACK:
+            bw_threshold = 75
+            max_value = 180
+        else:
+            bw_threshold = 140
+            max_value = 255
+
+        cropped_grey_image = screenshot.grey_image[crop_top:crop_bottom, crop_left:crop_right]
+        _, image_missed_text = cv2.threshold(cropped_grey_image, bw_threshold, max_value, cv2.THRESH_BINARY)  # Initialize
+        image_missed_text = cv2.GaussianBlur(image_missed_text, ksize=ksize, sigmaX=0)
+    else:
+        image_missed_text = image.copy()
+
     for i in app_info_scan_1.index:
         if app_info_scan_1['conf'][i] < conf_limit:
             continue
@@ -752,6 +769,8 @@ def extract_app_info(screenshot, image, coordinates, scale):
                                app_info_scan_1['top'][i] + app_info_scan_1['height'][i] + 1)
         cv2.rectangle(image_missed_text, upper_left_corner, bottom_right_corner, bg_colour, -1)
 
+    image_missed_text = cv2.rectangle(image_missed_text, (0, 0),
+                                      (min(app_info_scan_1['left']), image_missed_text.shape[0]), bg_colour, -1)
     _, app_info_scan_2 = extract_text_from_image(image_missed_text, remove_chars=remove_chars)
     if show_images:
         show_image(app_info_scan_2, image_missed_text)
@@ -878,6 +897,7 @@ if __name__ == '__main__':
                                         device_os=get_os(url_list[DEVICE_ID][index]),
                                         date=url_list[RESPONSE_DATE][index],
                                         category=url_list[IMG_RESPONSE_TYPE][index])
+        print(current_screenshot)
 
         """ FOR ANDROID TESTING: SKIP iOS IMAGES"""
         # if current_screenshot.device_os == IOS:

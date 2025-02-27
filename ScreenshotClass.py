@@ -66,7 +66,8 @@ class Screenshot:
         s_device_os = f"Device OS: {self.device_os}".ljust(23)
         s_date = f"Date submitted: {self.date_submitted}".ljust(33)
         s_cat = f"Category submitted: {self.category_submitted}"
-        return f"URL: {self.url}\n{s_user_id}{s_device_os}{s_date}{s_cat}"
+        return f"{s_date}{s_cat}"
+        # return f"URL: {self.url}\n{s_user_id}{s_device_os}{s_date}{s_cat}"
 
     def set_dimensions(self, dim):
         self.height, self.width = dim[0], dim[1]
