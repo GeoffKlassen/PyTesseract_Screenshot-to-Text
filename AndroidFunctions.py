@@ -57,7 +57,7 @@ KEYWORDS_FOR_MIN = {ITA: ['min'],
                     FRA: ['min']}
 # Short format for time words
 
-H = 'hr?'
+H = 'hr?s?'
 MIN = 'mi?n?s?'
 
 KEYWORDS_FOR_2018_SCREENTIME = {ITA: ['DURATA SCHERMO', 'DURATA SCHERMO Altro'],
@@ -461,11 +461,13 @@ def filter_time_text(text, conf, hr_f, min_f):
         """
         # Replaces a 'misread' digit with the 'actual' digit, but only if it is followed by a time word/character
         # (hours or minutes) in the relevant language
-        pattern = re.compile(''.join([misread, r"(?=\s?[0-9tails]?\s?(", hr_f, "|", min_f, "))"]), flags=re.IGNORECASE)
+        pattern = re.compile(''.join([r"(?<![^0-9tails\s])", misread, r"(?=\s?[0-9tails]?\s?(", hr_f, "|", min_f, "))"]), flags=re.IGNORECASE)
         filtered_str = re.sub(pattern, actual, s)
         return filtered_str
 
-    text2 = re.sub(r"bre|br", "hr", text)
+    text2 = re.sub(r"bre|bra", "hrs", text)
+    text2 = re.sub(r"br", "hr", text2)
+    # text2 = re.sub(r"hrs", "hr", text2)
     # Replace common misread characters (e.g. pytesseract sometimes misreads '1h' as 'Th'/'th').
     text2 = replace_misread_digit('(t|T)', '1', text2)
     text2 = replace_misread_digit('(a|A)', '4', text2)
@@ -473,10 +475,6 @@ def filter_time_text(text, conf, hr_f, min_f):
     text2 = replace_misread_digit('(l|L)', '1', text2)
     text2 = replace_misread_digit('(s|S)', '5', text2)
     text2 = replace_misread_digit('(o|O)', '0', text2)
-
-    if text2 != text:
-        print("Filtering time text:")
-        print(f"Replaced '{text}' with '{text2}'.")
 
     return text2, conf
 
@@ -727,7 +725,11 @@ def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_sh
         # Crop out the > arrows to the right of each app (these appear in the Samsung 2018 version of Dashboard)
 
         if headings_df[HEADING_COLUMN].isin([heading_above_apps, DAYS_AXIS_HEADING]).any():
-            row_above_apps = headings_df[headings_df[HEADING_COLUMN].isin([heading_above_apps, DAYS_AXIS_HEADING])].iloc[-1]
+            rows_above_apps = headings_df[headings_df[HEADING_COLUMN].isin([heading_above_apps, DAYS_AXIS_HEADING])]
+            if heading_above_apps in rows_above_apps[HEADING_COLUMN].values:
+                row_above_apps = rows_above_apps[rows_above_apps[HEADING_COLUMN] == heading_above_apps].iloc[0]
+            else:
+                row_above_apps = rows_above_apps[rows_above_apps[HEADING_COLUMN] == DAYS_AXIS_HEADING].iloc[0]
             crop_top = row_above_apps['top'] + row_above_apps['height']
             headings_below_apps_df = headings_df[headings_df.index > row_above_apps.name]
             if not headings_below_apps_df.empty:
@@ -932,30 +934,38 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
             num_missed_app_values += 1
 
     def split_app_name_and_screen_time(s):
-        if re.match('|'.join([time_short, time_long]), s):
+        hours_format = '|'.join([H,
+                                 '|'.join(KEYWORDS_FOR_HR[img_lang]),
+                                 ('|'.join(KEYWORDS_FOR_HOURS[img_lang]))]).replace(" ",r"\s?")
+        minutes_format = '|'.join([MIN, '|'.join(KEYWORDS_FOR_MIN[img_lang]), ('|'.join(KEYWORDS_FOR_MINUTES[img_lang]))])
+        filtered_s, _ = filter_time_text(s, NO_CONF, hours_format, minutes_format)
+        if re.match('|'.join([time_short, time_long]), filtered_s):
             # If the entire string matches a time format, then it must be a time only (no app name)
             name = ''
-            time = s
+            time = filtered_s
+            if time != s:
+                print(f"Filtering time text: Replaced '{s}' with '{time}'.")
         else:
             split_text = re.split(time_eol, s)
             if len(split_text) == 1:
                 # If the string does not end in a time format, then it must be an app name only (no time)
                 return s, ''
             name = split_text[0].strip()
-            time = s.replace(name, "").strip()
+            s_time_only = s.replace(name, "").strip()
+            time, _ = filter_time_text(s_time_only, NO_CONF, hours_format, minutes_format)
+            if time != s_time_only:
+                print(f"Filtering time text: Replaced '{s}' with '{time}'.")
 
-        hours_format = '|'.join([H, '|'.join(KEYWORDS_FOR_HR[img_lang]), ('|'.join(KEYWORDS_FOR_HOURS[img_lang]))]).replace(" ",
-                                                                                                                 r"\s?")
-        minutes_format = '|'.join([MIN, '|'.join(KEYWORDS_FOR_MIN[img_lang]), ('|'.join(KEYWORDS_FOR_MINUTES[img_lang]))])
-        time_filtered, _ = filter_time_text(time, NO_CONF, hours_format, minutes_format)
-        # Sometimes a time like '1 hr 14 min' gets misread as '1 br 14 min', which gets split into an app name (1 br)
-        # and a time (14 min), but this is a mistake. If the filtered 'app name' matches a time format, then merge the
-        # 'name' and time back together, and return this as the time.
-        name_filtered, _ = filter_time_text(name, NO_CONF, hours_format, minutes_format)
-        if re.match('|'.join([time_short, time_long]), name_filtered):
-            return '', " ".join([name_filtered, time_filtered])
-        else:
-            return name, time_filtered
+
+        # time_filtered, _ = filter_time_text(time, NO_CONF, hours_format, minutes_format)
+        # # Sometimes a time like '1 hr 14 min' gets misread as '1 br 14 min', which gets split into an app name (1 br)
+        # # and a time (14 min), but this is a mistake. If the filtered 'app name' matches a time format, then merge the
+        # # 'name' and time back together, and return this as the time.
+        # name_filtered, _ = filter_time_text(name, NO_CONF, hours_format, minutes_format)
+        # if re.match('|'.join([time_short, time_long]), name_filtered):
+        #     return '', " ".join([name_filtered, time_filtered])
+        # else:
+        return name, time  # time_filtered
 
     def split_app_name_and_notifications(s):
         # Find all the numbers in the string
@@ -1015,8 +1025,9 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                 # an app name, so it should be ignored
                 continue
             app_name, app_number = split_app_name_and_notifications(row_text)
+            moe = 2 * int(np.log(max(len(key) for key in GOOGLE_NOTIFICATIONS_FORMATS[img_lang])))
             if app_name != '' and app_number == '' and (row_left + crop_left > (0.4 * screenshot.width) or
-                                                        min(levenshtein_distance("# " + app_name, key) for key in GOOGLE_NOTIFICATIONS_FORMATS[img_lang]) < 3):
+                                                        min(levenshtein_distance("# " + app_name, key) for key in GOOGLE_NOTIFICATIONS_FORMATS[img_lang]) <= moe):
                 # See 'pill' comment in similar line above;
                 # plus, sometimes in '## notifications', only 'notifications' is read.
                 continue

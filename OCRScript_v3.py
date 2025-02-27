@@ -761,17 +761,29 @@ def extract_app_info(screenshot, image, coordinates, scale):
     else:
         image_missed_text = image.copy()
 
-    for i in app_info_scan_1.index:
-        if app_info_scan_1['conf'][i] < conf_limit:
-            continue
-        upper_left_corner = (app_info_scan_1['left'][i] - 1, app_info_scan_1['top'][i] - 1)
-        bottom_right_corner = (app_info_scan_1['left'][i] + app_info_scan_1['width'][i] + 1,
-                               app_info_scan_1['top'][i] + app_info_scan_1['height'][i] + 1)
-        cv2.rectangle(image_missed_text, upper_left_corner, bottom_right_corner, bg_colour, -1)
+    # If there's confident text found in the cropped image, we 'erase' it to give pytesseract a better chance of reading
+    # any text that it missed (or whose confidence wasn't high enough).
+    if not app_info_scan_1.empty:
+        if screenshot.device_os == ANDROID:
+            start_row = app_info_scan_1.iloc[0]['top']
+            for r in range(start_row, 0, -1):
+                if np.all(image[r, :] == image[r, 0]) and np.all(image[r, 0] != bg_colour):
+                    image_missed_text = cv2.rectangle(image_missed_text, (0, 0), (image.shape[1], r), bg_colour, -1)
+                    print("Horizontal area of solid colour found above first row of text; erasing that area.")
+                    break
 
-    image_missed_text = cv2.rectangle(image_missed_text, (0, 0),
-                                      (min(app_info_scan_1['left']), image_missed_text.shape[0]), bg_colour, -1)
+        for i in app_info_scan_1.index:
+            if app_info_scan_1['conf'][i] < conf_limit:
+                continue
+            upper_left_corner = (app_info_scan_1['left'][i] - 1, app_info_scan_1['top'][i] - 1)
+            bottom_right_corner = (app_info_scan_1['left'][i] + app_info_scan_1['width'][i] + 1,
+                                   app_info_scan_1['top'][i] + app_info_scan_1['height'][i] + 1)
+            cv2.rectangle(image_missed_text, upper_left_corner, bottom_right_corner, bg_colour, -1)
+
+        image_missed_text = cv2.rectangle(image_missed_text, (0, 0),
+                                          (min(app_info_scan_1['left']), image_missed_text.shape[0]), bg_colour, -1)
     _, app_info_scan_2 = extract_text_from_image(image_missed_text, remove_chars=remove_chars)
+
     if show_images:
         show_image(app_info_scan_2, image_missed_text)
 
@@ -1144,14 +1156,11 @@ if __name__ == '__main__':
             # Extract app info from cropped image
             app_area_df = extract_app_info(current_screenshot, scaled_cropped_image, crop_coordinates, app_area_scale_factor)
 
-            # twitter_in_initial_scan_df = text_df[text_df['text'].str.fullmatch(r'[xX]{1,2}')]
-            # twitter_in_initial_scan_df['left'] = ((twitter_in_initial_scan_df['left'] - app_area_crop_left) * app_area_scale_factor).astype(int)
-            # twitter_in_initial_scan_df['top'] = ((twitter_in_initial_scan_df['top'] - app_area_crop_top) * app_area_scale_factor).astype(int)
-            # twitter_in_initial_scan_df = twitter_in_initial_scan_df[(twitter_in_initial_scan_df['left'] > 0 &
-            #                                                          twitter_in_initial_scan_df['top'] > 0)]
-            # app_area_df = merge_df_rows_by_height(pd.concat([app_area_df, twitter_in_initial_scan_df]))
             if show_images:
                 show_image(app_area_df, scaled_cropped_image)
+
+            print("Text found in app-area:")
+            print(app_area_df[['left', 'top', 'width', 'height', 'conf', 'text']])
 
             # Sort the app-specific data into app names and app usage numbers
             app_data = Android.get_app_names_and_numbers(screenshot=current_screenshot,
@@ -1325,6 +1334,9 @@ if __name__ == '__main__':
             # Divide the extracted app info into app names and their numbers
             if show_images:
                 show_image(app_area_2_df, scaled_cropped_image)
+
+            print("Text found in app-area:")
+            print(app_area_2_df[['left', 'top', 'width', 'height', 'conf', 'text']])
 
             app_data = iOS.get_app_names_and_numbers(screenshot=current_screenshot,
                                                      df=app_area_2_df,

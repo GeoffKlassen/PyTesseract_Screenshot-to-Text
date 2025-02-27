@@ -231,6 +231,7 @@ def filter_time_or_number_text(text, conf, f):
     text2 = re.sub('Qh', '9h', text2)  # 9h can be misread as Qh
     text2 = re.sub(r'(Os|O s)', '0s', text2)  # 0s can be misread as Os (letter O and letter s)
     text2 = re.sub('A', '4', text2)  # 4 can be misread as A
+    text2 = re.sub(r'S(?=[0-9AS])|(?<=[0-9AS])S', '5', text2)
     text2 = text2.lower()
 
     # Remove any characters that aren't a digit or a 'time' character ('h' = hours, 'min' = minutes, 's' = seconds)
