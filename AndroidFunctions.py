@@ -716,6 +716,10 @@ def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_sh
             crop_top = 0
             crop_bottom = screenshot.height
 
+        if crop_top == 0 and crop_bottom == screenshot.height:
+            print("Could not find suitable values for top/bottom of app region.")
+            screenshot.add_error("App area not detected")
+
         text_df.drop(columns=['filtered_text'], inplace=True)
         cropped_image = image[crop_top:crop_bottom, crop_left:crop_right]
 

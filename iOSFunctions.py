@@ -611,6 +611,10 @@ def crop_image_to_app_area(screenshot, heading_above, heading_below):
     else:
         _, cropped_filtered_image = cv2.threshold(cropped_grey_image, 50, 180, cv2.THRESH_BINARY)
 
+    if crop_top == 0 and crop_bottom == screenshot.height:
+        print("Could not find suitable values for top/bottom of app region.")
+        screenshot.add_error("App area not detected")
+
     return cropped_filtered_image, [crop_top, crop_left, crop_bottom, crop_right]
 
 
