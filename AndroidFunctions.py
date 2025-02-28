@@ -895,7 +895,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                 app_numbers = new_number if app_numbers.empty else pd.concat([app_numbers, new_number], ignore_index=True)
 
             elif app == '':  # Only number
-                if len(app_names) < max_apps:
+                if len(app_names) - 1 < max_apps:
                     num_missed_app_values += 1
                 app_names = empty_name_row if app_names.empty else pd.concat([app_names, empty_name_row], ignore_index=True)
                 new_number = pd.DataFrame({'number': [num], 'number_conf': [row_conf]})
@@ -923,8 +923,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                 app_numbers = new_number if app_numbers.empty else pd.concat([app_numbers, new_number], ignore_index=True)
                 previous_text = NUMBER
 
-            elif num == '':
-                if len(app_names) < max_apps:
+            elif num == '':  # Only app name
+                if len(app_names) - 1 <= max_apps:
                     num_missed_app_values += 1
                 app_numbers = empty_number_row if app_numbers.empty else pd.concat([app_numbers, empty_number_row], ignore_index=True)
                 new_name = pd.DataFrame({'name': [app], 'name_conf': [row_conf]})

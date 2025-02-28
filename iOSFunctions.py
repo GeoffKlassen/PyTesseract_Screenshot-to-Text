@@ -909,7 +909,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
                     row_height > 0.75 * df['height'].mean() and \
                     str(row_text)[0].isalnum():  # if current row text is app name
                 if prev_row_type == 'name':  # two app names in a row
-                    if len(app_names) <= max_apps:
+                    if len(app_names) - 1 <= max_apps:
                         num_missed_app_values += 1
                     app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
                 new_name_row = pd.DataFrame({'name': [row_text], 'name_conf': [row_conf]})
@@ -933,7 +933,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
                     row_conf = NO_CONF
 
                 if prev_row_type != 'name':  # two app numbers in a row, or first datum is a number
-                    if len(app_names) < max_apps:
+                    if len(app_names) - 1 < max_apps:
                         num_missed_app_values += 1
                     app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
                 new_number_row = pd.DataFrame({'number': [row_text], 'number_conf': [row_conf]})
