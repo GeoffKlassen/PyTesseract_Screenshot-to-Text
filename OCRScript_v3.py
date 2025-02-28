@@ -672,8 +672,11 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False)
             if conf1 > conf2:
                 print("1st scan has higher confidence. Keeping 1st scan.")
                 return text1, conf1
-            else:
+            elif conf1 < conf2:
                 print("2nd scan has higher confidence. Using 2nd scan.")
+                return text2, conf2
+            else:
+                print("Confidence values are equal. Keeping 1st scan.")
                 return text2, conf2
     elif conf1 != NO_CONF:
         if value_is_number and not bool(re.search(val_fmt, str_text1)):

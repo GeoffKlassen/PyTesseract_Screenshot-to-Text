@@ -145,12 +145,12 @@ def get_dashboard_category(screenshot):
 
     categories_found = []
 
-    if heads_df[HEADING_COLUMN].str.contains(SCREENTIME_HEADING).any() or \
-            (heads_df[HEADING_COLUMN].str.contains(LIMITS_HEADING).any() and
-             heads_df[HEADING_COLUMN].str.contains(HOURS_AXIS_HEADING).any() and
+    if heads_df[HEADING_COLUMN].str.fullmatch(SCREENTIME_HEADING).any() or \
+            (heads_df[HEADING_COLUMN].str.fullmatch(LIMITS_HEADING).any() and
+             heads_df[HEADING_COLUMN].str.fullmatch(HOURS_AXIS_HEADING).any() and
              heads_df[heads_df[HEADING_COLUMN] == LIMITS_HEADING].index[0] >
              heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].index[0]) or \
-            heads_df[HEADING_COLUMN].str.contains(MOST_USED_HEADING).any() and (
+            heads_df[HEADING_COLUMN].str.fullmatch(MOST_USED_HEADING).any() and (
             text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == MOST_USED_HEADING].index[0] + 1 or
             heads_df[heads_df[HEADING_COLUMN] == MOST_USED_HEADING].iloc[-1]['top'] <
             0.9 * screenshot.height):
@@ -161,25 +161,27 @@ def get_dashboard_category(screenshot):
         #     the most used heading is not too close to the bottom of the screenshot
         categories_found.append(SCREENTIME)
 
-    if heads_df[HEADING_COLUMN].str.contains(PICKUPS_HEADING).any() or \
-            heads_df[HEADING_COLUMN].str.contains(FIRST_USED_AFTER_PICKUP_HEADING).any() and (
+    if (heads_df[HEADING_COLUMN].str.fullmatch(PICKUPS_HEADING).any() and
+            text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == PICKUPS_HEADING].index[0] + 1) or \
+            heads_df[HEADING_COLUMN].str.fullmatch(FIRST_USED_AFTER_PICKUP_HEADING).any() and (
             text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == FIRST_USED_AFTER_PICKUP_HEADING].index[0] + 1 or
             heads_df[heads_df[HEADING_COLUMN] == FIRST_USED_AFTER_PICKUP_HEADING].iloc[-1]['top'] <
             0.9 * screenshot.height):
-        # Found pickups heading; or
+        # Found pickups heading and there's more text below it; or
         # Found "first used after pickup" heading and either:
         #     there's more data below, or
         #     the "first used after pickup" heading is not close to the bottom of the screenshot
         categories_found.append(PICKUPS)
 
-    if heads_df[HEADING_COLUMN].str.contains(NOTIFICATIONS_HEADING).any() or \
-            heads_df[HEADING_COLUMN].str.contains(HOURS_AXIS_HEADING).any() and (
-            not heads_df[HEADING_COLUMN].str.contains(MOST_USED_HEADING).any() or
+    if (heads_df[HEADING_COLUMN].str.fullmatch(NOTIFICATIONS_HEADING).any() and
+        text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == NOTIFICATIONS_HEADING].index[0] + 1) or \
+            heads_df[HEADING_COLUMN].str.fullmatch(HOURS_AXIS_HEADING).any() and (
+            not heads_df[HEADING_COLUMN].str.fullmatch(MOST_USED_HEADING).any() or
             heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].index[0] > heads_df[heads_df[HEADING_COLUMN] == MOST_USED_HEADING].index[0]) and (
             text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].index[0] + 1 or
             heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].iloc[-1]['top'] <
             0.9 * screenshot.height):
-        # Found notifications heading; or
+        # Found notifications heading and there's more text below it; or
         # Found hours row and either:
         #     there's more data below, or
         #     the hours row is not close to the bottom of the screenshot
@@ -357,55 +359,59 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
     # Right edge of Daily Total is not likely more than 60% away from the left edge of the screenshot
 
     cropped_image = img[crop_top:crop_bottom, crop_left:crop_right]
-    scale = 0.5  # Pytesseract sometimes fails to read very large text; scale down the cropped region
-    scaled_cropped_image = cv2.resize(cropped_image, None,
-                                      fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
-
-    kernel_dim = int(screenshot.width / 500)
-    kernel_dim -= 1 if kernel_dim % 2 == 0 else 0
-    kernel_size = (kernel_dim, kernel_dim)
-    scaled_cropped_image = cv2.GaussianBlur(scaled_cropped_image, kernel_size, 0)
-
-    if category == SCREENTIME:
-        _, rescan_df = OCRScript_v3.extract_text_from_image(scaled_cropped_image)
+    if cropped_image.size == 0:
+        print(f"Could not find suitable crop region for daily total {category}.")
+        return daily_total_1st_scan, daily_total_1st_scan_conf
     else:
-        _, rescan_df = OCRScript_v3.extract_text_from_image(scaled_cropped_image, cmd_config=r'--oem 3 --psm 6 outputbase digits')
+        scale = 0.5  # Pytesseract sometimes fails to read very large text; scale down the cropped region
+        scaled_cropped_image = cv2.resize(cropped_image, None,
+                                          fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
 
-    # For debugging.
-    if show_images:
-        OCRScript_v3.show_image(rescan_df, scaled_cropped_image)
+        kernel_dim = int(screenshot.width / 500)
+        kernel_dim -= 1 if kernel_dim % 2 == 0 else 0
+        kernel_size = (kernel_dim, kernel_dim)
+        scaled_cropped_image = cv2.GaussianBlur(scaled_cropped_image, kernel_size, 0)
 
-    # Initialize second scan values
-    daily_total_2nd_scan = NO_TEXT
-    daily_total_2nd_scan_conf = NO_CONF
+        if category == SCREENTIME:
+            _, rescan_df = OCRScript_v3.extract_text_from_image(scaled_cropped_image)
+        else:
+            _, rescan_df = OCRScript_v3.extract_text_from_image(scaled_cropped_image, cmd_config=r'--oem 3 --psm 6 outputbase digits')
 
-    if rescan_df.shape[0] > 0:
-        for i in rescan_df.index:
-            # Skip rows that are more than 20% away from the left edge of the screenshot.
-            if rescan_df.loc[i]['left'] > 0.2 * scale * screenshot.width or (not headings_df.empty and rescan_df.loc[i]['height'] < (min(headings_df['height'])*scale)):
-                continue
-            row_text = rescan_df.loc[i]['text']
-            row_conf = round(rescan_df.loc[i]['conf'], 4)  # 4 decimal points of precision for the confidence value
-            if len(re.findall(value_pattern, row_text)) == 1 and \
-                    rescan_df.loc[i]['height'] > 0.01 * screenshot.height and \
-                    len(re.findall(r'AM|PM', row_text, re.IGNORECASE)) <= 1:
-                # The row text contains a (misread) value, and
-                # the height of that value's textbox is above a minimum threshold, and
-                # that value is not an 'hours' row (Sometimes after cropping the image, the hours row is included
-                # and gets misread as a value format because it may contain AM, which is also a misread form of 4m)
-                daily_total_2nd_scan, daily_total_2nd_scan_conf = filter_time_or_number_text(row_text, row_conf, value_pattern)
-                daily_total_2nd_scan_conf = row_conf
-                break
+        # For debugging.
+        if show_images:
+            OCRScript_v3.show_image(rescan_df, scaled_cropped_image)
 
-    if daily_total_1st_scan_conf != NO_CONF:
-        print(f"Total {category}, 1st scan: {daily_total_1st_scan} (conf = {daily_total_1st_scan_conf})")
-    if daily_total_2nd_scan_conf != NO_CONF:
-        print(f"Total {category}, 2nd scan: {daily_total_2nd_scan} (conf = {daily_total_2nd_scan_conf})")
+        # Initialize second scan values
+        daily_total_2nd_scan = NO_TEXT
+        daily_total_2nd_scan_conf = NO_CONF
 
-    daily_tot, daily_tot_conf = OCRScript_v3.choose_between_two_values(daily_total_1st_scan, daily_total_1st_scan_conf,
-                                                                       daily_total_2nd_scan, daily_total_2nd_scan_conf)
+        if rescan_df.shape[0] > 0:
+            for i in rescan_df.index:
+                # Skip rows that are more than 20% away from the left edge of the screenshot.
+                if rescan_df.loc[i]['left'] > 0.2 * scale * screenshot.width or (not headings_df.empty and rescan_df.loc[i]['height'] < (min(headings_df['height'])*scale)):
+                    continue
+                row_text = rescan_df.loc[i]['text']
+                row_conf = round(rescan_df.loc[i]['conf'], 4)  # 4 decimal points of precision for the confidence value
+                if len(re.findall(value_pattern, row_text)) == 1 and \
+                        rescan_df.loc[i]['height'] > 0.01 * screenshot.height and \
+                        len(re.findall(r'AM|PM', row_text, re.IGNORECASE)) <= 1:
+                    # The row text contains a (misread) value, and
+                    # the height of that value's textbox is above a minimum threshold, and
+                    # that value is not an 'hours' row (Sometimes after cropping the image, the hours row is included
+                    # and gets misread as a value format because it may contain AM, which is also a misread form of 4m)
+                    daily_total_2nd_scan, daily_total_2nd_scan_conf = filter_time_or_number_text(row_text, row_conf, value_pattern)
+                    daily_total_2nd_scan_conf = row_conf
+                    break
 
-    return daily_tot, daily_tot_conf
+        if daily_total_1st_scan_conf != NO_CONF:
+            print(f"Total {category}, 1st scan: {daily_total_1st_scan} (conf = {daily_total_1st_scan_conf})")
+        if daily_total_2nd_scan_conf != NO_CONF:
+            print(f"Total {category}, 2nd scan: {daily_total_2nd_scan} (conf = {daily_total_2nd_scan_conf})")
+
+        daily_tot, daily_tot_conf = OCRScript_v3.choose_between_two_values(daily_total_1st_scan, daily_total_1st_scan_conf,
+                                                                           daily_total_2nd_scan, daily_total_2nd_scan_conf)
+
+        return daily_tot, daily_tot_conf
 
 
 def convert_text_time_to_minutes(time_as_string):
