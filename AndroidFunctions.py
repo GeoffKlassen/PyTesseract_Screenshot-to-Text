@@ -381,7 +381,8 @@ def get_dashboard_category(screenshot):
             any(heads_df[HEADING_COLUMN].eq(TOTAL_SCREENTIME)) or \
             any(heads_df[HEADING_COLUMN].eq(MOST_USED_HEADING)) and \
             (text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == MOST_USED_HEADING].index[0] + 1 or
-             heads_df[heads_df[HEADING_COLUMN] == MOST_USED_HEADING].iloc[-1]['top'] < 0.9 * screenshot.height):
+             heads_df[heads_df[HEADING_COLUMN] == MOST_USED_HEADING].iloc[-1]['top'] < 0.9 * screenshot.height) or (
+            count_matching_rows(text_df_hashes, GOOGLE_SCREENTIME_FORMATS[lang]) >= 2):
         # Found screentime heading; or
         # Found total screentime; or
         # Found 'most used' heading and either:
