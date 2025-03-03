@@ -470,7 +470,8 @@ def get_date_in_screenshot(screenshot):
 
         try:
             # Convert the string date to a date object
-            date_object = datetime.strptime(f"{day_detected} {month_detected}", "%d %b")
+            date_object = datetime.strptime(f"{day_detected} {month_detected} {datetime.now().year}", "%d %b %Y")
+            # Note: the 'year' part of the date object will be replaced with the year that the screenshot was submitted
 
             # Get the numeric month value from the mapping
             month_numeric = month_mapping.get(month_detected)

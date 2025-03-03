@@ -120,8 +120,8 @@ SAMSUNG_NOTIFICATIONS_FORMATS = {ITA: ['# notifiche ricevute', "# ricevute"],
                                  FRA: ['# notifications', '# notification']}  # TODO Fill this in
 SAMSUNG_UNLOCKS_FORMAT = {ITA: ['# volte', '# in totale'],
                           ENG: ['# times'],
-                          GER: [''],  # TODO Fill this in
-                          FRA: ['']}  # TODO Fill this in
+                          GER: ['TODO FILL THIS IN'],  # TODO Fill this in
+                          FRA: ['TODO FILL THIS IN']}  # TODO Fill this in
 
 # YOU_CAN_SET_DAILY_TIMERS = {ITA: 'Imposta i timer per le app',
 #                             ENG: 'You can set daily timers',
@@ -132,18 +132,18 @@ SAMSUNG_UNLOCKS_FORMAT = {ITA: ['# volte', '# in totale'],
 KEYWORDS_FOR_REST_OF_THE_DAY = {ITA: ['giornata'],  # full phrase is 'resto della giornata' but 'giornata' is sometimes its own line
                                 ENG: ['rest of the day', 'rest of the', 'of the day', 'the day'],
                                 GER: ['Rest des Tages pausiert'],
-                                FRA: ['']}  # TODO Fill this in
+                                FRA: ['TODO FILL THIS IN']}  # TODO Fill this in
 # "rest of the day" is the last text in the dialogue box for "You can set daily timers".
 
 KEYWORDS_FOR_SHOW_SITES_YOU_VISIT = {ITA: ['Mostra i siti visitati'],
                                      ENG: ['Show sites you visit', 'Show sites that you visit'],
                                      GER: ['Besuchte Websites anzeigen'],
-                                     FRA: ['']}  # TODO Fill this in
+                                     FRA: ['TODO FILL THIS IN']}  # TODO Fill this in
 # "Show sites you visit" can appear in the Google version of Dashboard, under the Chrome app (if it's in the app list).
 # Thus, it can be mistaken for an app name, so we need to ignore it.
 
 KEYWORDS_FOR_UNRELATED_SCREENSHOTS = {ITA: ['USO BATTERIA', 'Benessere digitale'],
-                                      ENG: ['BATTERY USE', 'BATTERY USAGE', 'Digital wellbeing'],
+                                      ENG: ['BATTERY USE', 'BATTERY USAGE', 'Digital wellbeing', 'Digital Wellbeing & parental'],
                                       GER: ['TODO FILL THIS IN'],
                                       FRA: ['TODO FILL THIS IN']}
 # Some screenshots show only Battery Usage info; these screenshots do not contain any of the requested info.
