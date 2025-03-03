@@ -467,7 +467,8 @@ def filter_time_text(text, conf, hr_f, min_f):
         return filtered_str
 
     text2 = re.sub(r"bre|bra", "hrs", text)
-    text2 = re.sub(r"br", "hr", text2)
+    text2 = re.sub(r"br|Ar", "hr", text2)
+    text2 = re.sub(r"ii", "11", text2, re.IGNORECASE)
     # text2 = re.sub(r"hrs", "hr", text2)
     # Replace common misread characters (e.g. pytesseract sometimes misreads '1h' as 'Th'/'th').
     text2 = replace_misread_digit('(t|T)', '1', text2)
@@ -1008,19 +1009,24 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                                                                                 df['top'],
                                                                                 (df['top'] + df['height'])):
             row_text = re.sub(r'^[xX]{1,2}$', "X", row_text)  # X (Twitter) may show up here as xX
+            row_height = row_bottom - row_top
             if min(OCRScript_v3.levenshtein_distance(row_text, key) for key in
                    KEYWORDS_FOR_SHOW_SITES_YOU_VISIT[img_lang]) < moe_show_sites:
                 # A button saying 'Show sites that you visit' appears below the Google Chrome web browser, which is not
                 # an app name, so it should be ignored
                 continue
+
             app_name, app_number = split_app_name_and_screen_time(row_text)
-            if app_name != '' and (app_number == '' and row_left + crop_left > (0.4 * screenshot.width) or (
-                    previous_text == APP and row_top - prev_row_bottom < int(0.01*crop_height))):
+            if app_name != '' and (app_number == '' and row_left + crop_left > (0.4 * screenshot.width)):
                 # Sometimes there are 'pill' shapes above the app time; these can be misread as app names.
                 # Ignore such apparent app names whose left edges lie beyond 40% of the screenshot width.
-                # Also, sometimes an app time that appears just below an app name can be interpreted as an app name,
+                continue
+            if android_version == GOOGLE and app_name != '' and previous_text == APP and row_top - prev_row_bottom < row_height:
+                num_missed_app_values += 1
+                # Sometimes an app time that appears just below an app name can be interpreted as an app name,
                 # even after filtering. Ignore such misread app times.
                 continue
+
             build_app_and_number_dfs(app_name, app_number)
             prev_row_bottom = row_bottom
     elif category == NOTIFICATIONS:
