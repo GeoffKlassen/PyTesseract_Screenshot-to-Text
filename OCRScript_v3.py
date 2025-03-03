@@ -792,8 +792,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
             cv2.rectangle(image_missed_text, upper_left_corner, bottom_right_corner, bg_colour, -1)
 
         app_info_names_only = app_info_scan_1[~app_info_scan_1['text'].str.fullmatch(misread_time_or_number_format)]
-        print("App info names only is:")
-        print(app_info_names_only)
+
         if not app_info_names_only.empty:
             image_missed_text = cv2.rectangle(image_missed_text, (0, 0),
                                               (min(app_info_names_only['left']), image_missed_text.shape[0]), bg_colour, -1)
