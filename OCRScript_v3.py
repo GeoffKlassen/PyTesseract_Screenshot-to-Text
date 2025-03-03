@@ -791,8 +791,13 @@ def extract_app_info(screenshot, image, coordinates, scale):
                                    app_info_scan_1['top'][i] + app_info_scan_1['height'][i] + 1)
             cv2.rectangle(image_missed_text, upper_left_corner, bottom_right_corner, bg_colour, -1)
 
-        image_missed_text = cv2.rectangle(image_missed_text, (0, 0),
-                                          (min(app_info_scan_1['left']), image_missed_text.shape[0]), bg_colour, -1)
+        app_info_names_only = app_info_scan_1[~app_info_scan_1['text'].str.fullmatch(misread_time_or_number_format)]
+        print("App info names only is:")
+        print(app_info_names_only)
+        if not app_info_names_only.empty:
+            image_missed_text = cv2.rectangle(image_missed_text, (0, 0),
+                                              (min(app_info_names_only['left']), image_missed_text.shape[0]), bg_colour, -1)
+
     _, app_info_scan_2 = extract_text_from_image(image_missed_text, remove_chars=remove_chars)
 
     if show_images:
@@ -802,6 +807,11 @@ def extract_app_info(screenshot, image, coordinates, scale):
     app_info = iOS.consolidate_overlapping_text(app_info) if screenshot.device_os == IOS else (
         Android.consolidate_overlapping_text(app_info, time_format_eol))
     app_info = app_info.reset_index(drop=True)
+
+    rows_with_time_data = app_info[app_info['text'].str.fullmatch(misread_time_format)]
+    if screenshot.category_detected is None and not rows_with_time_data.empty:
+        print(f"Found rows with screentime values. Setting dashboard category to '{SCREENTIME}'.")
+        current_screenshot.category_detected = SCREENTIME
 
     return app_info
 
@@ -840,6 +850,8 @@ def get_dashboard_category(screenshot):
 
 
 def update_eta(most_recent_times):
+    # def convert_seconds_to_hms(sec):
+
     elapsed_time_in_seconds = time.time() - start_time
     while len(most_recent_times) > 20:
         del most_recent_times[0]
@@ -1166,7 +1178,6 @@ if __name__ == '__main__':
 
             # Extract app info from cropped image
             app_area_df = extract_app_info(current_screenshot, scaled_cropped_image, crop_coordinates, app_area_scale_factor)
-
             if show_images:
                 show_image(app_area_df, scaled_cropped_image)
 
@@ -1348,6 +1359,12 @@ if __name__ == '__main__':
 
             print("Text found in app-area:")
             print(app_area_2_df[['left', 'top', 'width', 'height', 'conf', 'text']])
+
+            if dashboard_category is None and current_screenshot.category_detected is not None:
+                # Sometimes there is screentime data in an image but the category is not detected.
+                # If the cropped df contains enough rows that match a (misread) time format, set the dashboard category
+                # to 'screentime'.
+                dashboard_category = current_screenshot.category_detected
 
             app_data = iOS.get_app_names_and_numbers(screenshot=current_screenshot,
                                                      df=app_area_2_df,
