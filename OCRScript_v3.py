@@ -849,29 +849,42 @@ def get_dashboard_category(screenshot):
 
 
 def update_eta(most_recent_times):
-    # def convert_seconds_to_hms(sec):
+    def convert_seconds_to_hms(sec):
+        _hr = int(sec / 3600)
+        _min = int((sec / 60) % 60)
+        _sec = int(sec % 60)
+        if _hr == 0:
+            str_hr = ""
+        else:
+            str_hr = str(_hr) + ":"
+
+        if _min == 0:
+            str_min = f"{"00:" if _hr > 0 else "0:"}"
+        elif 0 < _min < 10 and _hr > 0:
+            str_min = "0" + str(_min) + ":"
+        else:
+            str_min = str(_min) + ":"
+
+        if 0 <= _sec < 10:
+            str_sec = "0" + str(_sec)
+        else:
+            str_sec = str(_sec)
+
+        str_time = str_hr + str_min + str_sec
+        return str_time
 
     elapsed_time_in_seconds = time.time() - start_time
     while len(most_recent_times) > 20:
         del most_recent_times[0]
-    elapsed_time_min = int(elapsed_time_in_seconds / 60)
-    elapsed_time_s = int(elapsed_time_in_seconds % 60)
-    str_elapsed_s = f"{"0" if elapsed_time_s < 10 else ""}{elapsed_time_s}"
-    print(f"\n\nElapsed time:  {elapsed_time_min}:{str_elapsed_s}")
+
+    print(f"\n\nElapsed time:  {convert_seconds_to_hms(elapsed_time_in_seconds)}")
+
     if len(most_recent_times) > 0:
         average_time_per_screenshot = sum(most_recent_times) / len(most_recent_times)
         estimated_time_remaining = average_time_per_screenshot * (min([test_upper_bound, num_urls]) - index - 1)
         if estimated_time_remaining > 0:
-            eta_min = int(estimated_time_remaining / 60)
-            eta_s = int(estimated_time_remaining % 60)
-            eta_hr = int(eta_min / 60)
-            eta_min = int(eta_min % 60)
+            print(f"Estimated time remaining:  {convert_seconds_to_hms(estimated_time_remaining)}")
 
-            str_eta_hr = f"{(str(eta_hr) + ":") if eta_hr > 0 else ""}"
-            str_eta_min = f"{"0" if (eta_min < 10 and eta_hr > 0) else ""}{eta_min}"
-            str_eta_s = f"{"0" if eta_s < 10 else ""}{eta_s}"
-            eta_text = f"{str_eta_hr}{str_eta_min}:{str_eta_s}"
-            print(f"Estimated time remaining: {eta_text}")
     return
 
 
