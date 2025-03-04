@@ -139,8 +139,8 @@ class Participant:
                                                        text2=ss.daily_total,
                                                        conf2=ss.daily_total_conf))
             moe = 2
-            existing_data_app_num = -1
-            new_data_app_num = -1
+            existing_data_lineup_index = -1
+            new_data_lineup_index = -1
             lineup_found = False
             existing_data_contains_apps = False
             for i in range(1, MAX_APPS + 1):
@@ -153,8 +153,8 @@ class Participant:
                     if ss.app_data['name'][j] == NO_TEXT:
                         continue
                     elif edit_distance(self.usage_data.loc[date_index, f'{category}_app_{i}_name'], ss.app_data['name'][j]) <= moe:
-                        existing_data_app_num = i
-                        new_data_app_num = j
+                        existing_data_lineup_index = i
+                        new_data_lineup_index = j
                         lineup_found = True
                         break
                     else:
@@ -189,25 +189,25 @@ class Participant:
                         min_existing_value >= max_new_value):
                     for i in range(MAX_APPS, 0, -1):
                         if existing_values_row[existing_values_columns[i - 1]] == min_existing_value:
-                            existing_data_app_num = i
+                            existing_data_lineup_index = i
                             break
-                    new_data_app_num = 0
+                    new_data_lineup_index = 0
 
                 elif (not pd.isna(min_new_value) and not pd.isna(max_existing_value) and
                         min_new_value >= max_existing_value) or not existing_data_contains_apps:
-                    existing_data_app_num = 0
-                    new_data_app_num = new_values.idxmin()
+                    existing_data_lineup_index = 0
+                    new_data_lineup_index = new_values.idxmin()
 
-            if existing_data_app_num == -1 or new_data_app_num == -1:
+            if existing_data_lineup_index == -1 or new_data_lineup_index == -1:
                 print("Could not determine where existing data and new screenshot data line up. "
                       "Existing data remains unchanged:")
                 return
 
-            max_lineup = max([existing_data_app_num, new_data_app_num])
+            max_lineup = max([existing_data_lineup_index, new_data_lineup_index])
             compare_df = pd.DataFrame(columns=['ex_name', 'ex_name_conf', 'ex_number', 'ex_number_conf',
                                                'new_name', 'new_name_conf', 'new_number', 'new_number_conf'])
             for i in range(MAX_APPS + 1):
-                ex_index = i + existing_data_app_num - max_lineup
+                ex_index = i + existing_data_lineup_index - max_lineup
                 if ex_index > 0:
                     compare_df.loc[i, 'ex_name'] = self.usage_data[
                         f'{category}_app_{ex_index}_name'][date_index]
@@ -228,7 +228,7 @@ class Participant:
                     if category == SCREENTIME:
                         compare_df.loc[i, 'ex_minutes'] = NO_NUMBER
 
-                new_index = i + new_data_app_num - max_lineup
+                new_index = i + new_data_lineup_index - max_lineup
                 if new_index > 0:
                     compare_df.loc[i, 'new_name'] = ss.app_data.loc[new_index, 'name']
                     compare_df.loc[i, 'new_name_conf'] = ss.app_data.loc[new_index, 'name_conf']
