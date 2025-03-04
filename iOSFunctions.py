@@ -4,7 +4,6 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import re
-import warnings
 import cv2
 
 import OCRScript_v3
@@ -611,7 +610,7 @@ def crop_image_to_app_area(screenshot, heading_above, heading_below):
 
     if crop_top == 0 and crop_bottom == screenshot.height:
         print("Could not find suitable values for top/bottom of app region.")
-        screenshot.add_error("App area not detected")
+        screenshot.add_error(ERR_APP_AREA)
 
     return cropped_filtered_image, [crop_top, crop_left, crop_bottom, crop_right]
 
@@ -870,10 +869,10 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
     app_numbers = empty_number_row.copy()
     if df.empty:
         print("No text found in cropped image.")
-        screenshot.add_error("App-level data not detected")
+        screenshot.add_error(ERR_APP_DATA)
     elif "today at" in df['text'].iloc[-1]:  # Need to start a Dictionary of strings like this in all languages
         print("Final row of text contains 'today at'. No app-level data present.")
-        screenshot.add_error("App-level data not detected")
+        screenshot.add_error(ERR_APP_DATA)
 
     else:
         value_format = misread_time_format if category == SCREENTIME else misread_number_format
@@ -903,7 +902,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
                 app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
                 app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
                 if app_names.shape[0] <= max_apps:
-                    screenshot.add_error("Suspected missing app(s)")
+                    screenshot.add_error(ERR_MISSING_APP)
                     num_missed_app_values += 2
 
             if (len(str(row_text)) >= 3 or re.match(r'[xX]{1,2}', str(row_text))) and \
@@ -946,7 +945,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
             prev_row_bottom = row_top + row_height
 
         if num_missed_app_values > 0:
-            screenshot.add_error(f"Missed values", num_missed_app_values)
+            screenshot.add_error(ERR_MISSING_VALUE, num_missed_app_values)
 
     # app_names.loc[app_names['name'] == 'Lite', 'name'] = 'Facebook Lite'  # The app "Facebook Lite" appears as 'Lite'
     app_names['name'] = app_names['name'].apply(lambda x: re.sub(r'\bAl\b', 'AI', x))  # Replace 'Al' with 'AI'
@@ -961,7 +960,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
             screenshot.daily_total != NO_TEXT:
         print(f"Daily total {category} ({screenshot.daily_total}) matches one of the app usage times.")
         print(f"Resetting daily total {category} to {NO_NUMBER}.")
-        screenshot.add_error("Daily total matched an app time")
+        screenshot.add_error(ERR_TOTAL_SCREENTIME)
         screenshot.set_daily_total(NO_TEXT, NO_CONF)
         screenshot.set_daily_total_minutes(NO_NUMBER)
 

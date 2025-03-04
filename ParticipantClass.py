@@ -13,6 +13,8 @@ MAX_APPS = RuntimeValues.max_apps_per_category
 NO_TEXT = ConvenienceVariables.NO_TEXT
 NO_NUMBER = ConvenienceVariables.NO_NUMBER
 NO_CONF = ConvenienceVariables.NO_CONF
+ERR_DATA_NOT_READ = ConvenienceVariables.ERR_DATA_NOT_READ
+ERR_UNRELATED_DATA = ConvenienceVariables.ERR_UNRELATED_DATA
 
 EMPTY_CELL = ''
 
@@ -79,7 +81,7 @@ class Participant:
         if category in [PICKUPS, UNLOCKS]:
             category = PICKUPS
 
-        if "Error reading data" in ss.errors:
+        if ERR_DATA_NOT_READ in ss.errors or ERR_UNRELATED_DATA in ss.errors:
             print("No data to add to participant's temporal data.")
             return
 

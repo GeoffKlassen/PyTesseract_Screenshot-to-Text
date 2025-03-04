@@ -143,7 +143,9 @@ KEYWORDS_FOR_SHOW_SITES_YOU_VISIT = {ITA: ['Mostra i siti visitati'],
 # Thus, it can be mistaken for an app name, so we need to ignore it.
 
 KEYWORDS_FOR_UNRELATED_SCREENSHOTS = {ITA: ['USO BATTERIA', 'Benessere digitale'],
-                                      ENG: ['BATTERY USE', 'BATTERY USAGE', 'Digital wellbeing', 'Digital Wellbeing & parental'],
+                                      ENG: ['BATTERY USE', 'BATTERY USAGE',
+                                            'Digital wellbeing', 'Digital Wellbeing & parental',
+                                            'Manage notifications'],
                                       GER: ['TODO FILL THIS IN'],
                                       FRA: ['TODO FILL THIS IN']}
 # Some screenshots show only Battery Usage info; these screenshots do not contain any of the requested info.
@@ -160,8 +162,9 @@ def screenshot_contains_unrelated_data(ss):
     moe = int(np.log(min(len(k) for k in KEYWORDS_FOR_UNRELATED_SCREENSHOTS[lang]))) + 1
     # margin of error for text (number of characters two strings can differ by and still be considered the same text)
     
-    if any(text_df['text'].apply(lambda x: min(OCRScript_v3.levenshtein_distance(x[0:len(key)], key)
-                                               for key in KEYWORDS_FOR_UNRELATED_SCREENSHOTS[lang])) < moe):
+    if any(text_df['text'].apply(lambda x: min(OCRScript_v3.levenshtein_distance(w, key)
+                                               for key in KEYWORDS_FOR_UNRELATED_SCREENSHOTS[lang]
+                                               for w in [x[0:len(key)], x[-len(key):]])) < moe):
         print("Detected data irrelevant to the study.")
         # One of the rows of text_df starts with one of the keywords for unrelated screenshots
         return True
@@ -716,7 +719,7 @@ def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_sh
 
         if crop_top == 0 and crop_bottom == screenshot.height:
             print("Could not find suitable values for top/bottom of app region.")
-            screenshot.add_error("App area not detected")
+            screenshot.add_error(ERR_APP_AREA)
 
         text_df.drop(columns=['filtered_text'], inplace=True)
         cropped_image = image[crop_top:crop_bottom, crop_left:crop_right]
@@ -865,9 +868,11 @@ def consolidate_overlapping_text(df, time_format_eol):
 
     merged_df = df.drop(index=rows_to_drop).reset_index()
 
-    # consolidated_df = merge_df_rows_by_height(merged_df)
+    consolidated_df = OCRScript_v3.merge_df_rows_by_height(merged_df)
+    if not merged_df.equals(consolidated_df):
+        print("Some rows were consolidated.")
 
-    return merged_df  # consolidated_df ?
+    return consolidated_df
 
 
 def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, coordinates):
@@ -1114,7 +1119,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                     previous_text = APP
 
     if num_missed_app_values > 0:
-        screenshot.add_error(f"Missed values", num_missed_app_values)
+        screenshot.add_error(ERR_MISSING_VALUE, num_missed_app_values)
 
     if (~app_numbers['number_conf'].eq(NO_CONF)).any() and screenshot.category_detected is None:
         # Sometimes the dashboard category is not detected, but app-level data from the correct category is extracted.

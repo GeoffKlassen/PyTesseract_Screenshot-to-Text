@@ -131,3 +131,22 @@ BROWN = (165, 165, 165)  # Not used as a pixel colour, just used as a shorthand 
 
 APP = 'app'
 NUMBER = 'number'
+
+"""
+    Error Messages    
+"""
+ERR_UNRELATED_DATA = 'Unrelated data detected'
+ERR_APP_AREA = 'App area not detected'
+ERR_DATA_NOT_READ = 'Error reading data'
+ERR_NO_TEXT = 'No text found'
+ERR_LANGUAGE = 'Language not detected'
+ERR_DAY_TEXT = 'Day text not detected'
+ERR_DEVICE_OS = 'Different device OS detected'
+ERR_CATEGORY = 'Category not detected'
+ERR_DAILY_TOTAL = 'Daily total not found'
+ERR_APP_DATA = 'App-level data not found'
+ERR_DAILY_TOTAL_MISSED = 'Daily total missed'
+ERR_OS_NOT_FOUND = 'OS not detected'
+ERR_MISSING_APP = 'Suspected missed app(s)'
+ERR_MISSING_VALUE = 'Missed values'
+ERR_TOTAL_SCREENTIME = 'Daily total matched an app time'

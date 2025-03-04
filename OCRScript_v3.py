@@ -3,7 +3,6 @@ from pandas.core.methods.selectn import SelectNSeries
 import AndroidFunctions as Android
 import ParticipantClass
 import ScreenshotClass
-import iOSFunctions
 import iOSFunctions as iOS
 from RuntimeValues import *
 from RuntimeValues import app_area_scale_factor
@@ -16,7 +15,6 @@ import numpy as np
 import pandas as pd
 import pytesseract
 import cv2
-from collections import namedtuple, Counter
 import requests
 from PIL import Image
 from io import BytesIO
@@ -814,7 +812,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
         Android.consolidate_overlapping_text(app_info, time_format_eol))
     app_info = app_info.reset_index(drop=True)
 
-    rows_with_time_data = app_info[app_info['text'].str.fullmatch(misread_time_format)]
+    # rows_with_time_data = app_info[app_info['text'].str.fullmatch(misread_time_format)]
     # if screenshot.category_detected is None and not rows_with_time_data.empty:
     #     print(f"Found rows with screentime values. Setting dashboard category to '{SCREENTIME}'.")
     #     current_screenshot.category_detected = SCREENTIME
@@ -967,7 +965,7 @@ if __name__ == '__main__':
         if grey_image.size == 0:
             category_submitted = url_list[IMG_RESPONSE_TYPE][index]
             print(f"Error reading data from URL. Setting {category_submitted} values to N/A.")
-            current_screenshot.add_error("Error reading data")
+            current_screenshot.add_error(ERR_DATA_NOT_READ)
             current_screenshot.set_daily_total(NO_TEXT)
             if current_screenshot.category_submitted == SCREENTIME:
                 current_screenshot.set_daily_total_minutes(NO_NUMBER)
@@ -1022,7 +1020,7 @@ if __name__ == '__main__':
 
         if text_df.shape[0] == 0:
             print(f"No text found.  Setting {current_screenshot.category_submitted} values to N/A.")
-            current_screenshot.add_error("No text found")
+            current_screenshot.add_error(ERR_NO_TEXT)
             current_screenshot.set_daily_total(NO_TEXT)
             if current_screenshot.category_submitted == SCREENTIME:
                 current_screenshot.set_daily_total_minutes(NO_NUMBER)
@@ -1044,7 +1042,7 @@ if __name__ == '__main__':
         if language_was_detected:
             current_participant.set_language(image_language)
         else:
-            current_screenshot.add_error("Language not detected")
+            current_screenshot.add_error(ERR_LANGUAGE)
 
         # Determine the date in the screenshot
         date_in_screenshot, rows_with_date = get_date_in_screenshot(current_screenshot)
@@ -1057,7 +1055,7 @@ if __name__ == '__main__':
             current_screenshot.set_time_period(day_type)
             current_screenshot.set_rows_with_day_type(rows_with_day_type)
         else:
-            current_screenshot.add_error("Day text not detected")
+            current_screenshot.add_error(ERR_DAY_TEXT)
 
         # Sometimes, the Device ID extracted from the Metadata is 16 hexadecimal digits long (which correlates with
         # Android images), but the screenshot is iOS, and iPhones have 32-digit hexadecimal Device IDs.
@@ -1072,12 +1070,12 @@ if __name__ == '__main__':
             print("Screenshot has Android-style Device ID but contains iOS headings. "
                   f"Setting device OS to '{IOS}'.")
             current_screenshot.device_os_detected = IOS
-            current_screenshot.add_error("Different Device OS detected")
+            current_screenshot.add_error(ERR_DEVICE_OS)
         elif current_screenshot.device_os_submitted == IOS and (len(android_headings_df) > len(iOS_headings_df)):
             print("Screenshot has iOS-style Device ID but contains Android headings. "
                   f"Setting device OS to '{ANDROID}'.")
             current_screenshot.device_os_detected = ANDROID
-            current_screenshot.add_error("Different Device OS detected")
+            current_screenshot.add_error(ERR_DEVICE_OS)
 
 
         """
@@ -1095,7 +1093,7 @@ if __name__ == '__main__':
 
             # Determine if the screenshot contains data mis-considered relevant by participant -- if so, skip it
             if Android.screenshot_contains_unrelated_data(current_screenshot):
-                current_screenshot.add_error("Unrelated data detected")
+                current_screenshot.add_error(ERR_UNRELATED_DATA)
                 current_screenshot.set_daily_total(NO_TEXT if study_category == SCREENTIME else NO_NUMBER)
                 if study_category == SCREENTIME:
                     current_screenshot.set_daily_total_minutes(NO_NUMBER)
@@ -1138,7 +1136,7 @@ if __name__ == '__main__':
             if dashboard_category_detected:
                 current_screenshot.set_category_detected(dashboard_category)
             else:
-                current_screenshot.add_error("Category not detected")
+                current_screenshot.add_error(ERR_CATEGORY)
                 dashboard_category = current_screenshot.category_submitted
 
             daily_total, daily_total_conf = Android.get_daily_total_and_confidence(screenshot=current_screenshot,
@@ -1146,7 +1144,7 @@ if __name__ == '__main__':
                                                                                    heading=dashboard_category)
             current_screenshot.set_daily_total(daily_total, daily_total_conf)
             if daily_total_conf == NO_CONF:
-                current_screenshot.add_error("Daily total not found")
+                current_screenshot.add_error(ERR_DAILY_TOTAL)
                 dt = "N/A"
             else:
                 dt = daily_total
@@ -1203,7 +1201,7 @@ if __name__ == '__main__':
                                                screenshot=current_screenshot,
                                                time_format_short=time_format_short))
             if all(crops is None for crops in crop_coordinates):
-                current_screenshot.add_error("App-level data not detected")
+                current_screenshot.add_error(ERR_APP_DATA)
                 print(f"Setting all app-specific data to N/A.")
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
@@ -1286,7 +1284,7 @@ if __name__ == '__main__':
             if dashboard_category_detected:
                 current_screenshot.set_category_detected(dashboard_category)
             else:
-                current_screenshot.add_error("Category not detected")
+                current_screenshot.add_error(ERR_CATEGORY)
 
             # for category in 'categories to search for' loop with 'category' as the 3rd input to function
             # if screentime is in the categories to search for ??
@@ -1297,7 +1295,7 @@ if __name__ == '__main__':
             if daily_total_conf == NO_CONF:
                 dt = "N/A"
                 if current_screenshot.total_heading_found and dashboard_category != PICKUPS:
-                    current_screenshot.add_error("Daily total missed")
+                    current_screenshot.add_error(ERR_DAILY_TOTAL_MISSED)
             else:
                 dt = daily_total
             dtm = ''
@@ -1323,7 +1321,7 @@ if __name__ == '__main__':
                 current_screenshot.set_daily_total(daily_total, daily_total_conf)
                 if daily_total_conf == NO_CONF:
                     if current_screenshot.total_heading_found:
-                        current_screenshot.add_error("Daily total not found")
+                        current_screenshot.add_error(ERR_DAILY_TOTAL)
                     dt = "N/A"
                 else:
                     dt = daily_total
@@ -1358,7 +1356,7 @@ if __name__ == '__main__':
             cropped_image, crop_coordinates = iOS.crop_image_to_app_area(current_screenshot, heading_above_applist, heading_below_applist)
             if all(crops is None for crops in crop_coordinates):
                 print(f"Suitable crop region not detected. Setting all app-specific data to N/A.")
-                current_screenshot.add_error("App-level data not detected")
+                current_screenshot.add_error(ERR_APP_DATA)
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
                 screenshot_time = time.time() - screenshot_time_start
@@ -1451,7 +1449,7 @@ if __name__ == '__main__':
 
         else:
             print("Operating System not detected.")
-            current_screenshot.add_error("OS not detected")
+            current_screenshot.add_error(ERR_OS_NOT_FOUND)
             current_screenshot.set_app_data(empty_app_data)
             update_eta(list_of_recent_times)  # Update ETA without adding current screenshot's time to the list
             continue
