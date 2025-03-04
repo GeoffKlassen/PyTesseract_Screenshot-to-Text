@@ -70,6 +70,11 @@ KEYWORDS_FOR_HOURS_AXIS = ['00 06', '06 12', '12 18',
                            '00 Uhr 06 Uhr', '06 Uhr 12 Uhr', '12 Uhr 18 Uhr', 'Uhr Uhr',
                            r'^0\s.*12|6\s.*18$']  # TODO This method is a bit messy
 
+UPDATED_TODAY_AT = {ITA: ['TODO FILL THIS IN'],
+                    ENG: ['Updated today at'],
+                    FRA: ['TODO FILL THIS IN'],
+                    GER: ['TODO FILL THIS IN']}
+
 # Variables for iOS time formats
 # Even though the words for 'hours', 'minutes', and 'seconds' differ by language, iOS uses h/min/m/s for all languages.
 MINUTES_FORMAT = r'(min|m)'
@@ -118,14 +123,6 @@ def get_headings(screenshot):
             df.loc[i, HEADING_COLUMN] = HOURS_AXIS_HEADING
         else:
             df = df.drop(i)
-
-    if df.shape[0] > 0:
-        print("\n\nHeadings found:")
-        print(df[['text', 'heading']])
-        print()
-    else:
-        print("No headings found.")
-    print()
 
     return df
 

@@ -6,7 +6,7 @@ from ConvenienceVariables import *
 
 
 def initialize_data_row():
-    df = pd.DataFrame(columns=['image_url', 'participant_id', 'language', 'device_os',
+    df = pd.DataFrame(columns=['image_url', 'participant_id', 'language', 'device_os_submitted', 'device_os_detected',
                                'date_submitted', 'date_detected', 'day_type',
                                'category_submitted', 'category_detected'])
     df[f'daily_total'] = None
@@ -29,7 +29,8 @@ class Screenshot:
         self.url = url
         self.filename = url[url.rfind('/') + 1:] if url is not None else None
         self.user_id = participant.user_id
-        self.device_os = device_os
+        self.device_os_submitted = device_os
+        self.device_os_detected = device_os
         self.android_version = None
         self.date_submitted = date
         self.category_submitted = category
@@ -62,12 +63,9 @@ class Screenshot:
         self.num_missed_values = 0
 
     def __str__(self):
-        s_user_id = f"User ID: {self.user_id}".ljust(22)
-        s_device_os = f"Device OS: {self.device_os}".ljust(23)
         s_date = f"Date submitted: {self.date_submitted}".ljust(33)
         s_cat = f"Category submitted: {self.category_submitted}"
         return f"{s_date}{s_cat}"
-        # return f"URL: {self.url}\n{s_user_id}{s_device_os}{s_date}{s_cat}"
 
     def set_dimensions(self, dim):
         self.height, self.width = dim[0], dim[1]
@@ -158,3 +156,5 @@ class Screenshot:
                 elif "Missed values" in error:
                     self.num_missed_values = num
 
+    def set_device_os_detected(self, _os):
+        self.device_os_detected = _os

@@ -3,6 +3,7 @@ from pandas.core.methods.selectn import SelectNSeries
 import AndroidFunctions as Android
 import ParticipantClass
 import ScreenshotClass
+import iOSFunctions
 import iOSFunctions as iOS
 from RuntimeValues import *
 from RuntimeValues import app_area_scale_factor
@@ -142,14 +143,14 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
     if use_downloaded_images or save_downloaded_images:
         if not os.path.exists(dir_for_downloaded_images):
             os.makedirs(dir_for_downloaded_images)
-        if not os.path.exists(f"{dir_for_downloaded_images}\\{screenshot.device_os}"):
-            os.makedirs(f"{dir_for_downloaded_images}\\{screenshot.device_os}")
-    img_local_path = os.path.join(dir_for_downloaded_images, screenshot.device_os, screenshot.filename)
-    img_temp_path = os.path.join(dir_for_downloaded_images, screenshot.device_os, "temp.jpg")
+        if not os.path.exists(f"{dir_for_downloaded_images}\\{screenshot.device_os_submitted}"):
+            os.makedirs(f"{dir_for_downloaded_images}\\{screenshot.device_os_submitted}")
+    img_local_path = os.path.join(dir_for_downloaded_images, screenshot.device_os_submitted, screenshot.filename)
+    img_temp_path = os.path.join(dir_for_downloaded_images, screenshot.device_os_submitted, "temp.jpg")
 
     if use_downloaded_images:
         if os.path.exists(img_local_path):
-            print(f"Opening local image '{dir_for_downloaded_images}\\{screenshot.device_os}\\{screenshot.filename}'...")
+            print(f"Opening local image '{dir_for_downloaded_images}\\{screenshot.device_os_submitted}\\{screenshot.filename}'...")
             image = Image.open(img_local_path)
             image = image.convert('RGB')
             image = np.array(image, dtype='uint8')
@@ -181,11 +182,11 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
         #       for last argument: can be cv2.THRESH_BINARY or cv2.THRESH_OTSU
         # IMPORTANT: Looks like the best threshold value for a light mode image is 206. # GK: 230 makes text thicker,
         # but also makes the 'thermometer' shaped bars (below each app name) more likely to show up
-        bw_threshold = white_threshold if screenshot.device_os == IOS else 200
+        bw_threshold = white_threshold if screenshot.device_os_detected == IOS else 200
         max_value = 255
     elif bg_colour == BLACK:
         # Settings for dark mode.
-        bw_threshold = black_threshold if screenshot.device_os == ANDROID else 70
+        bw_threshold = black_threshold if screenshot.device_os_detected == ANDROID else 70
         max_value = 180
     else:
         # Settings for 'brown' mode.
@@ -349,6 +350,12 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+')
     df_lines['text'] = df_lines['text'].replace({r'.Al': '.AI'}, regex=True)
     df_lines['text'] = df_lines['text'].replace({r'openal.com': 'OpenAI.com'}, regex=True)
 
+    def add_one_to_hr(_s):
+        if bool(re.search(r"^hr\s", _s)):
+            return "1 " + _s
+        return _s
+    df_lines['text'] = df_lines['text'].apply(add_one_to_hr)
+
     return df_words, df_lines
 
 
@@ -502,7 +509,7 @@ def get_day_type_in_screenshot(screenshot):
     lang = get_best_language(screenshot)
     df = screenshot.text.copy()
     date_pattern = get_date_regex(lang)
-    device_os = screenshot.device_os
+    device_os = screenshot.device_os_detected
 
     moe_yesterday = round(np.log(max((len(key) for key in KEYWORDS_FOR_YESTERDAY[lang]))))
     moe_today = round(np.log(max((len(key) for key in KEYWORDS_FOR_TODAY[lang]))))
@@ -714,7 +721,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
     bg_colour = WHITE if is_light_mode else BLACK
     lang = get_best_language(screenshot)
     crop_top, crop_left, crop_bottom, crop_right = coordinates[0], coordinates[1], coordinates[2], coordinates[3]
-    remove_chars = "[^a-zA-Z0-9+é:.!,()'&-]+" if screenshot.device_os == IOS else '[^a-zA-Z0-9+\\(\\)\\-\\.é]+'
+    remove_chars = "[^a-zA-Z0-9+é:.!,()'&-]+" if screenshot.device_os_detected == IOS else '[^a-zA-Z0-9+\\(\\)\\-\\.é]+'
     # Android needs characters like commas (,) removed because they appear in screentime values
     _, app_info_scan_1 = extract_text_from_image(image, remove_chars=remove_chars)
 
@@ -741,7 +748,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
     cols_to_scale = ['left', 'top', 'width', 'height']
     truncated_text_df[cols_to_scale] = truncated_text_df[cols_to_scale].apply(lambda x: x * scale).astype(int)
     overlapped_text = pd.concat([app_info_scan_1, truncated_text_df], ignore_index=True)
-    app_info_scan_1 = iOS.consolidate_overlapping_text(overlapped_text) if screenshot.device_os == IOS else (
+    app_info_scan_1 = iOS.consolidate_overlapping_text(overlapped_text) if screenshot.device_os_detected == IOS else (
         Android.consolidate_overlapping_text(overlapped_text, time_format_eol))
     app_info_scan_1 = app_info_scan_1.sort_values(by=['top', 'left']).reset_index(drop=True)
 
@@ -755,7 +762,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
     if show_images:
         show_image(app_info_scan_1, image)
 
-    if screenshot.device_os == ANDROID:
+    if screenshot.device_os_detected == ANDROID:
         if bg_colour == WHITE:
             bw_threshold = 210
             max_value = 255
@@ -775,7 +782,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
     # If there's confident text found in the cropped image, we 'erase' it to give pytesseract a better chance of reading
     # any text that it missed (or whose confidence wasn't high enough).
     if not app_info_scan_1.empty:
-        if screenshot.device_os == ANDROID:
+        if screenshot.device_os_detected == ANDROID:
             start_row = app_info_scan_1.iloc[0]['top']
             for r in range(start_row, 0, -1):
                 if np.all(image[r, :] == image[r, 0]) and np.all(image[r, 0] != bg_colour):
@@ -803,14 +810,14 @@ def extract_app_info(screenshot, image, coordinates, scale):
         show_image(app_info_scan_2, image_missed_text)
 
     app_info = pd.concat([app_info_scan_1, app_info_scan_2], ignore_index=True)
-    app_info = iOS.consolidate_overlapping_text(app_info) if screenshot.device_os == IOS else (
+    app_info = iOS.consolidate_overlapping_text(app_info) if screenshot.device_os_detected == IOS else (
         Android.consolidate_overlapping_text(app_info, time_format_eol))
     app_info = app_info.reset_index(drop=True)
 
     rows_with_time_data = app_info[app_info['text'].str.fullmatch(misread_time_format)]
-    if screenshot.category_detected is None and not rows_with_time_data.empty:
-        print(f"Found rows with screentime values. Setting dashboard category to '{SCREENTIME}'.")
-        current_screenshot.category_detected = SCREENTIME
+    # if screenshot.category_detected is None and not rows_with_time_data.empty:
+    #     print(f"Found rows with screentime values. Setting dashboard category to '{SCREENTIME}'.")
+    #     current_screenshot.category_detected = SCREENTIME
 
     return app_info
 
@@ -821,7 +828,7 @@ def get_dashboard_category(screenshot):
     :param screenshot:
     :return:
     """
-    device_os = screenshot.device_os
+    device_os = screenshot.device_os_detected
     heads_df = screenshot.headings_df
     # Get the category of data that is visible in the screenshot (Screen time, pickups, or notifications)
     if study_category is not None:
@@ -1052,11 +1059,32 @@ if __name__ == '__main__':
         else:
             current_screenshot.add_error("Day text not detected")
 
+        # Sometimes, the Device ID extracted from the Metadata is 16 hexadecimal digits long (which correlates with
+        # Android images), but the screenshot is iOS, and iPhones have 32-digit hexadecimal Device IDs.
+        # There are ways to catch if a screenshot is iOS though; one of the easiest ways is if the screenshot contains
+        # the text "Updated today at", or "iPhone".
+        # Other ways to tell are if the screenshot contains iOS-style headings but not Android-style headings.
+
+        android_short_time_format, _, _ = Android.get_time_formats_in_lang(image_language)
+        iOS_headings_df = iOS.get_headings(current_screenshot)
+        android_headings_df = Android.get_headings(current_screenshot, android_short_time_format)
+        if current_screenshot.device_os_submitted == ANDROID and (len(iOS_headings_df) > len(android_headings_df)):
+            print("Screenshot has Android-style Device ID but contains iOS headings. "
+                  f"Setting device OS to '{IOS}'.")
+            current_screenshot.device_os_detected = IOS
+            current_screenshot.add_error("Different Device OS detected")
+        elif current_screenshot.device_os_submitted == IOS and (len(android_headings_df) > len(iOS_headings_df)):
+            print("Screenshot has iOS-style Device ID but contains Android headings. "
+                  f"Setting device OS to '{ANDROID}'.")
+            current_screenshot.device_os_detected = ANDROID
+            current_screenshot.add_error("Different Device OS detected")
+
+
         """
             Here, the phone OS determines which branch of code we run to extract the daily total and app-level data.
         """
 
-        if current_screenshot.device_os == ANDROID:
+        if current_screenshot.device_os_detected == ANDROID:
             """
             
             ANDROID  -  Execute the procedure for extracting data from an Android screenshot  
@@ -1092,7 +1120,14 @@ if __name__ == '__main__':
                 current_screenshot.set_time_period(day_type)
 
             # Get headings from screenshot text
-            headings_df = Android.get_headings(current_screenshot, time_format_short)
+            headings_df = android_headings_df
+            if headings_df.shape[0] > 0:
+                print("\nHeadings found:")
+                print(headings_df[['text', 'heading']])
+                print()
+            else:
+                print("\nNo headings found.\n")
+
             current_screenshot.set_headings(headings_df)
 
             # Get which version of Android the screenshot is
@@ -1195,6 +1230,11 @@ if __name__ == '__main__':
 
             print("Text found in app-area:")
             print(app_area_df[['left', 'top', 'width', 'height', 'conf', 'text']])
+            # if dashboard_category is None and current_screenshot.category_detected is not None:
+            #     # Sometimes there is screentime data in an image but the category is not detected.
+            #     # If the cropped df contains enough rows that match a (misread) time format, set the dashboard category
+            #     # to 'screentime'.
+            #     dashboard_category = current_screenshot.category_detected
 
             # Sort the app-specific data into app names and app usage numbers
             app_data = Android.get_app_names_and_numbers(screenshot=current_screenshot,
@@ -1225,14 +1265,21 @@ if __name__ == '__main__':
             # Collect some review-oriented statistics on the screenshot
             # Put the data from the screenshot into the master CSV for all screenshots
 
-        elif current_screenshot.device_os == IOS:
+        elif current_screenshot.device_os_detected == IOS:
             """
 
             iOS  -  Execute the procedure for extracting data from an iOS screenshot  
 
             """
             # Find the rows in the screenshot that contain headings ("SCREEN TIME", "MOST USED", "PICKUPS", etc.)
-            headings_df = iOS.get_headings(current_screenshot)
+            headings_df = iOS_headings_df
+            if headings_df.shape[0] > 0:
+                print("\nHeadings found:")
+                print(headings_df[['text', 'heading']])
+                print()
+            else:
+                print("\nNo headings found.\n")
+
             current_screenshot.set_headings(headings_df)
 
             dashboard_category, dashboard_category_detected = get_dashboard_category(current_screenshot)
@@ -1372,11 +1419,11 @@ if __name__ == '__main__':
             print("Text found in app-area:")
             print(app_area_2_df[['left', 'top', 'width', 'height', 'conf', 'text']])
 
-            if dashboard_category is None and current_screenshot.category_detected is not None:
-                # Sometimes there is screentime data in an image but the category is not detected.
-                # If the cropped df contains enough rows that match a (misread) time format, set the dashboard category
-                # to 'screentime'.
-                dashboard_category = current_screenshot.category_detected
+            # if dashboard_category is None and current_screenshot.category_detected is not None:
+            #     # Sometimes there is screentime data in an image but the category is not detected.
+            #     # If the cropped df contains enough rows that match a (misread) time format, set the dashboard category
+            #     # to 'screentime'.
+            #     dashboard_category = current_screenshot.category_detected
 
             app_data = iOS.get_app_names_and_numbers(screenshot=current_screenshot,
                                                      df=app_area_2_df,
@@ -1436,7 +1483,8 @@ if __name__ == '__main__':
         all_screenshots_df.loc[idx, 'image_url'] = s.url
         all_screenshots_df.loc[idx, 'participant_id'] = s.user_id
         all_screenshots_df.loc[idx, 'language'] = s.language
-        all_screenshots_df.loc[idx, 'device_os'] = s.device_os
+        all_screenshots_df.loc[idx, 'device_os_submitted'] = s.device_os_submitted
+        all_screenshots_df.loc[idx, 'device_os_detected'] = s.device_os_detected
         all_screenshots_df.loc[idx, 'date_submitted'] = s.date_submitted
         all_screenshots_df.loc[idx, 'date_detected'] = s.date_detected
         all_screenshots_df.loc[idx, 'day_type'] = s.time_period
