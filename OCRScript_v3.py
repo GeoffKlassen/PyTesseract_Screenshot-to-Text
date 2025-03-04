@@ -1225,6 +1225,7 @@ if __name__ == '__main__':
             app_area_df = extract_app_info(current_screenshot, scaled_cropped_image, crop_coordinates, app_area_scale_factor)
             if show_images:
                 show_image(app_area_df, scaled_cropped_image)
+            app_area_df['text'] = app_area_df['text'].apply(lambda x: 'X' if re.match(r'[xX]{2}', x) else x)
 
             print("Text found in app-area:")
             print(app_area_df[['left', 'top', 'width', 'height', 'conf', 'text']])
@@ -1241,6 +1242,7 @@ if __name__ == '__main__':
                                                          max_apps=max_apps_per_category,
                                                          time_formats=time_formats,
                                                          coordinates=crop_coordinates)
+
             dt = current_screenshot.daily_total if str(current_screenshot.daily_total) != NO_TEXT else "N/A"
             print("\nApp data found:")
             if dashboard_category == SCREENTIME:
@@ -1413,6 +1415,8 @@ if __name__ == '__main__':
             # Divide the extracted app info into app names and their numbers
             if show_images:
                 show_image(app_area_2_df, scaled_cropped_image)
+
+            app_area_2_df['text'] = app_area_2_df['text'].apply(lambda x: 'X' if re.match(r'[xX]{2}', x) else x)
 
             print("Text found in app-area:")
             print(app_area_2_df[['left', 'top', 'width', 'height', 'conf', 'text']])
