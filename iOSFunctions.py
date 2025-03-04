@@ -1,6 +1,4 @@
 """This file contains iOS-specific dictionaries, functions, and variables."""
-from datetime import datetime
-
 import numpy as np
 import pandas as pd
 import re
@@ -69,10 +67,24 @@ KEYWORDS_FOR_HOURS_AXIS = ['00 06', '06 12', '12 18',
                            '00 Uhr 06 Uhr', '06 Uhr 12 Uhr', '12 Uhr 18 Uhr', 'Uhr Uhr',
                            r'^0\s.*12|6\s.*18$']  # TODO This method is a bit messy
 
-UPDATED_TODAY_AT = {ITA: ['TODO FILL THIS IN'],
-                    ENG: ['Updated today at'],
-                    FRA: ['TODO FILL THIS IN'],
-                    GER: ['TODO FILL THIS IN']}
+"""
+    Headings for unrelated screenshots - used to detect OS
+"""
+KEYWORDS_FOR_LIMIT_USAGE = {ITA: ['TODO FILL THIS IN'],
+                            ENG: ['LIMIT USAGE'],
+                            FRA: ['TODO FILL THIS IN'],
+                            GER: ['TODO FILL THIS IN']}
+
+KEYWORDS_FOR_COMMUNICATION = {ITA: ['TODO FILL THIS IN'],
+                              ENG: ['COMMUNICATION'],
+                              FRA: ['TODO FILL THIS IN'],
+                              GER: ['TODO FILL THIS IN']}
+
+# UPDATED_TODAY_AT = {ITA: ['TODO FILL THIS IN'],
+#                     ENG: ['Updated today at'],
+#                     FRA: ['TODO FILL THIS IN'],
+#                     GER: ['TODO FILL THIS IN']}
+
 
 # Variables for iOS time formats
 # Even though the words for 'hours', 'minutes', and 'seconds' differ by language, iOS uses h/min/m/s for all languages.
@@ -120,6 +132,12 @@ def get_headings(screenshot):
             df.loc[i, HEADING_COLUMN] = NOTIFICATIONS_HEADING
         elif re.search('|'.join(KEYWORDS_FOR_HOURS_AXIS), row_text):  # or re.search(r'^0\s.*12|6\s.*18$', row_text):
             df.loc[i, HEADING_COLUMN] = HOURS_AXIS_HEADING
+        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
+                     KEYWORDS_FOR_LIMIT_USAGE[lang]) <= error_margin:
+            df.loc[i, HEADING_COLUMN] = LIMIT_USAGE_HEADING
+        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
+                     KEYWORDS_FOR_COMMUNICATION[lang]) <= error_margin:
+            df.loc[i, HEADING_COLUMN] = COMMUNICATION_HEADING
         else:
             df = df.drop(i)
 

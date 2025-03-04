@@ -200,7 +200,7 @@ class Participant:
 
             if existing_data_app_num == -1 or new_data_app_num == -1:
                 print("Could not determine where existing data and new screenshot data line up. "
-                      "Existing data remains unchanged.")
+                      "Existing data remains unchanged:")
                 return
 
             max_lineup = max([existing_data_app_num, new_data_app_num])

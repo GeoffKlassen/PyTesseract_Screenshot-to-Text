@@ -1,7 +1,6 @@
 from pandas.core.methods.selectn import SelectNSeries
 
 import AndroidFunctions as Android
-import ParticipantClass
 import ScreenshotClass
 import iOSFunctions as iOS
 from RuntimeValues import *
@@ -345,8 +344,8 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+')
     df_lines = merge_df_rows_by_line_num(df_words)
 
     # ...or misreads ".AI" as ".Al"
-    df_lines['text'] = df_lines['text'].replace({r'.Al': '.AI'}, regex=True)
-    df_lines['text'] = df_lines['text'].replace({r'openal.com': 'OpenAI.com'}, regex=True)
+    df_lines['text'] = df_lines['text'].replace({'.Al': '.AI'})
+    df_lines['text'] = df_lines['text'].replace({'openal.com': 'OpenAI.com'})
 
     def add_one_to_hr(_s):
         if bool(re.search(r"^hr\s", _s)):
@@ -1507,8 +1506,8 @@ if __name__ == '__main__':
             else:
                 pass
 
-    all_ios_screenshots_df = all_screenshots_df[all_screenshots_df['device_os'] == IOS]
-    all_android_screenshots_df = all_screenshots_df[all_screenshots_df['device_os'] == ANDROID]
+    all_ios_screenshots_df = all_screenshots_df[all_screenshots_df['device_os_detected'] == IOS]
+    all_android_screenshots_df = all_screenshots_df[all_screenshots_df['device_os_detected'] == ANDROID]
 
     all_screentime_screenshots_df = all_screenshots_df[all_screenshots_df['category_detected'] == SCREENTIME]
     all_pickups_screenshots_df = all_screenshots_df[(all_screenshots_df['category_detected'] == PICKUPS) |

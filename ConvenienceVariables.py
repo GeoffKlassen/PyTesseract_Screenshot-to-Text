@@ -29,6 +29,9 @@ HOURS_AXIS_HEADING = 'hours row'
 DAY_OR_WEEK_HEADING = 'day or week'
 DATE_HEADING = 'date'
 
+LIMIT_USAGE_HEADING = 'limit usage'
+COMMUNICATION_HEADING = 'communication'
+
 # Extra headings specific to Android
 TOTAL_SCREENTIME = 'total screentime'
 TOTAL_NOTIFICATIONS = 'total notifications'
