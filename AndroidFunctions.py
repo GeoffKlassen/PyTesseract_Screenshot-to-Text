@@ -940,10 +940,30 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
             num_missed_app_values += 1
 
     def split_app_name_and_screen_time(s):
+        def replace_misread_time_words(_s, dict_row, _moe):
+            # If we take the last word in the string 's' and it's very close to a time keyword, then replace that
+            # last word with the corresponding keyword (i.e. 'hours', 'minutes').
+            s_words = _s.split()
+            s_last_word = s_words[-1]
+            for val in dict_row:
+                if OCRScript_v3.levenshtein_distance(s_last_word, val) <= _moe:
+                    s_words[-1] = val
+                    _s = ' '.join(s_words)
+                    break
+
+            return _s
+
         hours_format = '|'.join([H,
                                  '|'.join(KEYWORDS_FOR_HR[img_lang]),
                                  ('|'.join(KEYWORDS_FOR_HOURS[img_lang]))]).replace(" ",r"\s?")
         minutes_format = '|'.join([MIN, '|'.join(KEYWORDS_FOR_MIN[img_lang]), ('|'.join(KEYWORDS_FOR_MINUTES[img_lang]))])
+
+        if screenshot.category_detected == GOOGLE:
+            # Sometimes words like 'minutes' can be misread as something like 'minuies'. These are still time values,
+            # so we still want to process them as time values.
+            s = replace_misread_time_words(s, KEYWORDS_FOR_MINUTES[img_lang], 2)
+            s = replace_misread_time_words(s, KEYWORDS_FOR_HOURS[img_lang], 1)
+
         filtered_s, _ = filter_time_text(s, NO_CONF, hours_format, minutes_format)
         if re.match('|'.join([time_short, time_long]), filtered_s):
             # If the entire string matches a time format, then it must be a time only (no app name)
@@ -962,16 +982,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
             if time != s_time_only:
                 print(f"Filtering time text: Replaced '{s}' with '{time}'.")
 
-
-        # time_filtered, _ = filter_time_text(time, NO_CONF, hours_format, minutes_format)
-        # # Sometimes a time like '1 hr 14 min' gets misread as '1 br 14 min', which gets split into an app name (1 br)
-        # # and a time (14 min), but this is a mistake. If the filtered 'app name' matches a time format, then merge the
-        # # 'name' and time back together, and return this as the time.
-        # name_filtered, _ = filter_time_text(name, NO_CONF, hours_format, minutes_format)
-        # if re.match('|'.join([time_short, time_long]), name_filtered):
-        #     return '', " ".join([name_filtered, time_filtered])
-        # else:
-        return name, time  # time_filtered
+        return name, time
 
     def split_app_name_and_notifications(s):
         # Find all the numbers in the string
