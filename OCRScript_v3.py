@@ -95,7 +95,7 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
                 img = img.convert('RGB')  # We'll standardize the image to RGB format.
                 if save_downloaded_images:
                     img.save(img_local_path)
-                    print(f"Image saved to '{dir_for_downloaded_images}\\{screenshot.device_os}\\{screenshot.filename}'.")
+                    print(f"Image saved to '{dir_for_downloaded_images}\\{screenshot.device_os_submitted}\\{screenshot.filename}'.")
                     img = Image.open(img_local_path)
                 else:
                     img.save(img_temp_path)
