@@ -80,6 +80,11 @@ KEYWORDS_FOR_COMMUNICATION = {ITA: ['TODO FILL THIS IN'],
                               FRA: ['TODO FILL THIS IN'],
                               GER: ['TODO FILL THIS IN']}
 
+KEYWORDS_FOR_SEE_ALL_ACTIVITY = {ENG: ['See All Activity'],
+                                 ITA: ['TODO FILL THIS IN'],
+                                 FRA: ['TODO FILL THIS IN'],
+                                 GER: ['TODO FILL THIS IN']}
+
 # UPDATED_TODAY_AT = {ITA: ['TODO FILL THIS IN'],
 #                     ENG: ['Updated today at'],
 #                     FRA: ['TODO FILL THIS IN'],
@@ -138,6 +143,9 @@ def get_headings(screenshot):
         elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
                      KEYWORDS_FOR_COMMUNICATION[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = COMMUNICATION_HEADING
+        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
+                     KEYWORDS_FOR_SEE_ALL_ACTIVITY[lang]) <= error_margin:
+            df.loc[i, HEADING_COLUMN] = SEE_ALL_ACTIVITY
         else:
             df = df.drop(i)
 
@@ -161,10 +169,11 @@ def get_dashboard_category(screenshot):
     categories_found = []
 
     if heads_df[HEADING_COLUMN].str.fullmatch(SCREENTIME_HEADING).any() or \
-            (heads_df[HEADING_COLUMN].str.fullmatch(LIMITS_HEADING).any() and
-             heads_df[HEADING_COLUMN].str.fullmatch(HOURS_AXIS_HEADING).any() and
+            (heads_df[HEADING_COLUMN].str.fullmatch(HOURS_AXIS_HEADING).any() and
+             (heads_df[HEADING_COLUMN].str.fullmatch(LIMITS_HEADING).any() and
              heads_df[heads_df[HEADING_COLUMN] == LIMITS_HEADING].index[0] >
-             heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].index[0]) or \
+             heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].index[0]) or
+             text_df[text_df.index < heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].index[0]]['text'].str.contains(misread_time_format).any()) or \
             heads_df[HEADING_COLUMN].str.fullmatch(MOST_USED_HEADING).any() and (
             text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == MOST_USED_HEADING].index[0] + 1 or
             heads_df[heads_df[HEADING_COLUMN] == MOST_USED_HEADING].iloc[-1]['top'] <

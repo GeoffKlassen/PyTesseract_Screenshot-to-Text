@@ -242,7 +242,7 @@ def get_headings(screenshot, time_fmt_short):
         elif min(OCRScript_v3.levenshtein_distance(row_text[:len(key)], key)
             # Row contains 'Most used'
                  for key in KEYWORDS_FOR_MOST_USED_APPS[lang]) <= moe:
-            df.loc[i, HEADING_COLUMN] = MOST_USED_HEADING
+            df.loc[i, HEADING_COLUMN] = MOST_USED_APPS_HEADING
         elif min(OCRScript_v3.levenshtein_distance(row_text, key) for key in
                  KEYWORDS_FOR_NOTIFICATIONS_RECEIVED[lang]) <= moe and not row_text_contains_digits:
             # Row contains 'Notifications'

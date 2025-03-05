@@ -1,6 +1,15 @@
 """This file contains variables used as dictionary keys, dataframe column names, etc.
 They are stored in this one location for consistency."""
 
+
+"""
+    Operating Systems
+"""
+IOS = 'iOS'
+ANDROID = 'Android'
+UNKNOWN = 'Unknown'
+
+
 """
     Categories of data that appear on the iOS & Android dashboards
 """
@@ -18,30 +27,35 @@ UNLOCKS = 'unlocks'
     Heading column names for dataframes
 """
 HEADING_COLUMN = 'heading'
-SCREENTIME_HEADING = SCREENTIME
-LIMITS_HEADING = 'limits'
-MOST_USED_HEADING = 'most used'
-PICKUPS_HEADING = PICKUPS
-FIRST_PICKUP_HEADING = 'total pickups'
-FIRST_USED_AFTER_PICKUP_HEADING = 'first used after pickup'
-NOTIFICATIONS_HEADING = NOTIFICATIONS
-HOURS_AXIS_HEADING = 'hours row'
+
 DAY_OR_WEEK_HEADING = 'day or week'
 DATE_HEADING = 'date'
 
-LIMIT_USAGE_HEADING = 'limit usage'
-COMMUNICATION_HEADING = 'communication'
+# The following headings are unique to iOS:
+SCREENTIME_HEADING = ' '.join(['screentime', IOS])
+LIMITS_HEADING = ' '.join(['limits', IOS])
+MOST_USED_HEADING = ' '.join(['most used', IOS])
+PICKUPS_HEADING = ' '.join(['pickups', IOS])
+FIRST_PICKUP_HEADING = ' '.join(['total pickups', IOS])
+FIRST_USED_AFTER_PICKUP_HEADING = ' '.join(['first used after pickup', IOS])
+NOTIFICATIONS_HEADING = ' '.join(['notifications', IOS])
+HOURS_AXIS_HEADING = ' '.join(['hours row', IOS])
 
-# Extra headings specific to Android
+LIMIT_USAGE_HEADING = ' '.join(['limit usage', IOS])
+COMMUNICATION_HEADING = ' '.join(['communication', IOS])
+SEE_ALL_ACTIVITY = ' '.join(['see all activity', IOS])
+
+# The following headings are *usually* only found in Android screenshots:
 TOTAL_SCREENTIME = 'total screentime'
+MOST_USED_APPS_HEADING = ' '.join(['most used apps', ANDROID])
 TOTAL_NOTIFICATIONS = 'total notifications'
-MOST_NOTIFICATIONS_HEADING = 'most notifications'
-UNLOCKS_HEADING = UNLOCKS
+MOST_NOTIFICATIONS_HEADING = ' '.join(['most notifications', ANDROID])
+UNLOCKS_HEADING = ' '.join(['unlocks', ANDROID])
 DAYS_AXIS_HEADING = 'day axis'
-TOTAL_UNLOCKS = 'total unlocks'
+TOTAL_UNLOCKS = ' '.join(['most used', ANDROID])
 DAY_NAME_HEADING = 'day name'
-VIEW_MORE_HEADING = 'view more'
-REST_OF_THE_DAY = 'rest of the day'
+VIEW_MORE_HEADING = ' '.join(['most used', ANDROID])
+REST_OF_THE_DAY = ' '.join(['rest of the day', ANDROID])
 
 GOOGLE = 'Google'
 VERSION_2018 = 'Android 2018'
@@ -70,12 +84,6 @@ RESPONSE_DATE = 'response_date'
 IMG_RESPONSE_TYPE = 'img_response_type'
 IMG_URL = 'img_url'
 
-"""
-    Operating Systems
-"""
-IOS = 'iOS'
-ANDROID = 'Android'
-UNKNOWN = 'Unknown'
 
 """
     Classifiers for the 'day range' of data present in a screenshot

@@ -1065,12 +1065,15 @@ if __name__ == '__main__':
         android_short_time_format, _, _ = Android.get_time_formats_in_lang(image_language)
         iOS_headings_df = iOS.get_headings(current_screenshot)
         android_headings_df = Android.get_headings(current_screenshot, android_short_time_format)
-        if current_screenshot.device_os_submitted == ANDROID and (len(iOS_headings_df) > len(android_headings_df)):
+
+        num_iOS_headings = iOS_headings_df[HEADING_COLUMN].str.contains(IOS, na=False).sum()
+        num_Android_headings = android_headings_df[HEADING_COLUMN].str.contains(ANDROID, na=False).sum()
+        if current_screenshot.device_os_submitted == ANDROID and num_iOS_headings > num_Android_headings:
             print("Screenshot has Android-style Device ID but contains iOS headings. "
                   f"Setting device OS to '{IOS}'.")
             current_screenshot.device_os_detected = IOS
             current_screenshot.add_error(ERR_DEVICE_OS)
-        elif current_screenshot.device_os_submitted == IOS and (len(android_headings_df) > len(iOS_headings_df)):
+        elif current_screenshot.device_os_submitted == IOS and num_Android_headings > num_iOS_headings:
             print("Screenshot has iOS-style Device ID but contains Android headings. "
                   f"Setting device OS to '{ANDROID}'.")
             current_screenshot.device_os_detected = ANDROID
