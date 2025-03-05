@@ -538,7 +538,7 @@ def get_day_type_in_screenshot(screenshot):
             # Row contains yesterday, and (1) also contains date or (2) the next row contains a date, or (3) is Android
             # (In Android, rows with day names are not guaranteed to be followed by a date.)
             lambda x: min(levenshtein_distance(row_word[:len(key)], key)
-                          for row_word in str.split(x)
+                          for row_word in str.split(x)[0:1]
                           for key in KEYWORDS_FOR_YESTERDAY[lang])) <= moe_yesterday) &
                                  ((device_os == ANDROID) |
                                   (df['text'].str.contains(date_pattern, case=False)) |
@@ -726,7 +726,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
                     Merge these app numbers from the initial scan into the rescan."""
     # Select only numbers from the initial scan that have high confidence (above conf_limit)
     # and that lie in the 'app info' cropped region
-    truncated_text_df = text[(text['conf'] > 0.5) | (text['text'].str.fullmatch(r'[xX]{1,2}'))]
+    truncated_text_df = text[(text['conf'] > 0.5) | (text['text'].str.match(r'[xX]{1,2}'))]
     truncated_text_df.loc[truncated_text_df.index, 'left'] = truncated_text_df['left'] - crop_left
     truncated_text_df.loc[truncated_text_df.index, 'top'] = truncated_text_df['top'] - crop_top
     truncated_text_df = truncated_text_df[(truncated_text_df['left'] > 0) &
@@ -734,10 +734,11 @@ def extract_app_info(screenshot, image, coordinates, scale):
                                           (truncated_text_df['left'] + truncated_text_df[
                                               'width'] < crop_right - crop_left) &
                                           (truncated_text_df['top'] + truncated_text_df[
-                                              'height'] < crop_bottom - crop_top)]
+                                              'height'] < crop_bottom - crop_top) &
+                                          (truncated_text_df['text'].str.isdigit() | truncated_text_df['text'].str.match(r'[xX]{1,2}'))]
     # truncated_text_df = OCRScript_v3.merge_df_rows_by_line_num(truncated_text_df)
     # Keep only the rows that contain only digits (a.k.a. notification counts or pickup counts) or 'X' (Twitter)
-    truncated_text_df = truncated_text_df[(truncated_text_df['text'].str.isdigit()) | (truncated_text_df['text'].str.fullmatch(r'[xX]{1,2}'))]
+    # truncated_text_df = truncated_text_df[(truncated_text_df['text'].str.isdigit()) | (truncated_text_df['text'].str.match(r'[xX]{1,2}'))]
 
     print(f"\nApp numbers from initial scan, where conf > 0.5, plus any instances of X (Twitter):")
     print(truncated_text_df[['left', 'top', 'width', 'height', 'conf', 'text']])

@@ -7,7 +7,7 @@ So far:
 import pytesseract
 from ConvenienceVariables import *
 
-coding_location = 'uni'  # uni or home
+coding_location = 'home'  # uni or home
 
 if coding_location == 'uni':
     pc_user = 'gbk546'
@@ -111,7 +111,7 @@ study_happyb2_0 = {NAME: "HappyB2.0 Prep",
 study_happyb2_0_2024 = {NAME: "HappyB2.0 2024 Aug-Dec",
                         DIRECTORY: f'C:\\Users\\{pc_user}\\OneDrive - University of Saskatchewan\\Grad Studies\\HappyB 2.0 2024',
                         DEFAULT_LANGUAGE: ENG,
-                        SURVEY_LIST: [happyb2_baseline_survey, happyb2_daily_survey_ios, happyb2_daily_survey_android],
+                        SURVEY_LIST: [happyb2_baseline_survey, happyb2_daily_survey_ios],  # happyb2_daily_survey_android],
                         CATEGORIES: [SCREENTIME, PICKUPS, NOTIFICATIONS],
                         'User ID Column Name': 'Participant.ID',
                         'Date Column Name': 'Record.Time',

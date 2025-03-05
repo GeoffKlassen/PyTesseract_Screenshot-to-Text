@@ -867,8 +867,8 @@ def consolidate_overlapping_text(df, time_format_eol):
         df.drop(columns=['level_0'], inplace=True)
 
     merged_df = df.drop(index=rows_to_drop).reset_index()
-
     consolidated_df = OCRScript_v3.merge_df_rows_by_height(merged_df)
+
     if not merged_df.equals(consolidated_df):
         print("Some rows were consolidated.")
 

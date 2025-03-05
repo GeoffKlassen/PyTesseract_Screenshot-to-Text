@@ -31,6 +31,7 @@ HEADING_COLUMN = 'heading'
 DAY_OR_WEEK_HEADING = 'day or week'
 DATE_HEADING = 'date'
 SCREENTIME_HEADING = 'screentime'
+NOTIFICATIONS_HEADING = 'notifications'
 
 # The following headings are unique to iOS:
 LIMITS_HEADING = ' '.join(['limits', IOS])
@@ -38,7 +39,6 @@ MOST_USED_HEADING = ' '.join(['most used', IOS])
 PICKUPS_HEADING = ' '.join(['pickups', IOS])
 FIRST_PICKUP_HEADING = ' '.join(['total pickups', IOS])
 FIRST_USED_AFTER_PICKUP_HEADING = ' '.join(['first used after pickup', IOS])
-NOTIFICATIONS_HEADING = ' '.join(['notifications', IOS])
 HOURS_AXIS_HEADING = ' '.join(['hours row', IOS])
 
 LIMIT_USAGE_HEADING = ' '.join(['limit usage', IOS])
@@ -52,7 +52,7 @@ TOTAL_NOTIFICATIONS = 'total notifications'
 MOST_NOTIFICATIONS_HEADING = ' '.join(['most notifications', ANDROID])
 UNLOCKS_HEADING = ' '.join(['unlocks', ANDROID])
 DAYS_AXIS_HEADING = 'day axis'
-TOTAL_UNLOCKS = ' '.join(['most used', ANDROID])
+TOTAL_UNLOCKS = 'total unlocks'
 DAY_NAME_HEADING = 'day name'
 VIEW_MORE_HEADING = ' '.join(['view more', ANDROID])
 REST_OF_THE_DAY = ' '.join(['rest of the day', ANDROID])
