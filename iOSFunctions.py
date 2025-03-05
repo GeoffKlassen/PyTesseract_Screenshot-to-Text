@@ -168,18 +168,21 @@ def get_dashboard_category(screenshot):
 
     categories_found = []
 
-    if heads_df[HEADING_COLUMN].str.fullmatch(SCREENTIME_HEADING).any() or \
-            (heads_df[HEADING_COLUMN].str.fullmatch(HOURS_AXIS_HEADING).any() and
-             (heads_df[HEADING_COLUMN].str.fullmatch(LIMITS_HEADING).any() and
+    if heads_df[HEADING_COLUMN].str.fullmatch(SCREENTIME_HEADING).any() or (
+             heads_df[HEADING_COLUMN].str.fullmatch(HOURS_AXIS_HEADING).any() and
+             text_df[text_df.index < heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].index[0]][
+                 'text'].str.contains(misread_time_format).any() or (
+             heads_df[HEADING_COLUMN].str.fullmatch(LIMITS_HEADING).any() and
              heads_df[heads_df[HEADING_COLUMN] == LIMITS_HEADING].index[0] >
-             heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].index[0]) or
-             text_df[text_df.index < heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].index[0]]['text'].str.contains(misread_time_format).any()) or \
+             heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].index[0])) or \
             heads_df[HEADING_COLUMN].str.fullmatch(MOST_USED_HEADING).any() and (
             text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == MOST_USED_HEADING].index[0] + 1 or
             heads_df[heads_df[HEADING_COLUMN] == MOST_USED_HEADING].iloc[-1]['top'] <
             0.9 * screenshot.height):
         # Found screentime heading; or
-        # Found limits heading and hours row, and limits is below hours; or
+        # Found hours axis and either:
+        #   there's a row with a screentime above the hours axis, or
+        #   there's a limits heading below the hours axis; or
         # Found most used heading and either:
         #     text_df has more data below the most used heading, or
         #     the most used heading is not too close to the bottom of the screenshot

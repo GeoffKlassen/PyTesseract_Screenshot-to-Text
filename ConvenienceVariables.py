@@ -30,9 +30,9 @@ HEADING_COLUMN = 'heading'
 
 DAY_OR_WEEK_HEADING = 'day or week'
 DATE_HEADING = 'date'
+SCREENTIME_HEADING = 'screentime'
 
 # The following headings are unique to iOS:
-SCREENTIME_HEADING = ' '.join(['screentime', IOS])
 LIMITS_HEADING = ' '.join(['limits', IOS])
 MOST_USED_HEADING = ' '.join(['most used', IOS])
 PICKUPS_HEADING = ' '.join(['pickups', IOS])
@@ -54,7 +54,7 @@ UNLOCKS_HEADING = ' '.join(['unlocks', ANDROID])
 DAYS_AXIS_HEADING = 'day axis'
 TOTAL_UNLOCKS = ' '.join(['most used', ANDROID])
 DAY_NAME_HEADING = 'day name'
-VIEW_MORE_HEADING = ' '.join(['most used', ANDROID])
+VIEW_MORE_HEADING = ' '.join(['view more', ANDROID])
 REST_OF_THE_DAY = ' '.join(['rest of the day', ANDROID])
 
 GOOGLE = 'Google'

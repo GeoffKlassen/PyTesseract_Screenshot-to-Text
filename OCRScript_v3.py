@@ -1163,7 +1163,7 @@ if __name__ == '__main__':
             # For Samsung_2021 and 2018 versions of the dashboard, the Screentime heading and Notifications heading
             # both have sub-headings ('most used' and 'most notifications', respectively).
             if dashboard_category == SCREENTIME:
-                heading_above_apps = MOST_USED_HEADING
+                heading_above_apps = MOST_USED_APPS_HEADING
                 # Determine whether the row of text immediately above the app area is found
                 # (used in ParticipantClass for comparing two screenshots from the same person & day & category)
                 current_screenshot.set_screentime_subheading_found(False)
