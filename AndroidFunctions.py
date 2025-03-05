@@ -202,7 +202,6 @@ def get_headings(screenshot, time_fmt_short):
     df = screenshot.text
     lang = screenshot.language
     df[HEADING_COLUMN] = None
-    dates_df = screenshot.rows_with_date
 
     if lang is None:
         print("Language not detected; cannot get headings from screenshot.")
@@ -231,8 +230,6 @@ def get_headings(screenshot, time_fmt_short):
         elif re.search(screenshot.date_format, row_text, re.IGNORECASE):
             # Row contains date text
             df.loc[i, HEADING_COLUMN] = DATE_HEADING
-        # elif dates_df is not None and i in dates_df.index:  # If this isn't needed, you can get rid of dates_df
-        #     df.loc[i, HEADING_COLUMN] = DATE_HEADING
         elif len(row_words.intersection(DAY_ABBREVIATIONS[lang])) >= 3:
             df.loc[i, HEADING_COLUMN] = DAYS_AXIS_HEADING
         elif min(OCRScript_v3.levenshtein_distance(row_text, key)
@@ -646,12 +643,9 @@ def convert_string_time_to_minutes(str_time, screenshot):
         return time_int, leftover_str
 
     if android_version == GOOGLE:
-        # hours_format = '|'.join([('|'.join(KEYWORDS_FOR_HOURS[lang])), KEYWORD_FOR_HR[lang]]).replace(" ", r"\s?")
-        # minutes_format = '|'.join([('|'.join(KEYWORDS_FOR_MINUTES[lang])), KEYWORD_FOR_MIN[lang]])
         hours_format = '|'.join(
             [('|'.join(KEYWORDS_FOR_HOURS[lang])), '|'.join(KEYWORDS_FOR_HR[lang])]).replace(" ",r"\s?")
         minutes_format = '|'.join([('|'.join(KEYWORDS_FOR_MINUTES[lang])), '|'.join(KEYWORDS_FOR_MIN[lang])])
-
     else:
         hours_format = H
         minutes_format = MIN
@@ -838,7 +832,7 @@ def consolidate_overlapping_text(df, time_format_eol):
         current_num_digits = len(re.findall(r'\d', df['text'][i]))
         prev_num_digits = len(re.findall(r'\d', df['text'][i - 1]))
 
-        if calculate_overlap(current_textbox, prev_textbox) > 0.5:  # TODO Used to be 0.3; revert if it causes issues.
+        if calculate_overlap(current_textbox, prev_textbox) > 0.5:  # Used to be 0.3; revert if it causes issues.
             # If two text boxes overlap by at least 50%, consider them to be two readings of the same text.
             if (re.search(time_format_eol, df.loc[i, 'text']) and
                     not re.search(time_format_eol, df.loc[i - 1, 'text'])):
@@ -1149,6 +1143,3 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
 
     return top_n_app_names_and_numbers
 
-
-def main():
-    print("I am now in AndroidFunctions.py")

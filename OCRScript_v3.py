@@ -1096,7 +1096,7 @@ if __name__ == '__main__':
 
             # Determine if the screenshot contains data mis-considered relevant by participant -- if so, skip it
             if Android.screenshot_contains_unrelated_data(current_screenshot):
-                current_screenshot.add_error(ERR_UNRELATED_DATA)
+                current_screenshot.add_error(ERR_UNREADABLE_DATA)
                 current_screenshot.set_daily_total(NO_TEXT if study_category == SCREENTIME else NO_NUMBER)
                 if study_category == SCREENTIME:
                     current_screenshot.set_daily_total_minutes(NO_NUMBER)
@@ -1472,24 +1472,28 @@ if __name__ == '__main__':
         list_of_recent_times.append(screenshot_time)
         update_eta(list_of_recent_times)
 
-        """ End of the for loop of all URLs """
+        """ End of the for-loop of all URLs """
 
-    # Initialize a
+    print("\nCompiling participants' temporal data...", end='')
+    # Initialize
     all_usage_dataframes = []
     for p in participants:
         all_usage_dataframes.append(p.usage_data)
 
     all_participants_df = pd.concat(all_usage_dataframes, ignore_index=True)
-    all_participants_df = all_participants_df.reset_index(drop=True)
+    all_participants_df = all_participants_df.sort_values(by=['participant_id', 'date']).reset_index(drop=True)
 
+    print("Done.")
+
+    print("Compiling all screenshot data...", end='')
     all_screenshots_df = ScreenshotClass.initialize_data_row()
-
     for idx, s in enumerate(screenshots):
         all_screenshots_df.loc[idx, 'image_url'] = s.url
         all_screenshots_df.loc[idx, 'participant_id'] = s.user_id
         all_screenshots_df.loc[idx, 'language'] = s.language
         all_screenshots_df.loc[idx, 'device_os_submitted'] = s.device_os_submitted
         all_screenshots_df.loc[idx, 'device_os_detected'] = s.device_os_detected
+        all_screenshots_df.loc[idx, 'android_version'] = s.android_version
         all_screenshots_df.loc[idx, 'date_submitted'] = s.date_submitted
         all_screenshots_df.loc[idx, 'date_detected'] = s.date_detected
         all_screenshots_df.loc[idx, 'day_type'] = s.time_period
@@ -1509,6 +1513,7 @@ if __name__ == '__main__':
                 all_screenshots_df.loc[idx, col] = True
             else:
                 pass
+    print("Done.")
 
     all_ios_screenshots_df = all_screenshots_df[all_screenshots_df['device_os_detected'] == IOS]
     all_android_screenshots_df = all_screenshots_df[all_screenshots_df['device_os_detected'] == ANDROID]
@@ -1527,3 +1532,5 @@ if __name__ == '__main__':
     all_screentime_screenshots_df.to_csv(f"{study_to_analyze['Name']}_all_screentime_data.csv")
     all_pickups_screenshots_df.to_csv(f"{study_to_analyze['Name']}_all_pickups_data.csv")
     all_notifications_screenshots_df.to_csv(f"{study_to_analyze['Name']}_all_notifications_data.csv")
+
+    print("\nAll data exported to CSV successfully.")

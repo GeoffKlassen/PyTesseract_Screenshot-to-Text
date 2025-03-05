@@ -146,7 +146,7 @@ NUMBER = 'number'
 """
     Error Messages    
 """
-ERR_UNRELATED_DATA = 'Unrelated data detected'
+ERR_UNREADABLE_DATA = 'Unreadable data format'
 ERR_APP_AREA = 'App area not detected'
 ERR_DATA_NOT_READ = 'Error reading data'
 ERR_NO_TEXT = 'No text found'

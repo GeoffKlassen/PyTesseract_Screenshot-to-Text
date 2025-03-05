@@ -6,7 +6,8 @@ from ConvenienceVariables import *
 
 
 def initialize_data_row():
-    df = pd.DataFrame(columns=['image_url', 'participant_id', 'language', 'device_os_submitted', 'device_os_detected',
+    df = pd.DataFrame(columns=['image_url', 'participant_id', 'language',
+                               'device_os_submitted', 'device_os_detected', 'android_version',
                                'date_submitted', 'date_detected', 'day_type',
                                'category_submitted', 'category_detected'])
     df[f'daily_total'] = None
@@ -153,7 +154,7 @@ class Screenshot:
             if num > 0:
                 if "Values below" in error:
                     self.num_values_low_conf = num
-                elif "Missed values" in error:
+                elif error == ERR_MISSING_VALUE:
                     self.num_missed_values = num
 
     def set_device_os_detected(self, _os):
