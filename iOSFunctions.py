@@ -962,6 +962,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
                     print(f"Error converting {row_text} to integer. Number will be set to {NO_NUMBER} (conf = {NO_CONF}).")
                     row_text = NO_NUMBER
                     row_conf = NO_CONF
+                    num_missed_app_values += 1
 
                 if prev_row_type != 'name':  # two app numbers in a row, or first datum is a number
                     if len(app_names) - 1 < max_apps:
