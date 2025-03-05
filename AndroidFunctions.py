@@ -145,7 +145,7 @@ KEYWORDS_FOR_SHOW_SITES_YOU_VISIT = {ITA: ['Mostra i siti visitati'],
 KEYWORDS_FOR_UNRELATED_SCREENSHOTS = {ITA: ['USO BATTERIA', 'Benessere digitale'],
                                       ENG: ['BATTERY USE', 'BATTERY USAGE',
                                             'Digital wellbeing', 'Digital Wellbeing & parental',
-                                            'No limit', 'Manage notifications'],
+                                            'No limit', 'Manage notifications', 'Weekly report'],
                                       GER: ['TODO FILL THIS IN'],
                                       FRA: ['TODO FILL THIS IN']}
 # Some screenshots show only Battery Usage info; these screenshots do not contain any of the requested info.
