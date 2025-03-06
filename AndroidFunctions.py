@@ -976,7 +976,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                                  ('|'.join(KEYWORDS_FOR_HOURS[img_lang]))]).replace(" ",r"\s?")
         minutes_format = '|'.join([MIN, '|'.join(KEYWORDS_FOR_MIN[img_lang]), ('|'.join(KEYWORDS_FOR_MINUTES[img_lang]))])
 
-        if screenshot.category_detected == GOOGLE:
+        if screenshot.android_version == GOOGLE:
             # Sometimes words like 'minutes' can be misread as something like 'minuies'. These are still time values,
             # so we still want to process them as time values.
             s = replace_misread_time_words(s, KEYWORDS_FOR_MINUTES[img_lang], 2)
