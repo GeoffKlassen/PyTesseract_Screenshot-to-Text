@@ -39,7 +39,7 @@ MOST_USED_HEADING = ' '.join(['most used', IOS])
 PICKUPS_HEADING = ' '.join(['pickups', IOS])
 FIRST_PICKUP_HEADING = ' '.join(['total pickups', IOS])
 FIRST_USED_AFTER_PICKUP_HEADING = ' '.join(['first used after pickup', IOS])
-HOURS_AXIS_HEADING = ' '.join(['hours row', IOS])
+HOURS_AXIS_HEADING = 'hours row'
 
 LIMIT_USAGE_HEADING = ' '.join(['limit usage', IOS])
 COMMUNICATION_HEADING = ' '.join(['communication', IOS])
