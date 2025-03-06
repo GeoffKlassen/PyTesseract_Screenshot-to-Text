@@ -828,12 +828,15 @@ def extract_app_info(screenshot, image, coordinates, scale):
     app_info = pd.concat([app_info_scan_1, app_info_scan_2], ignore_index=True)
     app_info = iOS.consolidate_overlapping_text(app_info) if screenshot.device_os_detected == IOS else (
         Android.consolidate_overlapping_text(app_info, time_format_eol))
-    app_info = app_info.reset_index(drop=True)
 
-    # rows_with_time_data = app_info[app_info['text'].str.fullmatch(misread_time_format)]
-    # if screenshot.category_detected is None and not rows_with_time_data.empty:
-    #     print(f"Found rows with screentime values. Setting dashboard category to '{SCREENTIME}'.")
-    #     current_screenshot.category_detected = SCREENTIME
+    # Sometimes the text for 'rest of the day' isn't found on the initial scan, but it gets found in the app-info scan.
+    if screenshot.device_os_detected == ANDROID and screenshot.android_version == GOOGLE:
+        rows_with_rest_of_the_day = app_info[app_info['text'].apply(lambda x: min(levenshtein_distance(x, key) for key in
+                                                                    Android.KEYWORDS_FOR_REST_OF_THE_DAY[lang])) <= 2]
+        if not rows_with_rest_of_the_day.empty:
+            app_info = app_info[app_info.index > rows_with_rest_of_the_day.index[0]]
+
+    app_info = app_info.reset_index(drop=True)
 
     return app_info
 

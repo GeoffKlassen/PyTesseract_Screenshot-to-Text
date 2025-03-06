@@ -476,8 +476,9 @@ def filter_time_text(text, conf, hr_f, min_f):
     text2 = re.sub(r"((?<=\d\s)tr)|((?<=\d)tr)", "hr", text2)
     text2 = re.sub(r"((?<=\d\s)hy)|((?<=\d)hy)", "hr", text2)
     text2 = re.sub(r"((?<=\d\s)ty)|((?<=\d)ty)", "hr", text2)
+    text2 = re.sub(r"((?<=\d\s)he)|((?<=\d)he)", "hr", text2)
+    text2 = text2.replace('hr.', 'hr')
 
-    # text2 = re.sub(r"hrs", "hr", text2)
     # Replace common misread characters (e.g. pytesseract sometimes misreads '1h' as 'Th'/'th').
     text2 = replace_misread_digit('The', '1hr', text2)
     text2 = replace_misread_digit('(t|T)', '1', text2)
