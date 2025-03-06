@@ -133,7 +133,7 @@ SAMSUNG_UNLOCKS_FORMAT = {ITA: ['# volte', '# in totale'],
 # "You can set daily timers" is a tip box that appears in the Google version of Dashboard, until a user clears it.
 
 KEYWORDS_FOR_REST_OF_THE_DAY = {ITA: ['giornata'],  # full phrase is 'resto della giornata' but 'giornata' is sometimes its own line
-                                ENG: ['rest of the day', 'rest of the', 'of the day', 'the day'],
+                                ENG: ['rest of the day', 'rest of the', 'of the day', 'the day.'],
                                 GER: ['Rest des Tages pausiert'],
                                 FRA: ['TODO FILL THIS IN']}  # TODO Fill this in
 # "rest of the day" is the last text in the dialogue box for "You can set daily timers".
