@@ -139,7 +139,9 @@ KEYWORDS_FOR_REST_OF_THE_DAY = {ITA: ['giornata'],  # full phrase is 'resto dell
 # "rest of the day" is the last text in the dialogue box for "You can set daily timers".
 
 KEYWORDS_FOR_SHOW_SITES_YOU_VISIT = {ITA: ['Mostra i siti visitati'],
-                                     ENG: ['Show sites you visit', 'Show sites that you visit'],
+                                     ENG: ['Show sites you visit', 'Show sites that you visit',
+                                           '( Show sites you visit )', '( Show sites that you visit )'],
+                                     # Sometimes the oval around this text gets read as parentheses ()
                                      GER: ['Besuchte Websites anzeigen'],
                                      FRA: ['TODO FILL THIS IN']}  # TODO Fill this in
 # "Show sites you visit" can appear in the Google version of Dashboard, under the Chrome app (if it's in the app list).
@@ -990,13 +992,18 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
         # Find all the numbers in the string
         numbers = re.findall(misread_number_format, s)
         if not numbers and (not s[-1].isdigit() or abs(crop_right - row_right) > 0.2*crop_right):
-            # If there are no numbers, return the original string and an empty string
+            # If there are no (misread) numbers, and either
+            #     the last character is a non-digit, or
+            #     the text ends too close to the right edge of the image
             return s, ''
 
         # Get the last number
-        last_number = numbers[-1]
-        # Find the index of the first digit of the last number
-        index = s.rfind(last_number)
+        if numbers:
+            last_number = numbers[-1]
+            # Find the index of the first digit of the last number
+            index = s.rfind(last_number)
+        else:
+            index = len(s)
 
         name = s[:index].rstrip()
         s_filtered, _ = filter_time_or_number_text(s[index:], NO_CONF, misread_number_format)

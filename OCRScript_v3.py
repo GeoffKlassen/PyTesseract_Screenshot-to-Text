@@ -767,7 +767,8 @@ def extract_app_info(screenshot, image, coordinates, scale):
         Android.consolidate_overlapping_text(overlapped_text, time_format_eol))
     app_info_scan_1 = app_info_scan_1.sort_values(by=['top', 'left']).reset_index(drop=True)
 
-    index_of_day_axis = next((idx for idx, row in app_info_scan_1.iterrows() if len(set(row['text'].split()).intersection(DAY_ABBREVIATIONS[lang])) > 3), None)
+    index_of_day_axis = next((idx for idx, row in app_info_scan_1.iterrows() if
+                              len(set(row['text'].split()).intersection(DAY_ABBREVIATIONS[lang])) >= 3), None)
     if index_of_day_axis is not None:
         # If the initial scan failed to find the 'DAY AXIS' row but it was found on the cropped region,
         # Erase the area above this DAY AXIS and remove any text above it.
@@ -1218,9 +1219,14 @@ if __name__ == '__main__':
                                                heading_above_apps=heading_above_apps,
                                                screenshot=current_screenshot,
                                                time_format_short=time_format_short))
-            if all(crops is None for crops in crop_coordinates):
+            (app_area_crop_top, app_area_crop_left,
+             app_area_crop_bottom, app_area_crop_right) = (crop_coordinates[0], crop_coordinates[1],
+                                                           crop_coordinates[2], crop_coordinates[3])
+
+            daily_total_heading_row = headings_df[headings_df[HEADING_COLUMN].str.fullmatch(f"total " + dashboard_category)]
+            if all(crops is None for crops in crop_coordinates) or (not daily_total_heading_row.empty and app_area_crop_top < daily_total_heading_row.iloc[0]['top']):
+                print(f"Crop region not found or includes daily total. Setting all app-specific data to N/A.")
                 current_screenshot.add_error(ERR_APP_DATA)
-                print(f"Setting all app-specific data to N/A.")
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
                 screenshot_time = time.time() - screenshot_time_start
@@ -1228,9 +1234,6 @@ if __name__ == '__main__':
                 update_eta(list_of_recent_times)
                 continue
 
-            (app_area_crop_top, app_area_crop_left,
-             app_area_crop_bottom, app_area_crop_right) = (crop_coordinates[0], crop_coordinates[1],
-                                                           crop_coordinates[2], crop_coordinates[3])
             app_area_crop_width = app_area_crop_right - app_area_crop_left
 
             cropped_image = cv2.GaussianBlur(cropped_image, ksize=(3, 3), sigmaX=0)

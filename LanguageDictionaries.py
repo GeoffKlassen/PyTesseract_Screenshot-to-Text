@@ -95,9 +95,9 @@ KEYWORDS_FOR_YESTERDAY = {ITA: ['leri'],  # True word is Ieri, but pytesseract u
                           GER: ['Gestern']}
 
 KEYWORDS_FOR_WEEKDAY_NAMES = {ITA: ['lunedi',  'martedi', 'mercoledi',    'giovedi',  'venerdi',   'sabato', 'domenica'],
-                                 ENG: ['monday',  'tuesday', 'wednesday',   'thursday',   'friday', 'saturday',   'sunday'],
-                                 FRA: [ 'lundi',    'mardi',  'mercredi',      'jeudi', 'vendredi',   'samedi', 'dimanche'],
-                                 GER: ['montag', 'dienstag',  'mittwoch', 'donnerstag',  'freitag',  'samstag',  'sonntag']}
+                              ENG: ['monday',  'tuesday', 'wednesday',   'thursday',   'friday', 'saturday',   'sunday'],
+                              FRA: [ 'lundi',    'mardi',  'mercredi',      'jeudi', 'vendredi',   'samedi', 'dimanche'],
+                              GER: ['montag', 'dienstag',  'mittwoch', 'donnerstag',  'freitag',  'samstag',  'sonntag']}
 
 KEYWORDS_FOR_WEEK = {ITA: ['Questa settimana', 'Media giornaliera'],
                      ENG: ['This week', 'Daily Average'],
@@ -111,7 +111,9 @@ KEYWORDS_FOR_DAY_BEFORE_YESTERDAY = {ITA: ['Laltro ieri'],  # Actual phrase is L
                                      FRA: ['Avant-hier']}
 
 DAY_ABBREVIATIONS = {ITA: {"TODO FILL THIS IN"},
-                     ENG: {"M", "T", "W", "F", "S"},
+                     ENG: {"M", "T", "W", "F", "S",
+                           "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun",
+                           "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"},
                      GER: {"TODO FILL THIS IN"},
                      FRA: {"TODO FILL THIS IN"}
                      }
