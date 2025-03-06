@@ -65,7 +65,6 @@ class Participant:
         self.device_id = device_id
         self.device_os = device_os
         self.language = lang
-        self.screenshots = []
         self.usage_data = initialize_usage_df()
         self.usage_data_conf = initialize_usage_df()
 
@@ -76,7 +75,6 @@ class Participant:
         self.language = lang
 
     def add_screenshot(self, ss):
-        self.screenshots.append(ss)
         category = ss.category_detected
         if category in [PICKUPS, UNLOCKS]:
             category = PICKUPS

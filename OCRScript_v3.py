@@ -928,7 +928,8 @@ if __name__ == '__main__':
     start_time = time.time()
     list_of_recent_times = []
     # Cycle through the images, creating a screenshot object for each one
-    screenshots = []
+
+    all_screenshots_df = ScreenshotClass.initialize_data_row()
     participants = []
     for index in url_list.index:
         if not (test_lower_bound <= index+1 <= test_upper_bound):
@@ -955,9 +956,6 @@ if __name__ == '__main__':
         # if current_screenshot.device_os == IOS:
         #     continue
 
-        # Add the current screenshot to the list of all screenshots
-        screenshots.append(current_screenshot)
-        # Download the image (if not using local images) or open the local image
         # Download the image (if not using local images) or open the local image
         grey_image, bw_image = load_and_process_image(current_screenshot, white_threshold=220)  # 226
 
@@ -1468,6 +1466,32 @@ if __name__ == '__main__':
         if count_below_conf_limit > 0:
             current_screenshot.add_error(f"Values below {conf_limit}% confidence", num=count_below_conf_limit)
 
+        all_screenshots_df.loc[index, 'image_url'] = current_screenshot.url
+        all_screenshots_df.loc[index, 'participant_id'] = current_screenshot.user_id
+        all_screenshots_df.loc[index, 'language'] = current_screenshot.language
+        all_screenshots_df.loc[index, 'device_os_submitted'] = current_screenshot.device_os_submitted
+        all_screenshots_df.loc[index, 'device_os_detected'] = current_screenshot.device_os_detected
+        all_screenshots_df.loc[index, 'android_version'] = current_screenshot.android_version
+        all_screenshots_df.loc[index, 'date_submitted'] = current_screenshot.date_submitted
+        all_screenshots_df.loc[index, 'date_detected'] = current_screenshot.date_detected
+        all_screenshots_df.loc[index, 'day_type'] = current_screenshot.time_period
+        all_screenshots_df.loc[index, 'category_submitted'] = current_screenshot.category_submitted
+        all_screenshots_df.loc[index, 'category_detected'] = current_screenshot.category_detected
+        all_screenshots_df.loc[index, 'daily_total'] = current_screenshot.daily_total
+        for n in range(1, max_apps_per_category + 1):
+            all_screenshots_df.loc[index, f'app_{n}_name'] = current_screenshot.app_data['name'][n]
+            all_screenshots_df.loc[index, f'app_{n}_number'] = current_screenshot.app_data['number'][n]
+        all_screenshots_df.loc[index, 'num_review_reasons'] = len(current_screenshot.errors)
+        for col in current_screenshot.data_row.columns:
+            if col == ERR_CONFIDENCE:
+                all_screenshots_df.loc[index, col] = current_screenshot.num_values_low_conf
+            elif col == ERR_MISSING_VALUE:
+                all_screenshots_df.loc[index, col] = current_screenshot.num_missed_values
+            elif col.startswith("ERR"):
+                all_screenshots_df.loc[index, col] = True
+            else:
+                pass
+
         screenshot_time = time.time() - screenshot_time_start
         list_of_recent_times.append(screenshot_time)
         update_eta(list_of_recent_times)
@@ -1475,8 +1499,7 @@ if __name__ == '__main__':
         """ End of the for-loop of all URLs """
 
     print("\nCompiling participants' temporal data...", end='')
-    # Initialize
-    all_usage_dataframes = []
+    all_usage_dataframes = []  # Initialize
     for p in participants:
         all_usage_dataframes.append(p.usage_data)
 
@@ -1485,35 +1508,35 @@ if __name__ == '__main__':
 
     print("Done.")
 
-    print("Compiling all screenshot data...", end='')
-    all_screenshots_df = ScreenshotClass.initialize_data_row()
-    for idx, s in enumerate(screenshots):
-        all_screenshots_df.loc[idx, 'image_url'] = s.url
-        all_screenshots_df.loc[idx, 'participant_id'] = s.user_id
-        all_screenshots_df.loc[idx, 'language'] = s.language
-        all_screenshots_df.loc[idx, 'device_os_submitted'] = s.device_os_submitted
-        all_screenshots_df.loc[idx, 'device_os_detected'] = s.device_os_detected
-        all_screenshots_df.loc[idx, 'android_version'] = s.android_version
-        all_screenshots_df.loc[idx, 'date_submitted'] = s.date_submitted
-        all_screenshots_df.loc[idx, 'date_detected'] = s.date_detected
-        all_screenshots_df.loc[idx, 'day_type'] = s.time_period
-        all_screenshots_df.loc[idx, 'category_submitted'] = s.category_submitted
-        all_screenshots_df.loc[idx, 'category_detected'] = s.category_detected
-        all_screenshots_df.loc[idx, 'daily_total'] = s.daily_total
-        for n in range(1, max_apps_per_category + 1):
-            all_screenshots_df.loc[idx, f'app_{n}_name'] = s.app_data['name'][n]
-            all_screenshots_df.loc[idx, f'app_{n}_number'] = s.app_data['number'][n]
-        all_screenshots_df.loc[idx, 'num_review_reasons'] = len(s.errors)
-        for col in s.data_row.columns:
-            if col == f"ERR Values below {int(conf_limit)}% confidence":
-                all_screenshots_df.loc[idx, col] = s.num_values_low_conf
-            elif col == "ERR Missed values":
-                all_screenshots_df.loc[idx, col] = s.num_missed_values
-            elif col.startswith("ERR"):
-                all_screenshots_df.loc[idx, col] = True
-            else:
-                pass
-    print("Done.")
+    # print("Compiling all screenshot data...", end='')
+    # all_screenshots_df = ScreenshotClass.initialize_data_row()
+    # for idx, s in enumerate(screenshots):
+    #     all_screenshots_df.loc[idx, 'image_url'] = s.url
+    #     all_screenshots_df.loc[idx, 'participant_id'] = s.user_id
+    #     all_screenshots_df.loc[idx, 'language'] = s.language
+    #     all_screenshots_df.loc[idx, 'device_os_submitted'] = s.device_os_submitted
+    #     all_screenshots_df.loc[idx, 'device_os_detected'] = s.device_os_detected
+    #     all_screenshots_df.loc[idx, 'android_version'] = s.android_version
+    #     all_screenshots_df.loc[idx, 'date_submitted'] = s.date_submitted
+    #     all_screenshots_df.loc[idx, 'date_detected'] = s.date_detected
+    #     all_screenshots_df.loc[idx, 'day_type'] = s.time_period
+    #     all_screenshots_df.loc[idx, 'category_submitted'] = s.category_submitted
+    #     all_screenshots_df.loc[idx, 'category_detected'] = s.category_detected
+    #     all_screenshots_df.loc[idx, 'daily_total'] = s.daily_total
+    #     for n in range(1, max_apps_per_category + 1):
+    #         all_screenshots_df.loc[idx, f'app_{n}_name'] = s.app_data['name'][n]
+    #         all_screenshots_df.loc[idx, f'app_{n}_number'] = s.app_data['number'][n]
+    #     all_screenshots_df.loc[idx, 'num_review_reasons'] = len(s.errors)
+    #     for col in s.data_row.columns:
+    #         if col == f"ERR Values below {int(conf_limit)}% confidence":
+    #             all_screenshots_df.loc[idx, col] = s.num_values_low_conf
+    #         elif col == "ERR Missed values":
+    #             all_screenshots_df.loc[idx, col] = s.num_missed_values
+    #         elif col.startswith("ERR"):
+    #             all_screenshots_df.loc[idx, col] = True
+    #         else:
+    #             pass
+    # print("Done.")
 
     all_ios_screenshots_df = all_screenshots_df[all_screenshots_df['device_os_detected'] == IOS]
     all_android_screenshots_df = all_screenshots_df[all_screenshots_df['device_os_detected'] == ANDROID]

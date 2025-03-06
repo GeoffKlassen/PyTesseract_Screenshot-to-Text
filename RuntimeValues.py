@@ -59,6 +59,7 @@ app_area_scale_factor = 1  # In addition to the screenshot_scale_factor, this is
                               # when searching for app-level data
 
 conf_limit = 80
+ERR_CONFIDENCE = f"Values below {int(conf_limit)}& confidence"
 # Location of PyTesseract on local drive
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Users\gbk546\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'  # At U of S
 

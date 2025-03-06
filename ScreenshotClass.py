@@ -152,7 +152,7 @@ class Screenshot:
             self.errors.append(error)
             self.data_row[f"ERR {error}"] = True
             if num > 0:
-                if "Values below" in error:
+                if error == RuntimeValues.ERR_CONFIDENCE:
                     self.num_values_low_conf = num
                 elif error == ERR_MISSING_VALUE:
                     self.num_missed_values = num
