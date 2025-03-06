@@ -715,12 +715,29 @@ def extract_app_info(screenshot, image, coordinates, scale):
     :return:
     """
     text = screenshot.text
+    empty_text = text.iloc[0:0]
     bg_colour = WHITE if is_light_mode else BLACK
     lang = get_best_language(screenshot)
     crop_top, crop_left, crop_bottom, crop_right = coordinates[0], coordinates[1], coordinates[2], coordinates[3]
     remove_chars = "[^a-zA-Z0-9+é:.!,()'&-]+" if screenshot.device_os_detected == IOS else '[^a-zA-Z0-9+\\(\\)\\-\\.é]+'
     # Android needs characters like commas (,) removed because they appear in screentime values
     _, app_info_scan_1 = extract_text_from_image(image, remove_chars=remove_chars)
+
+    # If the first text found in the cropped image is too far down/right in the image to be app info, then consider the
+    # cropped region to NOT contain app info.
+    if screenshot.device_os_detected == IOS and not app_info_scan_1.empty and \
+            (app_info_scan_1['top'][0] > 5 * app_info_scan_1['height'][0] or
+             not re.fullmatch(misread_time_or_number_format, app_info_scan_1['text'][0]) and (
+                     app_info_scan_1['left'][0] > int(0.25 * image.shape[1]) or
+                     abs(app_info_scan_1['left'][0] + app_info_scan_1['width'][0]) < int(0.02 * image.shape[1]))):
+        # First found row of text is more than 5x its own height from the top of the cropped image; or
+        # First found row of text is not a time/number and either:
+        #     it starts too far from the left edge of the cropped image, or
+        #     it's too close to the right edge of the cropped image
+
+        print("First text found in cropped region is too far down/right. App-level data not found.")
+        screenshot.add_error(ERR_APP_DATA)
+        return empty_text
 
     """Sometimes the cropped rescan misses app numbers that were found on the initial scan.
                     Merge these app numbers from the initial scan into the rescan."""
@@ -1405,6 +1422,11 @@ if __name__ == '__main__':
 
             # Extract app info from cropped image
             app_area_df = extract_app_info(current_screenshot, scaled_cropped_image, crop_coordinates, app_area_scale_factor)
+            if ERR_APP_DATA in current_screenshot.errors:
+                current_screenshot.set_app_data(empty_app_data)
+                current_participant.add_screenshot(current_screenshot)
+                update_eta(list_of_recent_times)
+                continue
 
             value_format = misread_time_format if dashboard_category == SCREENTIME else misread_number_format
             confident_text_from_prescan = \
