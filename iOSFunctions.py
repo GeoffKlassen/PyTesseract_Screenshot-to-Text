@@ -135,16 +135,16 @@ def get_headings(screenshot):
         elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
                  KEYWORDS_FOR_NOTIFICATIONS[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = NOTIFICATIONS_HEADING
-        elif re.search('|'.join(KEYWORDS_FOR_HOURS_AXIS), row_text):  # or re.search(r'^0\s.*12|6\s.*18$', row_text):
+        elif re.search('|'.join(KEYWORDS_FOR_HOURS_AXIS), row_text, re.IGNORECASE):  # or re.search(r'^0\s.*12|6\s.*18$', row_text):
             df.loc[i, HEADING_COLUMN] = HOURS_AXIS_HEADING
         elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
-                     KEYWORDS_FOR_LIMIT_USAGE[lang]) <= error_margin:
+                 KEYWORDS_FOR_LIMIT_USAGE[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = LIMIT_USAGE_HEADING
         elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
-                     KEYWORDS_FOR_COMMUNICATION[lang]) <= error_margin:
+                 KEYWORDS_FOR_COMMUNICATION[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = COMMUNICATION_HEADING
         elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
-                     KEYWORDS_FOR_SEE_ALL_ACTIVITY[lang]) <= error_margin:
+                 KEYWORDS_FOR_SEE_ALL_ACTIVITY[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = SEE_ALL_ACTIVITY
         else:
             df = df.drop(i)
@@ -193,25 +193,36 @@ def get_dashboard_category(screenshot):
             heads_df[HEADING_COLUMN].str.fullmatch(FIRST_USED_AFTER_PICKUP_HEADING).any() and (
             text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == FIRST_USED_AFTER_PICKUP_HEADING].index[0] + 1 or
             heads_df[heads_df[HEADING_COLUMN] == FIRST_USED_AFTER_PICKUP_HEADING].iloc[-1]['top'] <
-            0.9 * screenshot.height):
+            0.9 * screenshot.height) or \
+            (heads_df[HEADING_COLUMN].str.fullmatch(FIRST_PICKUP_HEADING).any() and
+             text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == FIRST_PICKUP_HEADING].index[0] + 1):
         # Found pickups heading and there's more text below it; or
         # Found "first used after pickup" heading and either:
         #     there's more data below, or
-        #     the "first used after pickup" heading is not close to the bottom of the screenshot
+        #     the "first used after pickup" heading is not close to the bottom of the screenshot; or
+        # Found the 'First Pickup Total Pickups' row, and there's more data below it
         categories_found.append(PICKUPS)
 
     if (heads_df[HEADING_COLUMN].str.fullmatch(NOTIFICATIONS_HEADING).any() and
         text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == NOTIFICATIONS_HEADING].index[0] + 1) or \
             heads_df[HEADING_COLUMN].str.fullmatch(HOURS_AXIS_HEADING).any() and (
             not heads_df[HEADING_COLUMN].str.fullmatch(MOST_USED_HEADING).any() or
-            heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].index[0] > heads_df[heads_df[HEADING_COLUMN] == MOST_USED_HEADING].index[0]) and (
+            heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].index[0] > heads_df[
+                heads_df[HEADING_COLUMN] == MOST_USED_HEADING].index[0]) and (
             text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].index[0] + 1 or
             heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].iloc[-1]['top'] <
-            0.9 * screenshot.height):
+            0.9 * screenshot.height) and (
+            not heads_df[HEADING_COLUMN].str.fullmatch(FIRST_PICKUP_HEADING).any() or
+            heads_df[heads_df[HEADING_COLUMN] == FIRST_PICKUP_HEADING].index[0] - 1 !=
+            heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].index[0]):
         # Found notifications heading and there's more text below it; or
-        # Found hours row and either:
-        #     there's more data below, or
-        #     the hours row is not close to the bottom of the screenshot
+        # Found hours row and:
+        #     (1) did not find the 'most used' heading, or
+        #         the hours row is below the 'most used' heading; and
+        #     (2) there's more data below the hours row, or
+        #         the hours row is not close to the bottom of the screenshot; and
+        #     (3) did not find the 'first pickup total pickups' row, or
+        #         the 'first pickup total pickups' row is not right below the hours row
         categories_found.append(NOTIFICATIONS)
 
     if not categories_found:
