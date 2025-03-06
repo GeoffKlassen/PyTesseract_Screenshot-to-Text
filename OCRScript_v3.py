@@ -1214,6 +1214,7 @@ if __name__ == '__main__':
             (app_area_crop_top, app_area_crop_left,
              app_area_crop_bottom, app_area_crop_right) = (crop_coordinates[0], crop_coordinates[1],
                                                            crop_coordinates[2], crop_coordinates[3])
+            app_area_crop_width = app_area_crop_right - app_area_crop_left
 
             cropped_image = cv2.GaussianBlur(cropped_image, ksize=(3, 3), sigmaX=0)
             scaled_cropped_image = cv2.resize(cropped_image,
@@ -1224,6 +1225,9 @@ if __name__ == '__main__':
 
             # Extract app info from cropped image
             app_area_df = extract_app_info(current_screenshot, scaled_cropped_image, crop_coordinates, app_area_scale_factor)
+            if android_version == GOOGLE:
+                app_area_df = app_area_df[app_area_df['left'] < int(0.7 * app_area_crop_width)]
+
             if show_images:
                 show_image(app_area_df, scaled_cropped_image)
             app_area_df['text'] = app_area_df['text'].apply(lambda x: 'X' if re.match(r'[xX]{2}', x) else x)
@@ -1464,7 +1468,7 @@ if __name__ == '__main__':
             lambda x: 0 < x < conf_limit).sum().sum() + (1 if daily_total_conf < conf_limit else 0)
 
         if count_below_conf_limit > 0:
-            current_screenshot.add_error(f"Values below {conf_limit}% confidence", num=count_below_conf_limit)
+            current_screenshot.add_error(ERR_CONFIDENCE, num=count_below_conf_limit)
 
         all_screenshots_df.loc[index, 'image_url'] = current_screenshot.url
         all_screenshots_df.loc[index, 'participant_id'] = current_screenshot.user_id
@@ -1476,7 +1480,8 @@ if __name__ == '__main__':
         all_screenshots_df.loc[index, 'date_detected'] = current_screenshot.date_detected
         all_screenshots_df.loc[index, 'day_type'] = current_screenshot.time_period
         all_screenshots_df.loc[index, 'category_submitted'] = current_screenshot.category_submitted
-        all_screenshots_df.loc[index, 'category_detected'] = current_screenshot.category_detected
+        all_screenshots_df.loc[index, 'category_detected'] = PICKUPS if (
+                current_screenshot.category_detected == UNLOCKS) else current_screenshot.category_detected
         all_screenshots_df.loc[index, 'daily_total'] = current_screenshot.daily_total
         for n in range(1, max_apps_per_category + 1):
             all_screenshots_df.loc[index, f'app_{n}_name'] = current_screenshot.app_data['name'][n]

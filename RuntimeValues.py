@@ -53,18 +53,18 @@ save_downloaded_images = True  # If True, images downloaded at runtime are saved
 user = "geoff.klassen@usask.ca"
 passw = "Phi1*618ah"
 
-show_images = False  # If True, images of the screenshots will be shown during runtime (mostly for debugging).
+show_images = True  # If True, images of the screenshots will be shown during runtime (mostly for debugging).
 
 app_area_scale_factor = 1  # In addition to the screenshot_scale_factor, this is how much to scale the cropped image
                               # when searching for app-level data
 
 conf_limit = 80
-ERR_CONFIDENCE = f"Values below {int(conf_limit)}& confidence"
+ERR_CONFIDENCE = f"ERR Values below {int(conf_limit)}% confidence"
 # Location of PyTesseract on local drive
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Users\gbk546\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'  # At U of S
 
-test_lower_bound = 1
-test_upper_bound = 50
+test_lower_bound = 652
+test_upper_bound = 19313
 # 553 for HappyB2.0 (pre-launch)
 # 19313 URLs for HappyB2.0 2024 Aug-Dec
 # 452 for BCH study

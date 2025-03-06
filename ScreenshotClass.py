@@ -150,7 +150,7 @@ class Screenshot:
     def add_error(self, error, num=0):
         if error not in self.errors:
             self.errors.append(error)
-            self.data_row[f"ERR {error}"] = True
+            self.data_row[error] = True
             if num > 0:
                 if error == RuntimeValues.ERR_CONFIDENCE:
                     self.num_values_low_conf = num

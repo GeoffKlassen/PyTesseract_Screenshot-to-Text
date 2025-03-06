@@ -32,6 +32,7 @@ DATE_RANGE_FORMAT = {ITA: [r'\d{1,2}-\d{1,2}\s?MMM',
 # hhh/HHH stands for the short/long format for hours; mmm/MMM stands for the short/long format for minutes.
 # The list of abbreviations for the necessary language will be subbed in as needed to create the full regex.
 TIME_FORMATS = [r'^[01ilLT]?[0-9aAilLStT]\s?hhh\s?[0-5aAilLT]?[0-9aAilLStT]\s?mmm$',  # Format for ## hr ## min
+                r'^[01ilLT]?[0-9aAilLStT]\s?HHH\s?[0-5aAilLT]?[0-9aAilLStT]\s?MMM$',  # Format for ## hours ## minutes
                 r'^[01ilLT]?[0-9aAilLStT]\s?HHH$',                                    # Format for ## hours
                 r'^[0-5aAilT]?[0-9AlLOStT]\s?MMM$']                                   # Format for ## minutes
 # Sometimes pytesseract mistakes digits for A, I, L, S, or T (e.g.  A = 4,   I/L/T = 1,   S = 5)
@@ -101,7 +102,9 @@ KEYWORDS_FOR_VIEW_MORE = {ITA: ['Visualizza altro'],
                           FRA: ['Afficher plus']}
 
 GOOGLE_SCREENTIME_FORMATS = {ITA: ['# ora', '# h e # min', '# minuti', '1 minuto', 'Meno di 1 minuto'],
-                             ENG: ['# hours', '# hrs # mins', '# hr # mins', '# hrs # min', '# hr # min', '#h #m',
+                             ENG: ['# hours',
+                                   '# hours # minutes', '# hours # minute', '# hour # minutes', '# hour # minute',
+                                   '# hrs # mins', '# hr # mins', '# hrs # min', '# hr # min', '#h #m',
                                    '# minutes', '1 minute', 'Less than 1 minute', '< 1 minute'],
                              GER: ['# Stunde', '# Std # Min', '# Minuten', '1 Minute', 'Weniger als 1 Minute'],
                              FRA: ['# heures', '# h et # min', '# minutes', '1 minute', 'Moins de 1 minute']}
@@ -459,7 +462,7 @@ def filter_time_text(text, conf, hr_f, min_f):
         """
         # Replaces a 'misread' digit with the 'actual' digit, but only if it is followed by a time word/character
         # (hours or minutes) in the relevant language
-        pattern = re.compile(''.join([r"(?<![^0-9tails\s])", misread, r"(?=\s?[0-9tails]?\s?(", hr_f, "|", min_f, "))"]), flags=re.IGNORECASE)
+        pattern = re.compile(''.join([r"(?<![^0-9tails\s\b])", misread, r"(?=\s?[0-9tails]{0,2}\s?(", hr_f, "|", min_f, "))"]), flags=re.IGNORECASE)
         filtered_str = re.sub(pattern, actual, s)
         return filtered_str
 
@@ -470,6 +473,7 @@ def filter_time_text(text, conf, hr_f, min_f):
     text2 = re.sub(r"((?<=\d\s)hy)|((?<=\d)hy)", "hr", text2)
     # text2 = re.sub(r"hrs", "hr", text2)
     # Replace common misread characters (e.g. pytesseract sometimes misreads '1h' as 'Th'/'th').
+    text2 = replace_misread_digit('The', '1hr', text2)
     text2 = replace_misread_digit('(t|T)', '1', text2)
     text2 = replace_misread_digit('(a|A)', '4', text2)
     text2 = replace_misread_digit('(i|I)', '1', text2)
@@ -877,7 +881,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
     android_version = screenshot.android_version
     time_short, time_long, time_eol = time_formats[0], time_formats[1], time_formats[2]
     crop_top, crop_left, crop_bottom, crop_right = coordinates[0], coordinates[1], coordinates[2], coordinates[3]
-    crop_height = crop_bottom - crop_top
+    crop_width = crop_right - crop_left
     img_lang = get_best_language(screenshot)
     empty_name_row = pd.DataFrame({'name': [NO_TEXT], 'name_conf': [NO_CONF]})
     empty_number_row = pd.DataFrame({'number': [NO_TEXT], 'number_conf': [NO_CONF]}) if category == SCREENTIME else (
@@ -978,7 +982,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
             s_time_only = s.replace(name, "").strip()
             time, _ = filter_time_text(s_time_only, NO_CONF, hours_format, minutes_format)
             if time != s_time_only:
-                print(f"Filtering time text: Replaced '{s}' with '{time}'.")
+                print(f"Filtering time text: Replaced '{s_time_only}' with '{time}'.")
 
         return name, time
 
@@ -1056,8 +1060,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                 # See 'pill' comment in similar line above;
                 # plus, sometimes in '## notifications', only 'notifications' is read.
                 continue
-            elif app_name != '' and app_number == '' and app_name.split()[
-                -1].isdigit() and crop_left + row_right > 0.85 * screenshot.width:
+            elif (app_name != '' and app_number == '' and app_name.split()[-1].isdigit() and
+                  crop_left + row_right > 0.85 * screenshot.width):
                 # For screenshots in SAMSUNG 2024 format or screenshots with weekly info,
                 # sometimes the number of notifications has no text after it
                 # (e.g. "14" instead of "14 notifications").
