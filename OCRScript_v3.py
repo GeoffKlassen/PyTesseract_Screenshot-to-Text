@@ -372,7 +372,7 @@ def show_image(df, img, draw_boxes=True):
     df[['left', 'width', 'top', 'height']] = df[['left', 'width', 'top', 'height']].astype(int)
 
     if draw_boxes:
-        m = 5  # A small margin to expand the borders of the boxes away from the text
+        m = int(6 / scale)  # A small margin to expand the borders of the boxes away from the text
         for i in df.index:
             start_point = (df['left'][i] - m, df['top'][i] - m)
             end_point = (df['left'][i] + df['width'][i] + m,
@@ -381,7 +381,7 @@ def show_image(df, img, draw_boxes=True):
             conf_p = df['conf'][i] / 100  # confidence value for each text item, expressed as a proportion from 0 to 1
             box_color_to_paint = (int(255 * conf_p), int(127 * conf_p), 255 - int(255 * conf_p))
 
-            thick = int(2 / scale) if df['conf'][i] >= conf_limit else int(1 / scale)
+            thick = int(4 / scale) if df['conf'][i] >= conf_limit else int(2 / scale)
             cv2.rectangle(img, start_point, end_point, box_color_to_paint, thickness=thick)
             # Border colour indicates confidence level. More blue = more confident; more red = less confident.
 

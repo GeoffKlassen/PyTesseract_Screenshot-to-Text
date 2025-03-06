@@ -626,9 +626,9 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
                     if category == NOTIFICATIONS:
                         crop_top = headings_df['top'][i] + headings_df['height'][i]
                     elif category == SCREENTIME:
-                        crop_top = min(crop_bottom, headings_df['top'][i] + int(7 * headings_df['height'][i]))
+                        crop_top = min(screenshot.height, headings_df['top'][i] + int(7 * headings_df['height'][i]))
                     elif category == PICKUPS:
-                        crop_top = min(crop_bottom, headings_df['top'][i] + int(5 * headings_df['height'][i]))
+                        crop_top = min(screenshot.height, headings_df['top'][i] + int(5 * headings_df['height'][i]))
                     else:
                         pass
                 else:
@@ -665,6 +665,10 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
     if crop_top == 0 and crop_bottom == screenshot.height:
         print("Could not find suitable values for top/bottom of app region.")
         screenshot.add_error(ERR_APP_AREA)
+    elif crop_top == screenshot.height:
+        print("Cropped image is empty.")
+        screenshot.add_error(ERR_APP_AREA)
+        return screenshot.grey_image, [None, None, None, None]
 
     return cropped_filtered_image, [crop_top, crop_left, crop_bottom, crop_right]
 
