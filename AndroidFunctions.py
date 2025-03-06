@@ -365,7 +365,8 @@ def get_dashboard_category(screenshot):
         count = 0
         for text in df['text']:
             for f in format_list:
-                if OCRScript_v3.levenshtein_distance(text, f) < 4:
+                if text[-1] != "#" and OCRScript_v3.levenshtein_distance(text, f) < 4:
+                    # If the last character in the row isn't a digit, and the whole row text is close to a time format
                     count += 1
                     break  # Move to the next text after finding a match
         return count
@@ -464,7 +465,8 @@ def filter_time_text(text, conf, hr_f, min_f):
         """
         # Replaces a 'misread' digit with the 'actual' digit, but only if it is followed by a time word/character
         # (hours or minutes) in the relevant language
-        pattern = re.compile(''.join([r"(?<![^0-9tails\s\b])", misread, r"(?=\s?[0-9tails]{0,2}\s?(", hr_f, "|", min_f, "))"]), flags=re.IGNORECASE)
+        pattern = re.compile(''.join([r"(?<![^0-9tailsh\s\b])", misread, r"(?=\s?[0-9tails]{0,2}\s?(", hr_f, "|", min_f, "))"]), flags=re.IGNORECASE)
+        # Note: Don't look behind for r if searching to replace an s, otherwise 'hrs' will become 'hr5'
         filtered_str = re.sub(pattern, actual, s)
         return filtered_str
 
@@ -473,6 +475,8 @@ def filter_time_text(text, conf, hr_f, min_f):
     text2 = re.sub(r"ii", "11", text2, re.IGNORECASE)
     text2 = re.sub(r"((?<=\d\s)tr)|((?<=\d)tr)", "hr", text2)
     text2 = re.sub(r"((?<=\d\s)hy)|((?<=\d)hy)", "hr", text2)
+    text2 = re.sub(r"((?<=\d\s)ty)|((?<=\d)ty)", "hr", text2)
+
     # text2 = re.sub(r"hrs", "hr", text2)
     # Replace common misread characters (e.g. pytesseract sometimes misreads '1h' as 'Th'/'th').
     text2 = replace_misread_digit('The', '1hr', text2)
@@ -482,6 +486,7 @@ def filter_time_text(text, conf, hr_f, min_f):
     text2 = replace_misread_digit('(l|L)', '1', text2)
     text2 = replace_misread_digit('(s|S)', '5', text2)
     text2 = replace_misread_digit('(o|O)', '0', text2)
+    text2 = replace_misread_digit('(b)', '6', text2)
 
     return text2, conf
 
@@ -611,6 +616,14 @@ def get_daily_total_and_confidence(screenshot, image, heading):
             minutes_format = MIN
         total_value_filtered, total_conf = filter_time_text(total_value, total_conf,
                                                             hours_format, minutes_format)
+
+    if min(OCRScript_v3.levenshtein_distance(total_value[-len(key):], key) <= int(np.log(len(key)))
+           for key in KEYWORDS_FOR_YESTERDAY[img_lang]):
+        print("Daily total found ends in 'yesterday'. Could not find daily total.")
+        return NO_TEXT, NO_CONF
+
+    if total_heading == "total " + SCREENTIME and total_value != total_value_filtered:
+        print(f"Filtered total: replaced '{total_value}' with '{total_value_filtered}'.")
 
     return total_value_filtered, total_conf
 
@@ -976,11 +989,11 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
             if time != s:
                 print(f"Filtering time text: Replaced '{s}' with '{time}'.")
         else:
-            split_text = re.split(time_eol, s)
+            split_text = re.split(time_eol, filtered_s)
             if len(split_text) == 1:
                 # If the string does not end in a time format, then it must be an app name only (no time)
                 return s, ''
-            name = split_text[0].strip()
+            name = s[:len(split_text[0])]  # split_text[0].strip()
             s_time_only = s.replace(name, "").strip()
             time, _ = filter_time_text(s_time_only, NO_CONF, hours_format, minutes_format)
             if time != s_time_only:
@@ -1041,7 +1054,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                 # Sometimes there are 'pill' shapes above the app time; these can be misread as app names.
                 # Ignore such apparent app names whose left edges lie beyond 40% of the screenshot width.
                 continue
-            if android_version == GOOGLE and app_name != '' and previous_text == APP and row_top - prev_row_bottom < row_height:
+            if android_version == GOOGLE and app_name != '' and previous_text == APP and \
+                    row_top - prev_row_bottom < row_height and len(app_names) - 1 <= max_apps:
                 num_missed_app_values += 1
                 # Sometimes an app time that appears just below an app name can be interpreted as an app name,
                 # even after filtering. Ignore such misread app times.
@@ -1062,18 +1076,21 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                 continue
             app_name, app_number = split_app_name_and_notifications(row_text)
             moe = 2 * int(np.log(max(len(key) for key in GOOGLE_NOTIFICATIONS_FORMATS[img_lang])))
-            if app_name != '' and app_number == '' and (row_left + crop_left > (0.4 * screenshot.width) or
-                                                        min(levenshtein_distance("# " + app_name, key) for key in GOOGLE_NOTIFICATIONS_FORMATS[img_lang]) <= moe):
-                # See 'pill' comment in similar line above;
-                # plus, sometimes in '## notifications', only 'notifications' is read.
-                continue
-            elif (app_name != '' and app_number == '' and app_name.split()[-1].isdigit() and
-                  crop_left + row_right > 0.85 * screenshot.width):
-                # For screenshots in SAMSUNG 2024 format or screenshots with weekly info,
-                # sometimes the number of notifications has no text after it
-                # (e.g. "14" instead of "14 notifications").
-                app_number = app_name.split()[-1]
-                app_name = ' '.join(app_name.split()[:-1])
+            if app_name != '' and app_number == '':  # Only app name found
+                if row_left + crop_left > (0.4 * screenshot.width):
+                    # See 'pill' comment in similar line above
+                    continue
+                elif min(levenshtein_distance("# " + app_name, key) for key in
+                         GOOGLE_NOTIFICATIONS_FORMATS[img_lang]) <= moe:
+                    # plus, sometimes in '## notifications', only 'notifications' is read.
+                    num_missed_app_values += 1
+                    continue
+                elif app_name.split()[-1].isdigit() and crop_left + row_right > 0.85 * screenshot.width:
+                    # For screenshots in SAMSUNG 2024 format or screenshots with weekly info,
+                    # sometimes the number of notifications has no text after it
+                    # (e.g. "14" instead of "14 notifications").
+                    app_number = app_name.split()[-1]
+                    app_name = ' '.join(app_name.split()[:-1])
             build_app_and_number_dfs(app_name, app_number)
     elif category == UNLOCKS:
         if android_version != GOOGLE:
@@ -1105,7 +1122,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                         app_number = NO_NUMBER
                         conf = NO_CONF
                     if previous_text == NUMBER:
-                        if len(app_names) < max_apps:
+                        if len(app_names) <= max_apps:
                             num_missed_app_values += 1
                         app_names = empty_name_row if app_names.empty else (
                             pd.concat([app_names, empty_name_row], ignore_index=True))
