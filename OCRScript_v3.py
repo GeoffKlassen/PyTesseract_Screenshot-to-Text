@@ -1315,7 +1315,7 @@ if __name__ == '__main__':
                 print(f"Daily total {dashboard_category}: {dt}{dtm}")
 
                 current_screenshot.set_daily_total_minutes(daily_total_minutes)
-                heading_above_applist = MOST_USED_HEADING
+                headings_above_applist = [MOST_USED_HEADING]
                 heading_below_applist = PICKUPS_HEADING
 
             elif dashboard_category == PICKUPS:
@@ -1334,18 +1334,18 @@ if __name__ == '__main__':
                     dt = daily_total
                 print(f"Daily total {dashboard_category}: {dt}")
 
-                heading_above_applist = FIRST_USED_AFTER_PICKUP_HEADING
+                headings_above_applist = [FIRST_USED_AFTER_PICKUP_HEADING, FIRST_PICKUP_HEADING]
                 heading_below_applist = NOTIFICATIONS_HEADING
 
             elif dashboard_category == NOTIFICATIONS:
                 current_screenshot.set_daily_total(daily_total, daily_total_conf)
                 print(f"Daily total {dashboard_category}: {dt}")
 
-                heading_above_applist = HOURS_AXIS_HEADING
+                headings_above_applist = [HOURS_AXIS_HEADING]
                 heading_below_applist = ''
 
             else:
-                heading_above_applist = ''
+                headings_above_applist = ['']
                 heading_below_applist = ''
                 daily_total = NO_TEXT
                 daily_total_conf = NO_CONF
@@ -1360,7 +1360,7 @@ if __name__ == '__main__':
                 update_eta(list_of_recent_times)
                 continue
             # Crop image to app region
-            cropped_image, crop_coordinates = iOS.crop_image_to_app_area(current_screenshot, heading_above_applist, heading_below_applist)
+            cropped_image, crop_coordinates = iOS.crop_image_to_app_area(current_screenshot, headings_above_applist, heading_below_applist)
             if all(crops is None for crops in crop_coordinates):
                 print(f"Suitable crop region not detected. Setting all app-specific data to N/A.")
                 current_screenshot.add_error(ERR_APP_DATA)

@@ -587,11 +587,11 @@ def get_total_pickups_2nd_location(screenshot, img):
     return total, total_conf
 
 
-def crop_image_to_app_area(screenshot, heading_above, heading_below):
+def crop_image_to_app_area(screenshot, headings_above, heading_below):
     """
     Determines the region of the screenshot to search for the top app-specific data.
     :param screenshot: The screenshot object to use (contains headings_df, image height, image width, time period, etc.)
-    :param heading_above: The heading that should appear directly above the app-specific data.
+    :param headings_above: The headings that should appear directly above the app-specific data.
     :param heading_below: The heading that should appear directly below the app-specific data.
     :return: The cropped image, and the coordinates of the cropped image within the original image.
     """
@@ -599,7 +599,7 @@ def crop_image_to_app_area(screenshot, heading_above, heading_below):
     # Initialize the crop region -- the 'for' loop below trims it further
 
     headings_df = screenshot.headings_df
-
+    category = screenshot.category_detected if screenshot.category_detected is not None else screenshot.category_submitted
     crop_top = 0
     crop_bottom = screenshot.height
     crop_left = round(0.14 * screenshot.width)  # The app icons are typically within the leftmost 15% of the screenshot
@@ -617,10 +617,23 @@ def crop_image_to_app_area(screenshot, heading_above, heading_below):
         # The above line corrects for when left-aligned headings are not found (e.g., Date heading, or a partial
         # 'hours' row (i.e. it thinks the left edge of the 'hours' row is further right than it actually is)).
         for i in headings_df.index:
-            if headings_df[HEADING_COLUMN][i] == heading_above or \
-                    headings_df[HEADING_COLUMN][i] in [DAY_OR_WEEK_HEADING, DATE_HEADING] and crop_bottom == screenshot.height:
-                crop_top = headings_df['top'][i] + headings_df['height'][i]
-            elif headings_df[HEADING_COLUMN][i] == heading_below:
+            current_heading = headings_df[HEADING_COLUMN][i]
+            if current_heading in headings_above or \
+                    current_heading in [DAY_OR_WEEK_HEADING, DATE_HEADING, HOURS_AXIS_HEADING] and crop_bottom == screenshot.height:  # include HOURS AXIS?
+                if current_heading == FIRST_PICKUP_HEADING:
+                    crop_top = min(crop_bottom, headings_df['top'][i] + int(2.5 * headings_df['height'][i]))
+                elif current_heading == HOURS_AXIS_HEADING:
+                    if category == NOTIFICATIONS:
+                        crop_top = headings_df['top'][i] + headings_df['height'][i]
+                    elif category == SCREENTIME:
+                        crop_top = min(crop_bottom, headings_df['top'][i] + int(7 * headings_df['height'][i]))
+                    elif category == PICKUPS:
+                        crop_top = min(crop_bottom, headings_df['top'][i] + int(5 * headings_df['height'][i]))
+                    else:
+                        pass
+                else:
+                    crop_top = headings_df['top'][i] + headings_df['height'][i]
+            elif current_heading == heading_below:
                 crop_bottom = headings_df['top'][i]
 
     if (headings_df.empty or

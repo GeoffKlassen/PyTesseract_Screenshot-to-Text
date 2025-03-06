@@ -63,7 +63,7 @@ ERR_CONFIDENCE = f"ERR Values below {int(conf_limit)}% confidence"
 # Location of PyTesseract on local drive
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Users\gbk546\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'  # At U of S
 
-test_lower_bound = 3288
+test_lower_bound = 3296
 test_upper_bound = 19313
 # 553 for HappyB2.0 (pre-launch)
 # 19313 URLs for HappyB2.0 2024 Aug-Dec
