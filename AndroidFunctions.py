@@ -778,12 +778,20 @@ def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_sh
                         text_df['height'][i] < 0.08 * screenshot.width:  # 0.08 settled on through trial and error
                     # Row text spans most of the width of the screenshot, and also ends with a time/number, and also
                     # isn't too tall (sometimes a line with a graph bar + a graph axis number is interpreted as text)
-                    print(f"App row found: '{text_df['text'][i]}'.  "
-                          f"Setting top of crop region to top of this app row.")
-                    crop_top = max([0, int(text_df['top'][i] - 0.01 * screenshot.width)])
-                    crop_left = max([0, int(text_df['left'][i] - 0.02 * screenshot.width)])
-                    index_of_first_app = i
-                    break
+                    print(f"App row found: '{text_df['text'][i]}'. ", end='')
+                    if crop_top == 0:
+                        print(f"Setting top-left of crop region to the top-left of this app row.")
+                        crop_top = max([0, int(text_df['top'][i] - 0.01 * screenshot.width)])
+                        crop_left = max([0, int(text_df['left'][i] - 0.02 * screenshot.width)])
+                        index_of_first_app = i
+                    else:
+                        if crop_left < int(0.05 * screenshot.width) and text_df['left'][i] < int(0.25 * screenshot.width):
+                            # Occasionally, the app icon is read as part of the app name, which shouldn't be in the crop.
+                            # Look for more app rows, and if one is found that starts further from the left edge of the
+                            # screenshot, use that as the crop_left bound.
+                            print(f"Changing left of crop region to the left of this app row.")
+                            crop_left = max([0, int(text_df['left'][i] - 0.02 * screenshot.width)])
+                        break
 
             headings_below_apps_df = headings_df[headings_df.index > max(index_of_first_app, index_of_closest_heading)]
             if not headings_below_apps_df.empty:
