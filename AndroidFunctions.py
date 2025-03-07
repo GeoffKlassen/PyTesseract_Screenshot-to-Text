@@ -1179,7 +1179,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
 
     app_names['name'] = app_names['name'].apply(lambda x: re.sub(r'\bAl\b', 'AI', x))
     app_names['name'] = app_names['name'].apply(lambda x: re.sub(r'^4$', 'X', x))
-    app_names['name'] = app_names['name'].apply(lambda x: re.sub(r'\\.$', '', x))
+    app_names['name'] = app_names['name'].apply(lambda x: re.sub(r'\.$', '', x))
     app_names, app_numbers = app_names.drop(app_names.index[0]), app_numbers.drop(app_numbers.index[0])
 
     # app_names.loc[app_names['name'] == 'Lite', 'name'] = 'Facebook Lite'  # The app "Facebook Lite" appears as 'Lite'
