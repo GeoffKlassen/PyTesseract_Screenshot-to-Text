@@ -321,8 +321,9 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+')
             number = float(value)
             # If successful, return the whole number part as a string
             return str(int(number))
-        except ValueError:
-            # If conversion fails (i.e., value is not a number), return value
+        except (ValueError, OverflowError):
+            # ValueError in case 'value' is not a number
+            # OverflowError in case 'value' is the word 'Infinity' (in which case, 'number' is now inf)
             return str(value)
 
     # img = cv2.GaussianBlur(img, (7,7), 0)  # Might help finding the large totals, not sure how it affects headings
