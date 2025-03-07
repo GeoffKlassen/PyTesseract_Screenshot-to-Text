@@ -836,6 +836,13 @@ def extract_app_info(screenshot, image, coordinates, scale):
         if not rows_with_rest_of_the_day.empty:
             app_info = app_info[app_info.index > rows_with_rest_of_the_day.index[0]]
 
+    # Sometimes the hours row isn't found on the initial scan, but it gets found in the app-info scan.
+    if screenshot.device_os_detected == IOS:
+        hours_axis_pattern = '|'.join(iOS.KEYWORDS_FOR_HOURS_AXIS)
+        rows_with_hours_axis = app_info[app_info['text'].str.contains(hours_axis_pattern, regex=True)]
+        if not rows_with_hours_axis.empty:
+            app_info = app_info[app_info.index > rows_with_hours_axis.index[0]]
+
     app_info = app_info.reset_index(drop=True)
 
     return app_info
@@ -1571,6 +1578,7 @@ if __name__ == '__main__':
     #             pass
     # print("Done.")
 
+    print("Exporting CSVs...", end='')
     all_ios_screenshots_df = all_screenshots_df[all_screenshots_df['device_os_detected'] == IOS]
     all_android_screenshots_df = all_screenshots_df[all_screenshots_df['device_os_detected'] == ANDROID]
 
@@ -1589,4 +1597,4 @@ if __name__ == '__main__':
     all_pickups_screenshots_df.to_csv(f"{study_to_analyze['Name']}_all_pickups_data.csv")
     all_notifications_screenshots_df.to_csv(f"{study_to_analyze['Name']}_all_notifications_data.csv")
 
-    print("\nAll data exported to CSV successfully.")
+    print("Done.")

@@ -129,7 +129,8 @@ class Participant:
                         ss.app_data['number_conf'][i]
 
         else:
-            print("Existing data found. Comparisons must be made.")
+            print(f"\nExisting {ss.category_detected} data found for participant {self.user_id} on {ss.date_detected}. "
+                  f"Comparisons must be made.")
             (self.usage_data.loc[date_index, f'total_{category}'],
              self.usage_data_conf.loc[date_index, f'total_{category}']) = (
                 OCRScript_v3.choose_between_two_values(text1=self.usage_data.loc[date_index, f'total_{category}'],

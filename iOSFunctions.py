@@ -178,14 +178,20 @@ def get_dashboard_category(screenshot):
             heads_df[HEADING_COLUMN].str.fullmatch(MOST_USED_HEADING).any() and (
             text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == MOST_USED_HEADING].index[0] + 1 or
             heads_df[heads_df[HEADING_COLUMN] == MOST_USED_HEADING].iloc[-1]['top'] <
-            0.9 * screenshot.height):
+            0.9 * screenshot.height) or \
+            heads_df[HEADING_COLUMN].str.fullmatch(DAY_OR_WEEK_HEADING).any() and (
+            text_df.shape[0] >= heads_df[heads_df[HEADING_COLUMN] == DAY_OR_WEEK_HEADING].index[0] + 1 and
+            text_df[text_df.index == heads_df[heads_df[HEADING_COLUMN] == DAY_OR_WEEK_HEADING].index[0] + 1][
+                'text'].str.contains(misread_time_format).any()):
         # Found screentime heading; or
         # Found hours axis and either:
         #   there's a row with a screentime above the hours axis, or
         #   there's a limits heading below the hours axis; or
         # Found most used heading and either:
         #     text_df has more data below the most used heading, or
-        #     the most used heading is not too close to the bottom of the screenshot
+        #     the most used heading is not too close to the bottom of the screenshot; or
+        # Found a 'day or week' heading, and
+        #     the very next row matches a time format
         categories_found.append(SCREENTIME)
 
     if (heads_df[HEADING_COLUMN].str.fullmatch(PICKUPS_HEADING).any() and
@@ -955,13 +961,13 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
 
             row_text = re.sub(r'^[xX]{1,2}$', "X", row_text)  # X (Twitter) may show up here as xX
 
-            if prev_app_height >= 0 and row_top - prev_row_bottom > 4*np.mean([row_height, prev_app_height]):
-                print(f"Suspected missing app between '{prev_app_name}' and '{row_text}'. Adding a blank row.")
-                app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
-                app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
-                if app_names.shape[0] <= max_apps:
-                    screenshot.add_error(ERR_MISSING_APP)
-                    num_missed_app_values += 2
+            # if prev_app_height >= 0 and row_top - prev_row_bottom > 4*np.mean([row_height, prev_app_height]):
+            #     print(f"Suspected missing app between '{prev_app_name}' and '{row_text}'. Adding a blank row.")
+            #     app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
+            #     app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
+            #     if app_names.shape[0] <= max_apps:
+            #         screenshot.add_error(ERR_MISSING_APP)
+            #         num_missed_app_values += 2
 
             if (len(str(row_text)) >= 3 or re.match(r'[xX]{1,2}', str(row_text))) and \
                     not re.match(regex_format, str(row_text), re.IGNORECASE) and \

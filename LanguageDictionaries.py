@@ -46,7 +46,8 @@ LANGUAGE_KEYWORDS = {GER: ['Gestern', 'Heute', 'Benachrichtigungen', 'Entsperrun
                            'NOTIFICHE', 'UTILIZZATE', 'DOPO', 'ricevute', 'sblocchi', 'Sblocchi', 'blocchi', 'volte',
                            'batteria', 'atteria', 'Oggi'],
                      ENG: ['Screen time', 'SCREEN', 'Updated', 'Yesterday', 'yesterday', 'Today', 'View more', 'today',
-                           'received', 'Unlocks', 'unlocks', 'Digital Wellbeing'],
+                           'received', 'Unlocks', 'unlocks', 'Digital Wellbeing', 'View all', 'Show sites',
+                           'Set limits for', 'Set timers for', 'Activity details'],
                      FRA: ['Applications les plus', 'fois', 'Notifications', 'Hier']
                      }
 # If one of the keywords above is found in a given screenshot, that screenshot is classified as being of the language of
