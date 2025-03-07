@@ -725,19 +725,19 @@ def extract_app_info(screenshot, image, coordinates, scale):
 
     # If the first text found in the cropped image is too far down/right in the image to be app info, then consider the
     # cropped region to NOT contain app info.
-    if screenshot.device_os_detected == IOS and not app_info_scan_1.empty and \
-            (app_info_scan_1['top'][0] > 5 * app_info_scan_1['height'][0] or
-             not re.fullmatch(misread_time_or_number_format, app_info_scan_1['text'][0]) and (
-                     app_info_scan_1['left'][0] > int(0.25 * image.shape[1]) or
-                     abs(app_info_scan_1['left'][0] + app_info_scan_1['width'][0]) < int(0.02 * image.shape[1]))):
-        # First found row of text is more than 5x its own height from the top of the cropped image; or
-        # First found row of text is not a time/number and either:
-        #     it starts too far from the left edge of the cropped image, or
-        #     it's too close to the right edge of the cropped image
-
-        print("First text found in cropped region is too far down/right. App-level data not found.")
-        screenshot.add_error(ERR_APP_DATA)
-        return empty_text
+    # if screenshot.device_os_detected == IOS and not app_info_scan_1.empty and \
+    #         (app_info_scan_1['top'][0] > 5 * app_info_scan_1['height'][0] or
+    #          not re.fullmatch(misread_time_or_number_format, app_info_scan_1['text'][0]) and (
+    #                  app_info_scan_1['left'][0] > int(0.25 * image.shape[1]) or
+    #                  abs(app_info_scan_1['left'][0] + app_info_scan_1['width'][0]) < int(0.02 * image.shape[1]))):
+    #     # First found row of text is more than 5x its own height from the top of the cropped image; or
+    #     # First found row of text is not a time/number and either:
+    #     #     it starts too far from the left edge of the cropped image, or
+    #     #     it's too close to the right edge of the cropped image
+    #
+    #     print("First text found in cropped region is too far down/right. App-level data not found.")
+    #     screenshot.add_error(ERR_APP_DATA)
+    #     return empty_text
 
     """Sometimes the cropped rescan misses app numbers that were found on the initial scan.
                     Merge these app numbers from the initial scan into the rescan."""
