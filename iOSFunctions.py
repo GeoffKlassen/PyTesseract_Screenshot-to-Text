@@ -1014,6 +1014,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
 
     # app_names.loc[app_names['name'] == 'Lite', 'name'] = 'Facebook Lite'  # The app "Facebook Lite" appears as 'Lite'
     app_names['name'] = app_names['name'].apply(lambda x: re.sub(r'\bAl\b', 'AI', x))  # Replace 'Al' with 'AI'
+    app_names['name'] = app_names['name'].apply(lambda x: re.sub(r'^4$', 'X', x))  # Replace '4' with 'X'
+    app_names['name'] = app_names['name'].apply(lambda x: re.sub(r'\\.$', '', x))  # Replace '4' with 'X'
 
     # Making sure each list is the right length (fill any missing values with NO_TEXT/NO_NUMBER and NO_CONF)
     while app_names.shape[0] < max_apps + 1:

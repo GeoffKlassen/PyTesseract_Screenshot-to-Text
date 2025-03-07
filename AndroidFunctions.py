@@ -31,10 +31,10 @@ DATE_RANGE_FORMAT = {ITA: [r'\d{1,2}-\d{1,2}\s?MMM',
 
 # hhh/HHH stands for the short/long format for hours; mmm/MMM stands for the short/long format for minutes.
 # The list of abbreviations for the necessary language will be subbed in as needed to create the full regex.
-TIME_FORMATS = [r'^[01ilLT]?[0-9aAilLStT]\s?hhh\s?[0-5aAilLT]?[0-9aAilLStT]\s?mmm$',  # Format for ## hr ## min
-                r'^[01ilLT]?[0-9aAilLStT]\s?HHH\s?[0-5aAilLT]?[0-9aAilLStT]\s?MMM$',  # Format for ## hours ## minutes
-                r'^[01ilLT]?[0-9aAilLStT]\s?HHH$',                                    # Format for ## hours
-                r'^[0-5aAilT]?[0-9AlLOStT]\s?MMM$']                                   # Format for ## minutes
+TIME_FORMATS = [r'^[01ilLT]?[0-9aAilLStT]\s?hhh\s?[0-5aAilLT]?[0-9aAilLoStT]\s?mmm$',  # Format for ## hr ## min
+                r'^[01ilLT]?[0-9aAilLStT]\s?HHH\s?[0-5aAilLT]?[0-9aAilLoStT]\s?MMM$',  # Format for ## hours ## minutes
+                r'^[01ilLT]?[0-9aAilLStT]\s?HHH$',                                     # Format for ## hours
+                r'^[0-5aAilT]?[0-9AlLOStT]\s?MMM$']                                    # Format for ## minutes
 # Sometimes pytesseract mistakes digits for A, I, L, S, or T (e.g.  A = 4,   I/L/T = 1,   S = 5)
 # Including these letters in the regex ensures that times with a misread digit still match a time format.
 
@@ -268,6 +268,7 @@ def get_headings(screenshot, time_fmt_short):
             df.loc[i, HEADING_COLUMN] = OLD_MOST_USED_HEADING
         elif OCRScript_v3.levenshtein_distance(row_text, KEYWORDS_FOR_2018_UNLOCKS[lang]) <= moe:
             df.loc[i, HEADING_COLUMN] = OLD_UNLOCKS_HEADING
+
         elif (bool(re.match(time_fmt_short, row_text)) and df['left'][i] < 0.15 * screenshot.width or
                 (not re.fullmatch(r'#+', row_text_filtered) and
                  min(OCRScript_v3.levenshtein_distance(row_text_filtered, key.replace(' ', ''))
@@ -471,6 +472,7 @@ def filter_time_text(text, conf, hr_f, min_f):
         return filtered_str
 
     text2 = re.sub(r"bre|bra", "hrs", text)
+    text2 = re.sub(r"Zhe|zhe", "2hr", text2)
     text2 = re.sub(r"br|Ar", "hr", text2)
     text2 = re.sub(r"ii", "11", text2, re.IGNORECASE)
     text2 = re.sub(r"((?<=\d\s)tr)|((?<=\d)tr)", "hr", text2)
@@ -1159,6 +1161,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
         app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
 
     app_names['name'] = app_names['name'].apply(lambda x: re.sub(r'\bAl\b', 'AI', x))
+    app_names['name'] = app_names['name'].apply(lambda x: re.sub(r'^4$', 'X', x))
+    app_names['name'] = app_names['name'].apply(lambda x: re.sub(r'\\.$', '', x))
     app_names, app_numbers = app_names.drop(app_names.index[0]), app_numbers.drop(app_numbers.index[0])
 
     # app_names.loc[app_names['name'] == 'Lite', 'name'] = 'Facebook Lite'  # The app "Facebook Lite" appears as 'Lite'

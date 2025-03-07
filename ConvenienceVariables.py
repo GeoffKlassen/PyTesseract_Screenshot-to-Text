@@ -122,7 +122,10 @@ NOTIFY_COLS = 'notifications'
 URL_COLUMNS = 'urls'
 
 # misread_time_format = r'^[\d|t]+\s?[hn]$|^[\d|t]+\s?[hn]\s?[\d|tA]+\s?(min|m)$|^.{0,2}\s?[0-9AIt]+\s?(min|m)$|\d+\s?s$'
-misread_time_format = r'\b[12T]?[0-9toAQ]\s?[hn]\s?[1-5tA]?[0-9tA]\s?mi?n?\b|\b[12T]?[0-9toA]\s?[hn]\b|\b[1-5tA]?[0-9itA]\s?mi?n?\b|\b[1-5]?[0-9O]\s?s\b'
+misread_time_format = (r'\b[12T]?[0-9toAQ]\s?[hn]\s?[1-5tA]?[0-9tA]\s?mi?n?\b'
+                       r'|\b[12T]?[0-9toA]\s?[hn]\b'
+                       r'|\b[1-5tA]?[0-9itA]\s?mi?n?\b'
+                       r'|\b[1-5]?[0-9O]\s?s\b')
 misread_number_format = r'\b[0-9AS]+\b'
 misread_time_or_number_format = '|'.join([misread_time_format, misread_number_format])
 
