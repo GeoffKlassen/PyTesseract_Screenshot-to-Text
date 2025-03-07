@@ -348,11 +348,11 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+')
     df_lines['text'] = df_lines['text'].replace({'.Al': '.AI'})
     df_lines['text'] = df_lines['text'].replace({'openal.com': 'OpenAI.com'})
 
-    def add_one_to_hr(_s):
-        if bool(re.search(r"^hr\s", _s)):
-            return "1 " + _s
-        return _s
-    df_lines['text'] = df_lines['text'].apply(add_one_to_hr)
+    # def add_one_to_hr(_s):
+    #     if bool(re.search(r"^hr\s", _s)):
+    #         return "1 " + _s
+    #     return _s
+    # df_lines['text'] = df_lines['text'].apply(add_one_to_hr)
 
     return df_words, df_lines
 
@@ -1407,6 +1407,11 @@ if __name__ == '__main__':
                                                            crop_coordinates[2], crop_coordinates[3])
 
             cropped_image = cv2.GaussianBlur(cropped_image, ksize=(3, 3), sigmaX=0)
+            scaled_cropped_image = cv2.resize(cropped_image,
+                                              dsize=None,
+                                              fx=app_area_scale_factor,
+                                              fy=app_area_scale_factor,
+                                              interpolation=cv2.INTER_AREA)
 
             # Perform pre-scan to remove value bars below app names and fragments of app icons left of app names
             cropped_prescan_words, cropped_prescan_df = extract_text_from_image(cropped_image,
@@ -1416,26 +1421,18 @@ if __name__ == '__main__':
             cropped_prescan_words = cropped_prescan_words[cropped_prescan_words['text'].str.fullmatch(r'[a-zA-Z0-9]+', na=False)]
             cropped_prescan_words = cropped_prescan_words.reset_index(drop=True)
 
-            # twitter_in_initial_scan_df = text_df[text_df['text'].str.fullmatch(r'[xX]{1,2}')]
-            # twitter_in_initial_scan_df['left'] = twitter_in_initial_scan_df['left'] - app_area_crop_left
-            # twitter_in_initial_scan_df['top'] = twitter_in_initial_scan_df['top'] - app_area_crop_top
-            # twitter_in_initial_scan_df = twitter_in_initial_scan_df[(twitter_in_initial_scan_df['left'] > 0) &
-            #                                                         (twitter_in_initial_scan_df['top'] > 0)]
-            # cropped_prescan_words = iOS.consolidate_overlapping_text(pd.concat([cropped_prescan_words, twitter_in_initial_scan_df]))
-            # cropped_prescan_df = iOS.consolidate_overlapping_text(pd.concat([cropped_prescan_df, twitter_in_initial_scan_df]))
+            cropped_filtered_image = iOS.erase_value_bars_and_icons(screenshot=current_screenshot,
+                                                                    df=cropped_prescan_words,
+                                                                    image=cropped_image)
 
-            cropped_image_no_bars = iOS.erase_value_bars_and_icons(screenshot=current_screenshot,
-                                                                   df=cropped_prescan_words,
-                                                                   image=cropped_image)
-
-            scaled_cropped_image = cv2.resize(cropped_image_no_bars,
-                                              dsize=None,
-                                              fx=app_area_scale_factor,
-                                              fy=app_area_scale_factor,
-                                              interpolation=cv2.INTER_AREA)
+            scaled_cropped_filtered_image = cv2.resize(cropped_filtered_image,
+                                                       dsize=None,
+                                                       fx=app_area_scale_factor,
+                                                       fy=app_area_scale_factor,
+                                                       interpolation=cv2.INTER_AREA)
 
             # Extract app info from cropped image
-            app_area_df = extract_app_info(current_screenshot, scaled_cropped_image, crop_coordinates, app_area_scale_factor)
+            app_area_df = extract_app_info(current_screenshot, scaled_cropped_filtered_image, crop_coordinates, app_area_scale_factor)
             if ERR_APP_DATA in current_screenshot.errors:
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
@@ -1444,7 +1441,7 @@ if __name__ == '__main__':
 
             value_format = misread_time_format if dashboard_category == SCREENTIME else misread_number_format
             confident_text_from_prescan = \
-                cropped_prescan_df[(cropped_prescan_df['right'] > 0.05 * scaled_cropped_image.shape[1]) &
+                cropped_prescan_df[(cropped_prescan_df['right'] > 0.05 * scaled_cropped_filtered_image.shape[1]) &
                                    ((cropped_prescan_df['conf'] > 80) |
                                     (cropped_prescan_df['text'].str.fullmatch(value_format) & cropped_prescan_df['conf'] > 50)) |
                                    (cropped_prescan_df['text'].str.fullmatch(r'[xX]{1,2}'))]

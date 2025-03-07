@@ -712,13 +712,21 @@ def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_sh
             return False
 
         filtered_text_df = text_df[(text_df.index > last_index_headings) &
-                                   (text_df['filtered_text'].apply(lambda x: matches_any_pattern(x, value_formats, moe)))]
+                                   (text_df['filtered_text'].apply(lambda x: matches_any_pattern(x, value_formats, moe))) &
+                                   (text_df['left'] > int(0.1 * screenshot.width))]
         if not filtered_text_df.empty:
-            crop_left = max([0, filtered_text_df.iloc[0]['left'] - int(0.02 * screenshot.width)])
-            crop_right = max(0, screenshot.width - crop_left - int(0.02 * screenshot.width))
-        else:
+            crop_left = max(0, min(filtered_text_df['left']) - int(0.02 * screenshot.width))
+            crop_right = max(0, screenshot.width - crop_left - int(0.04 * screenshot.width))
+        elif not date_rows.empty:
+            # Default values for crop_left and crop_right
             crop_left = int(0.15 * screenshot.width)  # Crop out the app icon area (first 15% of screenshot.width)
             crop_right = int(0.79 * screenshot.width)  # Crop out the hourglass area (last 79% of screenshot.width)
+
+            # If we can find text rows below the date, then use the median 'left' value of that region
+            text_df_below_date = text_df[(text_df.index > date_rows.index[0]) & (text_df.index != text_df.index[-1])]
+            if not text_df_below_date.empty:
+                crop_left = max(0, int(np.median(text_df_below_date['left']) - 0.02 * screenshot.width))
+                crop_right = max(0, screenshot.width - crop_left - int(0.04 * screenshot.width))
 
         if REST_OF_THE_DAY in headings_df[HEADING_COLUMN].values:
             row_above_apps = headings_df[headings_df[HEADING_COLUMN] == REST_OF_THE_DAY].iloc[-1]
@@ -1129,7 +1137,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                         app_number = int(app_number)
                         conf = row_conf
                     except (IndexError, ValueError) as e:
-                        print(f"Error: {e}. App number will be set to {NO_NUMBER} (conf = {NO_CONF}).")
+                        print(f"Error: Could not extract app number from '{row_text}'. \n"
+                              f"App number will be set to {NO_NUMBER} (conf = {NO_CONF}).")
                         app_number = NO_NUMBER
                         conf = NO_CONF
                     if previous_text == NUMBER:
