@@ -171,7 +171,7 @@ def get_dashboard_category(screenshot):
     if heads_df[HEADING_COLUMN].str.fullmatch(SCREENTIME_HEADING).any() or (
             heads_df[HEADING_COLUMN].str.fullmatch(HOURS_AXIS_HEADING).any() and (
             text_df[text_df.index < heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].index[0]][
-                'text'].str.contains(misread_time_format).any() or (
+                'text'].str.contains(misread_time_format_iOS).any() or (
             heads_df[HEADING_COLUMN].str.fullmatch(LIMITS_HEADING).any() and
             heads_df[heads_df[HEADING_COLUMN] == LIMITS_HEADING].index[0] >
             heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].index[0]))) or \
@@ -182,7 +182,7 @@ def get_dashboard_category(screenshot):
             heads_df[HEADING_COLUMN].str.fullmatch(DAY_OR_WEEK_HEADING).any() and (
             text_df.shape[0] >= heads_df[heads_df[HEADING_COLUMN] == DAY_OR_WEEK_HEADING].index[0] + 1 and
             text_df[text_df.index == heads_df[heads_df[HEADING_COLUMN] == DAY_OR_WEEK_HEADING].index[0] + 1][
-                'text'].str.contains(misread_time_format).any()):
+                'text'].str.contains(misread_time_format_iOS).any()):
         # Found screentime heading; or
         # Found hours axis and either:
         #   there's a row with a screentime above the hours axis, or
@@ -254,7 +254,7 @@ def filter_time_or_number_text(text, conf, f):
     correct ones.
     :param text: The time/number value to check for misread characters
     :param conf: The confidence value of the time/number value
-    :param f: The value format to search for in 'text' (misread_time_format or misread_number_format)
+    :param f: The value format to search for in 'text' (misread_time_format_iOS or misread_number_format_iOS)
     :return: The corrected value string and original confidence. If there is no text, or no substring matches format f, returns (NO_TEXT, NO_CONF).
     """
     if str(text) == NO_TEXT:
@@ -312,7 +312,7 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
     daily_total_1st_scan = NO_TEXT
     daily_total_1st_scan_conf = NO_CONF
 
-    value_pattern = misread_time_format if category == SCREENTIME else misread_number_format
+    value_pattern = misread_time_format_iOS if category == SCREENTIME else misread_number_format_iOS
 
     # Initialize the row above the total to an empty df
     row_above_total = df.drop(df.index)
@@ -514,7 +514,7 @@ def get_total_pickups_2nd_location(screenshot, img):
 
     headings_df = screenshot.headings_df
     text_df = screenshot.text
-    value_format = misread_number_format
+    value_format = misread_number_format_iOS
 
     print("\nLooking in 2nd location for total pickups:")
     row_with_first_pickup = headings_df[headings_df[HEADING_COLUMN] == FIRST_PICKUP_HEADING]
@@ -574,7 +574,7 @@ def get_total_pickups_2nd_location(screenshot, img):
     total_pickups_2nd_scan_conf = NO_CONF
 
     if rescan_words.size > 0:
-        value_found = re.findall(misread_number_format, rescan_words['text'].iloc[-1])
+        value_found = re.findall(misread_number_format_iOS, rescan_words['text'].iloc[-1])
         if value_found:
             total_pickups_2nd_scan = value_found[-1]
             total_pickups_2nd_scan_conf = round(rescan_df['conf'][0], 4)
@@ -883,13 +883,13 @@ def consolidate_overlapping_text(df):
                 rows_to_drop.append(i)
             elif df.loc[i, 'left'] != 0 and df.loc[i - 1, 'left'] == 0:
                 rows_to_drop.append(i - 1)
-            elif re.search(misread_time_format, df.loc[i, 'text']) and not re.search(misread_time_format, df.loc[i - 1, 'text']):
+            elif re.search(misread_time_format_iOS, df.loc[i, 'text']) and not re.search(misread_time_format_iOS, df.loc[i - 1, 'text']):
                 rows_to_drop.append(i - 1)
-            elif not re.search(misread_time_format, df.loc[i, 'text']) and re.search(misread_time_format, df.loc[i - 1, 'text']):
+            elif not re.search(misread_time_format_iOS, df.loc[i, 'text']) and re.search(misread_time_format_iOS, df.loc[i - 1, 'text']):
                 rows_to_drop.append(i)
-            elif re.match(misread_time_format, df.loc[i, 'text']) and not re.match(misread_time_format, df.loc[i - 1, 'text']):
+            elif re.match(misread_time_format_iOS, df.loc[i, 'text']) and not re.match(misread_time_format_iOS, df.loc[i - 1, 'text']):
                 rows_to_drop.append(i - 1)
-            elif not re.match(misread_time_format, df.loc[i, 'text']) and re.match(misread_time_format, df.loc[i - 1, 'text']):
+            elif not re.match(misread_time_format_iOS, df.loc[i, 'text']) and re.match(misread_time_format_iOS, df.loc[i - 1, 'text']):
                 rows_to_drop.append(i)
             elif current_text == "X" and prev_text != "X":
                 rows_to_drop.append(i - 1)
@@ -945,7 +945,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
         screenshot.add_error(ERR_APP_DATA)
 
     else:
-        value_format = misread_time_format if category == SCREENTIME else misread_number_format
+        value_format = misread_time_format_iOS if category == SCREENTIME else misread_number_format_iOS
 
         # This section determines whether each row in the final app info df is an app name or a number/time
         # and separates them.
@@ -990,8 +990,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
                 prev_row_type = NAME
                 prev_app_name = row_text
                 prev_app_height = row_height
-            elif (category == SCREENTIME and re.search(misread_time_format, row_text, re.IGNORECASE) or  # used to be re.match -- revert if re.search causes issues
-                  category != SCREENTIME and re.search(misread_number_format, row_text, re.IGNORECASE) and
+            elif (category == SCREENTIME and re.search(misread_time_format_iOS, row_text, re.IGNORECASE) or  # used to be re.match -- revert if re.search causes issues
+                  category != SCREENTIME and re.search(misread_number_format_iOS, row_text, re.IGNORECASE) and
                   len(str(row_text)) < 5):  # used to be re.match -- revert if re.search causes issues
                 # if current row text is number
                 # It is unrealistic for a single app to have more than 10000 notifications/pickups in one

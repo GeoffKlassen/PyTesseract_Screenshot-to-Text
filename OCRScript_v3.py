@@ -3,6 +3,7 @@ from os import truncate
 from pandas.core.methods.selectn import SelectNSeries
 
 import AndroidFunctions as Android
+import ConvenienceVariables
 import ScreenshotClass
 import iOSFunctions as iOS
 from RuntimeValues import *
@@ -682,7 +683,7 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False)
     c1 = f"(conf = {conf1})" if conf1 != NO_CONF else ""
     c2 = f"(conf = {conf2})" if conf2 != NO_CONF else ""
 
-    val_fmt = misread_number_format if value_is_number else misread_time_format
+    val_fmt = misread_number_format_iOS if value_is_number else misread_time_format_iOS
     format_name = 'number' if value_is_number else 'time'
 
     print(f"Comparing scan 1: {t1} {c1}\n       vs scan 2: {t2} {c2}  ——  ", end='')
@@ -774,16 +775,19 @@ def extract_app_info(screenshot, image, coordinates, scale):
     # text.loc[text['text'].str.match(r'^[xX]+\s?[xX]*$'), 'text'] = 'X'
 
     truncated_text_df = text[(text['conf'] > 0.5) | (text['text'] == 'X')]
+    truncated_text_df = truncated_text_df[(truncated_text_df['left'] > crop_left) &
+                                          (truncated_text_df['top'] > crop_top) &
+                                          (truncated_text_df['left'] < crop_right) &
+                                          (truncated_text_df['top'] < crop_bottom) &
+                                          ((truncated_text_df['text'].str.isdigit()) |
+                                           (truncated_text_df['text'].str.fullmatch(time_format_long)) |
+                                           (truncated_text_df['text'].str.fullmatch(misread_time_format_iOS))|
+                                           (truncated_text_df['text'] == 'X'))]
     truncated_text_df.loc[truncated_text_df.index, 'left'] = truncated_text_df['left'] - crop_left
     truncated_text_df.loc[truncated_text_df.index, 'top'] = truncated_text_df['top'] - crop_top
-    truncated_text_df = truncated_text_df[(truncated_text_df['left'] > 0) &
-                                          (truncated_text_df['top'] > 0) &
-                                          # (truncated_text_df['left'] + truncated_text_df[
-                                          #     'width'] < crop_right - crop_left) &
-                                          # (truncated_text_df['top'] + truncated_text_df[
-                                          #     'height'] < crop_bottom - crop_top) &
-                                          ((truncated_text_df['text'].str.isdigit()) | (truncated_text_df['text'] == 'X'))]
 
+    # if screenshot.device_os_detected == ANDROID and screenshot.android_version == GOOGLE:
+    #     truncated_text_df = truncated_text_df[truncated_text_df['left'] + crop_left < int(0.5 * screenshot.width)]
     # truncated_text_df = OCRScript_v3.merge_df_rows_by_line_num(truncated_text_df)
     # Keep only the rows that contain only digits (a.k.a. notification counts or pickup counts) or 'X' (Twitter)
     # truncated_text_df = truncated_text_df[(truncated_text_df['text'].str.isdigit()) | (truncated_text_df['text'].str.match(r'[xX]{1,2}'))]
@@ -1301,7 +1305,7 @@ if __name__ == '__main__':
                 show_image(app_area_df, scaled_cropped_image)
             # app_area_df['text'] = app_area_df['text'].apply(lambda x: 'X' if re.match(r'[xX]{2}', x) else x)
 
-            print("Text found in app-area:")
+            print("\nText found in app-area:")
             print(app_area_df[['left', 'top', 'width', 'height', 'conf', 'text']])
             # if dashboard_category is None and current_screenshot.category_detected is not None:
             #     # Sometimes there is screentime data in an image but the category is not detected.
@@ -1477,7 +1481,7 @@ if __name__ == '__main__':
                 update_eta(list_of_recent_times)
                 continue
 
-            value_format = misread_time_format if dashboard_category == SCREENTIME else misread_number_format
+            value_format = misread_time_format_iOS if dashboard_category == SCREENTIME else misread_number_format_iOS
             confident_text_from_prescan = \
                 cropped_prescan_df[(cropped_prescan_df['right'] > 0.05 * scaled_cropped_filtered_image.shape[1]) &
                                    ((cropped_prescan_df['conf'] > 80) |
@@ -1500,7 +1504,7 @@ if __name__ == '__main__':
 
             # app_area_2_df['text'] = app_area_2_df['text'].apply(lambda x: 'X' if re.match(r'[xX]{2}', x) else x)
 
-            print("Text found in app-area:")
+            print("\nText found in app-area:")
             print(app_area_2_df[['left', 'top', 'width', 'height', 'conf', 'text']])
 
             # if dashboard_category is None and current_screenshot.category_detected is not None:
