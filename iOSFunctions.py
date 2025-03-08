@@ -863,10 +863,12 @@ def consolidate_overlapping_text(df):
         current_right = df['left'][i] + df['width'][i]
         current_top = df['top'][i]
         current_bottom = df['top'][i] + df['height'][i]
+        current_text = df['text'][i]
         prev_left = df['left'][i - 1]
         prev_right = df['left'][i - 1] + df['width'][i - 1]
         prev_top = df['top'][i - 1]
         prev_bottom = df['top'][i - 1] + df['height'][i - 1]
+        prev_text = df['text'][i - 1]
 
         current_textbox = Rectangle(current_left, current_top, current_right, current_bottom)
         prev_textbox = Rectangle(prev_left, prev_top, prev_right, prev_bottom)
@@ -888,6 +890,10 @@ def consolidate_overlapping_text(df):
             elif re.match(misread_time_format, df.loc[i, 'text']) and not re.match(misread_time_format, df.loc[i - 1, 'text']):
                 rows_to_drop.append(i - 1)
             elif not re.match(misread_time_format, df.loc[i, 'text']) and re.match(misread_time_format, df.loc[i - 1, 'text']):
+                rows_to_drop.append(i)
+            elif current_text == "X" and prev_text != "X":
+                rows_to_drop.append(i - 1)
+            elif current_text != "X" and prev_text == "X":
                 rows_to_drop.append(i)
             elif current_num_digits > prev_num_digits:
                 rows_to_drop.append(i - 1)

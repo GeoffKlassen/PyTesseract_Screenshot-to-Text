@@ -363,7 +363,7 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+',
                     if initial_scan and df_words['left'][idx] < int(0.2 * img.shape[1]):
                         df_words.loc[idx, 'left'] += int(2.25 * df_words['width'][idx])
                         df_words.loc[idx, 'top'] -= int(0.33 * df_words['height'][idx])
-                        df_words.loc[idx, 'height'] = int(0.5 * df_words.loc[idx, 'height'])
+                        df_words.loc[idx, 'height'] = int(0.75 * df_words.loc[idx, 'height'])
                         # df_words.loc[idx, 'width'] = int(0.66 * df_words.loc[idx, 'width'])
 
     df_words.drop(index=x_rows_to_drop, inplace=True)
@@ -1483,6 +1483,12 @@ if __name__ == '__main__':
                                    ((cropped_prescan_df['conf'] > 80) |
                                     ((cropped_prescan_df['text'].str.fullmatch(value_format)) & (cropped_prescan_df['conf'] > 50))) |
                                    (cropped_prescan_df['text'].str.fullmatch('X'))]
+
+            if app_area_df['text'].eq("X").any() and confident_text_from_prescan['text'].eq("X").any():
+                # If both the initial scan and the first cropped scan found the app name 'X',
+                # then only use the one in the cropped scan
+                app_area_df = app_area_df[~(app_area_df['text'] == "X")]
+
             columns_to_scale = ['left', 'top', 'width', 'height']
             confident_text_from_prescan.loc[:, columns_to_scale] = \
                 confident_text_from_prescan.loc[:, columns_to_scale].apply(lambda x: x * app_area_scale_factor).astype(int)
