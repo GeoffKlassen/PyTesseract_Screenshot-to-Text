@@ -13,7 +13,7 @@ from LanguageDictionaries import *
 """
 
 
-study_to_analyze = studies[1]
+study_to_analyze = studies[2]
 # Use studies[0] for the HappyB2.0 study (pre-launch prep)
 # Use studies[1] for the HappyB2.0 study (2024 Aug-Dec)
 # Use studies[2] for the BCH study
@@ -63,7 +63,7 @@ ERR_CONFIDENCE = f"ERR Values below {int(conf_limit)}% confidence"
 # Location of PyTesseract on local drive
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Users\gbk546\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'  # At U of S
 
-test_lower_bound = 1
+test_lower_bound = 76
 test_upper_bound = 19313
 # 553 for HappyB2.0 (pre-launch)
 # 19313 URLs for HappyB2.0 2024 Aug-Dec

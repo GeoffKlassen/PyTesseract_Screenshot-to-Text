@@ -330,7 +330,7 @@ def get_android_version(screenshot):
                                   KEYWORDS_FOR_2018_UNLOCKS[img_lang])
 
     if heads_df.empty:
-        return None, None
+        return None
     elif not heads_df[heads_df['text'].str.isupper()].empty:
         android_ver = VERSION_2018  # TODO: not sure on the year
     elif max(abs(heads_df['left'] + 0.5 * heads_df['width'] - (0.5 * screenshot.width))) < (0.11 * screenshot.width):

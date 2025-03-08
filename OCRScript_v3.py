@@ -966,31 +966,32 @@ def update_eta(most_recent_times):
     return
 
 
-def add_screenshot_info_to_master_df(screenshot):
-    all_screenshots_df.loc[index, 'image_url'] = screenshot.url
-    all_screenshots_df.loc[index, 'participant_id'] = screenshot.user_id
-    all_screenshots_df.loc[index, 'language'] = screenshot.language
-    all_screenshots_df.loc[index, 'device_os_submitted'] = screenshot.device_os_submitted
-    all_screenshots_df.loc[index, 'device_os_detected'] = screenshot.device_os_detected
-    all_screenshots_df.loc[index, 'android_version'] = screenshot.android_version
-    all_screenshots_df.loc[index, 'date_submitted'] = screenshot.date_submitted
-    all_screenshots_df.loc[index, 'date_detected'] = screenshot.date_detected
-    all_screenshots_df.loc[index, 'day_type'] = screenshot.time_period
-    all_screenshots_df.loc[index, 'category_submitted'] = screenshot.category_submitted
-    all_screenshots_df.loc[index, 'category_detected'] = PICKUPS if (
+def add_screenshot_info_to_master_df(screenshot, idx):
+    print(screenshot.android_version)
+    all_screenshots_df.loc[idx, 'image_url'] = screenshot.url
+    all_screenshots_df.loc[idx, 'participant_id'] = screenshot.user_id
+    all_screenshots_df.loc[idx, 'language'] = screenshot.language
+    all_screenshots_df.loc[idx, 'device_os_submitted'] = screenshot.device_os_submitted
+    all_screenshots_df.loc[idx, 'device_os_detected'] = screenshot.device_os_detected
+    all_screenshots_df.loc[idx, 'android_version'] = screenshot.android_version
+    all_screenshots_df.loc[idx, 'date_submitted'] = screenshot.date_submitted
+    all_screenshots_df.loc[idx, 'date_detected'] = screenshot.date_detected
+    all_screenshots_df.loc[idx, 'day_type'] = screenshot.time_period
+    all_screenshots_df.loc[idx, 'category_submitted'] = screenshot.category_submitted
+    all_screenshots_df.loc[idx, 'category_detected'] = PICKUPS if (
             screenshot.category_detected == UNLOCKS) else screenshot.category_detected
-    all_screenshots_df.loc[index, 'daily_total'] = screenshot.daily_total
+    all_screenshots_df.loc[idx, 'daily_total'] = screenshot.daily_total
     for n in range(1, max_apps_per_category + 1):
-        all_screenshots_df.loc[index, f'app_{n}_name'] = screenshot.app_data['name'][n]
-        all_screenshots_df.loc[index, f'app_{n}_number'] = screenshot.app_data['number'][n]
-    all_screenshots_df.loc[index, 'num_review_reasons'] = len(screenshot.errors)
+        all_screenshots_df.loc[idx, f'app_{n}_name'] = screenshot.app_data['name'][n]
+        all_screenshots_df.loc[idx, f'app_{n}_number'] = screenshot.app_data['number'][n]
+    all_screenshots_df.loc[idx, 'num_review_reasons'] = len(screenshot.errors)
     for col in screenshot.data_row.columns:
         if col == ERR_CONFIDENCE:
-            all_screenshots_df.loc[index, col] = screenshot.num_values_low_conf
+            all_screenshots_df.loc[idx, col] = screenshot.num_values_low_conf
         elif col == ERR_MISSING_VALUE:
-            all_screenshots_df.loc[index, col] = screenshot.num_missed_values
+            all_screenshots_df.loc[idx, col] = screenshot.num_missed_values
         elif col.startswith("ERR"):
-            all_screenshots_df.loc[index, col] = True
+            all_screenshots_df.loc[idx, col] = True
         else:
             pass
 
@@ -1074,7 +1075,7 @@ if __name__ == '__main__':
             current_screenshot.set_app_data(empty_app_data)
             current_participant.add_screenshot(current_screenshot)
 
-            add_screenshot_info_to_master_df(current_screenshot)
+            add_screenshot_info_to_master_df(current_screenshot, index)
 
             update_eta(list_of_recent_times)  # Update the ETA without adding the current screenshot's time to the list
             continue
@@ -1132,7 +1133,7 @@ if __name__ == '__main__':
             current_screenshot.set_app_data(empty_app_data)
             current_participant.add_screenshot(current_screenshot)
 
-            add_screenshot_info_to_master_df(current_screenshot)
+            add_screenshot_info_to_master_df(current_screenshot, index)
             update_eta(list_of_recent_times)  # Update the ETA without adding the current screenshot's time to the list
             continue
 
@@ -1211,7 +1212,7 @@ if __name__ == '__main__':
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
 
-                add_screenshot_info_to_master_df(current_screenshot)
+                add_screenshot_info_to_master_df(current_screenshot, index)
                 update_eta(list_of_recent_times)  # Update the ETA w/o adding the current screenshot's time to the list
                 continue
 
@@ -1292,7 +1293,7 @@ if __name__ == '__main__':
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
 
-                add_screenshot_info_to_master_df(current_screenshot)
+                add_screenshot_info_to_master_df(current_screenshot, index)
 
                 screenshot_time = time.time() - screenshot_time_start
                 list_of_recent_times.append(screenshot_time)
@@ -1305,7 +1306,7 @@ if __name__ == '__main__':
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
 
-                add_screenshot_info_to_master_df(current_screenshot)
+                add_screenshot_info_to_master_df(current_screenshot, index)
 
                 screenshot_time = time.time() - screenshot_time_start
                 list_of_recent_times.append(screenshot_time)
@@ -1329,7 +1330,7 @@ if __name__ == '__main__':
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
 
-                add_screenshot_info_to_master_df(current_screenshot)
+                add_screenshot_info_to_master_df(current_screenshot, index)
 
                 screenshot_time = time.time() - screenshot_time_start
                 list_of_recent_times.append(screenshot_time)
@@ -1478,7 +1479,7 @@ if __name__ == '__main__':
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
 
-                add_screenshot_info_to_master_df(current_screenshot)
+                add_screenshot_info_to_master_df(current_screenshot, index)
 
                 screenshot_time = time.time() - screenshot_time_start
                 list_of_recent_times.append(screenshot_time)
@@ -1492,7 +1493,7 @@ if __name__ == '__main__':
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
 
-                add_screenshot_info_to_master_df(current_screenshot)
+                add_screenshot_info_to_master_df(current_screenshot, index)
 
                 screenshot_time = time.time() - screenshot_time_start
                 list_of_recent_times.append(screenshot_time)
@@ -1534,7 +1535,7 @@ if __name__ == '__main__':
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
 
-                add_screenshot_info_to_master_df(current_screenshot)
+                add_screenshot_info_to_master_df(current_screenshot, index)
 
                 update_eta(list_of_recent_times)
                 continue
@@ -1600,7 +1601,7 @@ if __name__ == '__main__':
             current_screenshot.add_error(ERR_OS_NOT_FOUND)
             current_screenshot.set_app_data(empty_app_data)
 
-            add_screenshot_info_to_master_df(current_screenshot)
+            add_screenshot_info_to_master_df(current_screenshot, index)
 
             update_eta(list_of_recent_times)  # Update ETA without adding current screenshot's time to the list
             continue
@@ -1612,7 +1613,7 @@ if __name__ == '__main__':
         if count_below_conf_limit > 0:
             current_screenshot.add_error(ERR_CONFIDENCE, num=count_below_conf_limit)
 
-        add_screenshot_info_to_master_df(current_screenshot)
+        add_screenshot_info_to_master_df(current_screenshot, index)
 
         screenshot_time = time.time() - screenshot_time_start
         list_of_recent_times.append(screenshot_time)
