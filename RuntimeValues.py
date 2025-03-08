@@ -63,18 +63,7 @@ ERR_CONFIDENCE = f"ERR Values below {int(conf_limit)}% confidence"
 # Location of PyTesseract on local drive
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Users\gbk546\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'  # At U of S
 
-test_lower_bound = 2823
-# FIXED! 5643, screentime total is read as 8h5om -- added 'o' to the regex in the proper place
-# FIXED! 6236, crop area left bound not set properly - keep searching for better app rows
-# FIXED! 6822 -- first character of two app names is removed -- adjusted crop region
-# FIXED! 7264 - faulty crop region - cropped off the first few letters of the apps and numbers rows
-# FIXED! 7807 -- app names sometimes end in periods '.'. Test new code that removes these.
-# ?? 1106 - crop region appears to be too wide? app names and times start with surplus characters.
-# 1424 & 1529 -- X is found in the initial scan but the app name ends up NO_TEXT
-# FIXED! 1707 - App names are read with leading ) symbols, but are saved as NO_TEXT
-# fixed? 2073 - updating existing data - when replacing the app name, the corresponding app number should also be updated
-# FIXED! 2395 - app name '4' (for 'X') is interpreted as an app number
-# FIXED! 2823 - app data contains 3 names and no numbers, but the last 2 names are discarded? (possibly related to image 1707 -- caused because none of the app numbers were read. fixed by removing the condition 'row text must be of a minimum height
+test_lower_bound = 301
 test_upper_bound = 19313
 # 553 for HappyB2.0 (pre-launch)
 # 19313 URLs for HappyB2.0 2024 Aug-Dec

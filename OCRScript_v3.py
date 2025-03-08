@@ -309,7 +309,7 @@ def merge_df_rows_by_line_num(df):
     return df_nearby_rows_combined
 
 
-def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+'):
+def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+', initial_scan=False):
     """
 
     :param img:
@@ -336,7 +336,7 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+')
     df_words = df_words.replace({remove_chars: ''}, regex=True)
     df_words = df_words.replace({r'é': 'e'}, regex=True)  # For app name "Pokémon GO", etc.
     df_words = df_words.replace({r'^[xX]+\s?[xX]*$': 'X'}, regex=True)
-    df_words = df_words[~((df_words['text'] == 'X') & (df_words['left'] < int(0.15 * img.shape[1])))]
+    # df_words = df_words[~((df_words['text'] == 'X') & (df_words['left'] < int(0.15 * img.shape[1])))]
     df_words = df_words[df_words['conf'] > 0]
     df_words = df_words.fillna('')
     df_words = df_words[(df_words['text'] != '') & (df_words['text'] != ' ')]
@@ -345,6 +345,29 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+')
 
     # Sometimes tesseract misreads (Italian) "Foto" as "mele"/"melee"
     df_words['text'] = df_words['text'].replace({r'^melee$|^mele$': 'Foto'}, regex=True)
+    df_words.reset_index(drop=True, inplace=True)
+
+    # To avoid multiple instances of the app name "X" getting merged into one, remove any duplicated row with "X" text
+    x_rows_to_drop = []
+    for idx in df_words.index:
+        if idx == 0:
+            continue
+        else:
+            if df_words['text'][idx] == "X":
+                if df_words['text'][idx - 1] == "X":
+                    if df_words['left'][idx - 1] < df_words['left'][idx]:
+                        x_rows_to_drop.append(idx - 1)
+                    elif df_words['left'][idx] < df_words['left'][idx - 1]:
+                        x_rows_to_drop.append(idx)
+                else:
+                    if initial_scan and df_words['left'][idx] < int(0.2 * img.shape[1]):
+                        df_words.loc[idx, 'left'] += int(2.25 * df_words['width'][idx])
+                        df_words.loc[idx, 'top'] -= int(0.33 * df_words['height'][idx])
+                        df_words.loc[idx, 'height'] = int(0.5 * df_words.loc[idx, 'height'])
+                        # df_words.loc[idx, 'width'] = int(0.66 * df_words.loc[idx, 'width'])
+
+    df_words.drop(index=x_rows_to_drop, inplace=True)
+    df_words.reset_index(drop=True, inplace=True)
 
     df_lines = merge_df_rows_by_line_num(df_words)
 
@@ -768,6 +791,10 @@ def extract_app_info(screenshot, image, coordinates, scale):
     print(f"\nApp numbers from initial scan, where conf > 0.5, plus any instances of X (Twitter):")
     print(truncated_text_df[['left', 'top', 'width', 'height', 'conf', 'text']])
 
+    if app_info_scan_1['text'].eq("X").any() and truncated_text_df['text'].eq("X").any():
+        # If both the initial scan and the first cropped scan found the app name 'X', only use the one in the cropped scan
+        truncated_text_df = truncated_text_df[~(truncated_text_df['text'] == "X")]
+
     cols_to_scale = ['left', 'top', 'width', 'height']
     truncated_text_df[cols_to_scale] = truncated_text_df[cols_to_scale].apply(lambda x: x * scale).astype(int)
     overlapped_text = pd.concat([app_info_scan_1, truncated_text_df], ignore_index=True)
@@ -829,6 +856,10 @@ def extract_app_info(screenshot, image, coordinates, scale):
                                               (min(app_info_names_only['left']), image_missed_text.shape[0]), bg_colour, -1)
 
     _, app_info_scan_2 = extract_text_from_image(image_missed_text, remove_chars=remove_chars)
+
+    if app_info_scan_2['text'].eq("X").any() and app_info_scan_1['text'].eq("X").any():
+        # If both the initial scan and the first cropped scan found the app name 'X', only use the one in the cropped scan
+        app_info_scan_1 = app_info_scan_1[~(app_info_scan_1['text'] == "X")]
 
     if show_images:
         show_image(app_info_scan_2, image_missed_text)
@@ -1047,7 +1078,7 @@ if __name__ == '__main__':
         current_screenshot.set_dimensions(grey_image_scaled.shape)
 
         # Extract the text (if any) that can be found in the image.
-        text_df_single_words, text_df = extract_text_from_image(bw_image_scaled)
+        text_df_single_words, text_df = extract_text_from_image(bw_image_scaled, initial_scan=True)
 
         if show_images:
             show_image(text_df, bw_image_scaled, draw_boxes=True)
