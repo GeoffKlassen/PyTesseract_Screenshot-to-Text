@@ -252,7 +252,8 @@ def merge_df_rows_by_height(df):
     for i in df.index:
         if i == 0:
             continue
-        if abs(df.loc[i]['top'] - df.loc[i - 1]['top']) < 15:  # If two rows' heights are within 15 pixels of each other
+        if abs(df.loc[i]['top'] - df.loc[i - 1]['top']) < 15 and df.loc[i]['text'] != "X":
+            # If two rows' heights are within 15 pixels of each other and the current row is not "X" (Twitter)
             # TODO replace 15 with a percentage of the screenshot width (define moe = x% of screenshot width)
             if df.loc[i]['left'] > df.loc[i - 1]['left']:
                 df.at[i - 1, 'text'] = df.loc[i - 1]['text'] + ' ' + df.loc[i]['text']
@@ -316,6 +317,7 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+',
     :param img:
     :param cmd_config:
     :param remove_chars:
+    :param initial_scan:
     :return:
     """
     def ensure_text_is_string(value):
@@ -964,6 +966,37 @@ def update_eta(most_recent_times):
     return
 
 
+def add_screenshot_info_to_master_df(screenshot):
+    all_screenshots_df.loc[index, 'image_url'] = screenshot.url
+    all_screenshots_df.loc[index, 'participant_id'] = screenshot.user_id
+    all_screenshots_df.loc[index, 'language'] = screenshot.language
+    all_screenshots_df.loc[index, 'device_os_submitted'] = screenshot.device_os_submitted
+    all_screenshots_df.loc[index, 'device_os_detected'] = screenshot.device_os_detected
+    all_screenshots_df.loc[index, 'android_version'] = screenshot.android_version
+    all_screenshots_df.loc[index, 'date_submitted'] = screenshot.date_submitted
+    all_screenshots_df.loc[index, 'date_detected'] = screenshot.date_detected
+    all_screenshots_df.loc[index, 'day_type'] = screenshot.time_period
+    all_screenshots_df.loc[index, 'category_submitted'] = screenshot.category_submitted
+    all_screenshots_df.loc[index, 'category_detected'] = PICKUPS if (
+            screenshot.category_detected == UNLOCKS) else screenshot.category_detected
+    all_screenshots_df.loc[index, 'daily_total'] = screenshot.daily_total
+    for n in range(1, max_apps_per_category + 1):
+        all_screenshots_df.loc[index, f'app_{n}_name'] = screenshot.app_data['name'][n]
+        all_screenshots_df.loc[index, f'app_{n}_number'] = screenshot.app_data['number'][n]
+    all_screenshots_df.loc[index, 'num_review_reasons'] = len(screenshot.errors)
+    for col in screenshot.data_row.columns:
+        if col == ERR_CONFIDENCE:
+            all_screenshots_df.loc[index, col] = screenshot.num_values_low_conf
+        elif col == ERR_MISSING_VALUE:
+            all_screenshots_df.loc[index, col] = screenshot.num_missed_values
+        elif col.startswith("ERR"):
+            all_screenshots_df.loc[index, col] = True
+        else:
+            pass
+
+    return
+
+
 if __name__ == '__main__':
     # Read in the list of URLs for the appropriate Study (as specified in RuntimeValues.py)
     url_list = pd.DataFrame()
@@ -1040,6 +1073,9 @@ if __name__ == '__main__':
                 current_screenshot.set_daily_total_minutes(NO_NUMBER)
             current_screenshot.set_app_data(empty_app_data)
             current_participant.add_screenshot(current_screenshot)
+
+            add_screenshot_info_to_master_df(current_screenshot)
+
             update_eta(list_of_recent_times)  # Update the ETA without adding the current screenshot's time to the list
             continue
 
@@ -1095,6 +1131,8 @@ if __name__ == '__main__':
                 current_screenshot.set_daily_total_minutes(NO_NUMBER)
             current_screenshot.set_app_data(empty_app_data)
             current_participant.add_screenshot(current_screenshot)
+
+            add_screenshot_info_to_master_df(current_screenshot)
             update_eta(list_of_recent_times)  # Update the ETA without adding the current screenshot's time to the list
             continue
 
@@ -1112,6 +1150,9 @@ if __name__ == '__main__':
             current_participant.set_language(image_language)
         else:
             current_screenshot.add_error(ERR_LANGUAGE)
+
+        time_formats = Android.get_time_formats_in_lang(current_screenshot.language)
+        time_format_short, time_format_long, time_format_eol = time_formats[0], time_formats[1], time_formats[2]
 
         # Determine the date in the screenshot
         date_in_screenshot, rows_with_date = get_date_in_screenshot(current_screenshot)
@@ -1160,8 +1201,6 @@ if __name__ == '__main__':
             ANDROID  -  Execute the procedure for extracting data from an Android screenshot  
             
             """
-            time_formats = Android.get_time_formats_in_lang(current_screenshot.language)
-            time_format_short, time_format_long, time_format_eol = time_formats[0], time_formats[1], time_formats[2]
 
             # Determine if the screenshot contains data mis-considered relevant by participant -- if so, skip it
             if Android.screenshot_contains_unrelated_data(current_screenshot):
@@ -1171,8 +1210,9 @@ if __name__ == '__main__':
                     current_screenshot.set_daily_total_minutes(NO_NUMBER)
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
-                update_eta(list_of_recent_times)
-                # Update the ETA without adding the current screenshot's time to the list
+
+                add_screenshot_info_to_master_df(current_screenshot)
+                update_eta(list_of_recent_times)  # Update the ETA w/o adding the current screenshot's time to the list
                 continue
 
             if day_type is None and date_in_screenshot is not None:
@@ -1251,6 +1291,9 @@ if __name__ == '__main__':
                     f"Skipping search for app-level data.")
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
+
+                add_screenshot_info_to_master_df(current_screenshot)
+
                 screenshot_time = time.time() - screenshot_time_start
                 list_of_recent_times.append(screenshot_time)
                 update_eta(list_of_recent_times)
@@ -1261,6 +1304,9 @@ if __name__ == '__main__':
                       f"Skipping search for app data.")
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
+
+                add_screenshot_info_to_master_df(current_screenshot)
+
                 screenshot_time = time.time() - screenshot_time_start
                 list_of_recent_times.append(screenshot_time)
                 update_eta(list_of_recent_times)
@@ -1282,6 +1328,9 @@ if __name__ == '__main__':
                 current_screenshot.add_error(ERR_APP_DATA)
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
+
+                add_screenshot_info_to_master_df(current_screenshot)
+
                 screenshot_time = time.time() - screenshot_time_start
                 list_of_recent_times.append(screenshot_time)
                 update_eta(list_of_recent_times)
@@ -1428,6 +1477,9 @@ if __name__ == '__main__':
                 print(f"Setting all app-specific data to N/A.")
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
+
+                add_screenshot_info_to_master_df(current_screenshot)
+
                 screenshot_time = time.time() - screenshot_time_start
                 list_of_recent_times.append(screenshot_time)
                 update_eta(list_of_recent_times)
@@ -1439,6 +1491,9 @@ if __name__ == '__main__':
                 current_screenshot.add_error(ERR_APP_DATA)
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
+
+                add_screenshot_info_to_master_df(current_screenshot)
+
                 screenshot_time = time.time() - screenshot_time_start
                 list_of_recent_times.append(screenshot_time)
                 update_eta(list_of_recent_times)
@@ -1478,6 +1533,9 @@ if __name__ == '__main__':
             if ERR_APP_DATA in current_screenshot.errors:
                 current_screenshot.set_app_data(empty_app_data)
                 current_participant.add_screenshot(current_screenshot)
+
+                add_screenshot_info_to_master_df(current_screenshot)
+
                 update_eta(list_of_recent_times)
                 continue
 
@@ -1541,6 +1599,9 @@ if __name__ == '__main__':
             print("Operating System not detected.")
             current_screenshot.add_error(ERR_OS_NOT_FOUND)
             current_screenshot.set_app_data(empty_app_data)
+
+            add_screenshot_info_to_master_df(current_screenshot)
+
             update_eta(list_of_recent_times)  # Update ETA without adding current screenshot's time to the list
             continue
 
@@ -1551,32 +1612,7 @@ if __name__ == '__main__':
         if count_below_conf_limit > 0:
             current_screenshot.add_error(ERR_CONFIDENCE, num=count_below_conf_limit)
 
-        all_screenshots_df.loc[index, 'image_url'] = current_screenshot.url
-        all_screenshots_df.loc[index, 'participant_id'] = current_screenshot.user_id
-        all_screenshots_df.loc[index, 'language'] = current_screenshot.language
-        all_screenshots_df.loc[index, 'device_os_submitted'] = current_screenshot.device_os_submitted
-        all_screenshots_df.loc[index, 'device_os_detected'] = current_screenshot.device_os_detected
-        all_screenshots_df.loc[index, 'android_version'] = current_screenshot.android_version
-        all_screenshots_df.loc[index, 'date_submitted'] = current_screenshot.date_submitted
-        all_screenshots_df.loc[index, 'date_detected'] = current_screenshot.date_detected
-        all_screenshots_df.loc[index, 'day_type'] = current_screenshot.time_period
-        all_screenshots_df.loc[index, 'category_submitted'] = current_screenshot.category_submitted
-        all_screenshots_df.loc[index, 'category_detected'] = PICKUPS if (
-                current_screenshot.category_detected == UNLOCKS) else current_screenshot.category_detected
-        all_screenshots_df.loc[index, 'daily_total'] = current_screenshot.daily_total
-        for n in range(1, max_apps_per_category + 1):
-            all_screenshots_df.loc[index, f'app_{n}_name'] = current_screenshot.app_data['name'][n]
-            all_screenshots_df.loc[index, f'app_{n}_number'] = current_screenshot.app_data['number'][n]
-        all_screenshots_df.loc[index, 'num_review_reasons'] = len(current_screenshot.errors)
-        for col in current_screenshot.data_row.columns:
-            if col == ERR_CONFIDENCE:
-                all_screenshots_df.loc[index, col] = current_screenshot.num_values_low_conf
-            elif col == ERR_MISSING_VALUE:
-                all_screenshots_df.loc[index, col] = current_screenshot.num_missed_values
-            elif col.startswith("ERR"):
-                all_screenshots_df.loc[index, col] = True
-            else:
-                pass
+        add_screenshot_info_to_master_df(current_screenshot)
 
         screenshot_time = time.time() - screenshot_time_start
         list_of_recent_times.append(screenshot_time)
