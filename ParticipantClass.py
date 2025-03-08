@@ -248,43 +248,60 @@ class Participant:
             print()
 
             for i in range(1, MAX_APPS + 1):
-                if compare_df.loc[i, 'ex_name'] == NO_TEXT and compare_df.loc[i, 'new_name'] == NO_TEXT:
+                updated_app_name = False  # Initialize
+                existing_name = compare_df.loc[i, 'ex_name']
+                existing_number = compare_df.loc[i, 'ex_number']
+                new_name = compare_df.loc[i, 'new_name']
+                new_number = compare_df.loc[i, 'new_number']
+
+                if existing_name == NO_TEXT and new_name == NO_TEXT:
                     print(f"No existing app name or new app name in position {i}. App name remains N/A.")
 
-                elif compare_df.loc[i, 'ex_name'] == NO_TEXT and compare_df.loc[i, 'new_name'] != NO_TEXT:
-                    print(f"No existing app name in position {i}. Updating to {compare_df.loc[i, 'new_name']}.")
+                elif existing_name == NO_TEXT and new_name != NO_TEXT:
+                    print(f"No existing app name in position {i}. Updating to {new_name}.")
+                    updated_app_name = True
                     (self.usage_data.loc[date_index, f'{category}_app_{i}_name'],
                      self.usage_data_conf.loc[date_index, f'{category}_app_{i}_name']) = (
-                        compare_df.loc[i, 'new_name'], compare_df.loc[i, 'new_name_conf'])
+                        new_name, compare_df.loc[i, 'new_name_conf'])
 
-                elif compare_df.loc[i, 'ex_name'] != NO_TEXT and compare_df.loc[i, 'new_name'] == NO_TEXT:
-                    print(f"No new app name in position {i}. Keeping {compare_df.loc[i, 'ex_name']}.")
+                elif existing_name != NO_TEXT and new_name == NO_TEXT:
+                    print(f"No new app name in position {i}. Keeping {existing_name}.")
                     (self.usage_data.loc[date_index, f'{category}_app_{i}_name'],
                      self.usage_data_conf.loc[date_index, f'{category}_app_{i}_name']) = (
-                        compare_df.loc[i, 'ex_name'], compare_df.loc[i, 'ex_name_conf'])
+                        existing_name, compare_df.loc[i, 'ex_name_conf'])
 
                 else:
-                    (self.usage_data.loc[date_index, f'{category}_app_{i}_name'],
-                     self.usage_data_conf.loc[date_index, f'{category}_app_{i}_name']) = (
-                        OCRScript_v3.choose_between_two_values(text1=compare_df.loc[i, 'ex_name'],
-                                                               conf1=compare_df.loc[i, 'ex_name_conf'],
-                                                               text2=compare_df.loc[i, 'new_name'],
-                                                               conf2=compare_df.loc[i, 'new_name_conf']))
 
-                if str(compare_df.loc[i, 'ex_number']) == NO_TEXT and str(compare_df.loc[i, 'new_number']) == NO_TEXT:
+                    (best_app_name, best_app_number) = OCRScript_v3.choose_between_two_values(text1=compare_df.loc[i, 'ex_name'],
+                                                                                               conf1=compare_df.loc[i, 'ex_name_conf'],
+                                                                                               text2=compare_df.loc[i, 'new_name'],
+                                                                                               conf2=compare_df.loc[i, 'new_name_conf'])
+                    if best_app_name == new_name != existing_name:
+                        updated_app_name = True
+
+                    (self.usage_data.loc[date_index, f'{category}_app_{i}_name'],
+                     self.usage_data_conf.loc[date_index, f'{category}_app_{i}_name']) = (best_app_name, best_app_number)
+
+                if updated_app_name:
+                    print(f"Existing app number '{existing_number}' will also be updated to '{new_number}'.")
+                    (self.usage_data.loc[date_index, f'{category}_app_{i}_number'],
+                     self.usage_data_conf.loc[date_index, f'{category}_app_{i}_number']) = (
+                        new_number, compare_df.loc[i, 'new_number_conf'])
+
+                elif str(existing_number) == NO_TEXT and str(new_number) == NO_TEXT:
                     print(f"No existing app number or new app number in position {i}. App number remains N/A.")
 
-                elif str(compare_df.loc[i, 'ex_number']) == NO_TEXT and str(compare_df.loc[i, 'new_name']) != NO_TEXT:
-                    print(f"No existing app number in position {i}. Updating to {compare_df.loc[i, 'new_number']}.")
+                elif str(existing_number) == NO_TEXT and str(new_name) != NO_TEXT:
+                    print(f"No existing app number in position {i}. Updating to {new_number}.")
                     (self.usage_data.loc[date_index, f'{category}_app_{i}_number'],
                      self.usage_data_conf.loc[date_index, f'{category}_app_{i}_number']) = (
-                        compare_df.loc[i, 'new_number'], compare_df.loc[i, 'new_number_conf'])
+                        new_number, compare_df.loc[i, 'new_number_conf'])
 
-                elif str(compare_df.loc[i, 'ex_number']) != NO_TEXT and str(compare_df.loc[i, 'new_number']) == NO_TEXT:
-                    print(f"No new app number in position {i}. Keeping {compare_df.loc[i, 'ex_number']}.")
+                elif str(existing_number) != NO_TEXT and str(new_number) == NO_TEXT:
+                    print(f"No new app number in position {i}. Keeping {existing_number}.")
                     (self.usage_data.loc[date_index, f'{category}_app_{i}_number'],
                      self.usage_data_conf.loc[date_index, f'{category}_app_{i}_number']) = (
-                        compare_df.loc[i, 'ex_number'], compare_df.loc[i, 'ex_number_conf'])
+                        existing_number, compare_df.loc[i, 'ex_number_conf'])
 
                 else:
                     (self.usage_data.loc[date_index, f'{category}_app_{i}_number'],

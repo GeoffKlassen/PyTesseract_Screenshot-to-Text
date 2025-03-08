@@ -724,7 +724,9 @@ def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_sh
 
             if not date_rows.empty:
                 # If we can find text rows below the date, then use the median 'left' value of that region
-                text_df_below_date = text_df[(text_df.index > date_rows.index[0]) & (text_df.index != text_df.index[-1])]
+                text_df_below_date = text_df[(text_df.index > date_rows.index[0]) &
+                                             (text_df.index != text_df.index[-1]) &
+                                             (text_df['left'] > int(0.05 * screenshot.width))]
                 if not text_df_below_date.empty:
                     crop_left = max(0, int(np.median(text_df_below_date['left']) - 0.02 * screenshot.width))
                     crop_right = max(0, screenshot.width - crop_left - int(0.04 * screenshot.width))
@@ -1061,7 +1063,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                                                                                 (df['left'] + df['width']),
                                                                                 df['top'],
                                                                                 (df['top'] + df['height'])):
-            row_text = re.sub(r'^[xX]{1,2}$', "X", row_text)  # X (Twitter) may show up here as xX
+            # row_text = re.sub(r'^[xX]{1,2}$', "X", row_text)  # X (Twitter) may show up here as xX
             row_height = row_bottom - row_top
             if min(OCRScript_v3.levenshtein_distance(row_text, key) for key in
                    KEYWORDS_FOR_SHOW_SITES_YOU_VISIT[img_lang]) < moe_show_sites:
@@ -1088,7 +1090,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                                                            df['conf'],
                                                            df['left'],
                                                            (df['left'] + df['width'])):
-            row_text = re.sub(r'^[xX]{1,2}$', "X", row_text)  # X (Twitter) may show up here as xX
+            # row_text = re.sub(r'^[xX]{1,2}$', "X", row_text)  # X (Twitter) may show up here as xX
             if min(OCRScript_v3.levenshtein_distance(row_text, key) for key in
                    KEYWORDS_FOR_SHOW_SITES_YOU_VISIT[img_lang]) < moe_show_sites:
                 # A button saying 'Show sites that you visit' appears below the Google Chrome web browser, which is not
@@ -1122,7 +1124,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
             # Only the Google Dashboard has app-level unlocks info;
             # other Dashboard formats only show total unlocks.
             for row_text, row_conf in zip(df['text'], df['conf']):
-                row_text = re.sub(r'^[xX]{1,2}$', "X", row_text)  # X (Twitter) may show up here as xX
+                # row_text = re.sub(r'^[xX]{1,2}$', "X", row_text)  # X (Twitter) may show up here as xX
                 if min(OCRScript_v3.levenshtein_distance(row_text, key) for key in
                        KEYWORDS_FOR_SHOW_SITES_YOU_VISIT[img_lang]) < moe_show_sites:
                     # A button saying 'Show sites that you visit' appears below the Google Chrome web browser, which is

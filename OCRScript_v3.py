@@ -1,3 +1,5 @@
+from os import truncate
+
 from pandas.core.methods.selectn import SelectNSeries
 
 import AndroidFunctions as Android
@@ -333,6 +335,8 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+')
         df_words = pytesseract.image_to_data(img, output_type='data.frame')
     df_words = df_words.replace({remove_chars: ''}, regex=True)
     df_words = df_words.replace({r'é': 'e'}, regex=True)  # For app name "Pokémon GO", etc.
+    df_words = df_words.replace({r'^[xX]+\s?[xX]*$': 'X'}, regex=True)
+    df_words = df_words[~((df_words['text'] == 'X') & (df_words['left'] < int(0.15 * img.shape[1])))]
     df_words = df_words[df_words['conf'] > 0]
     df_words = df_words.fillna('')
     df_words = df_words[(df_words['text'] != '') & (df_words['text'] != ' ')]
@@ -744,16 +748,19 @@ def extract_app_info(screenshot, image, coordinates, scale):
                     Merge these app numbers from the initial scan into the rescan."""
     # Select only numbers from the initial scan that have high confidence (above conf_limit)
     # and that lie in the 'app info' cropped region
-    truncated_text_df = text[(text['conf'] > 0.5) | (text['text'].str.match(r'[xX]{1,2}'))]
+    # text.loc[text['text'].str.match(r'^[xX]+\s?[xX]*$'), 'text'] = 'X'
+
+    truncated_text_df = text[(text['conf'] > 0.5) | (text['text'] == 'X')]
     truncated_text_df.loc[truncated_text_df.index, 'left'] = truncated_text_df['left'] - crop_left
     truncated_text_df.loc[truncated_text_df.index, 'top'] = truncated_text_df['top'] - crop_top
     truncated_text_df = truncated_text_df[(truncated_text_df['left'] > 0) &
                                           (truncated_text_df['top'] > 0) &
-                                          (truncated_text_df['left'] + truncated_text_df[
-                                              'width'] < crop_right - crop_left) &
-                                          (truncated_text_df['top'] + truncated_text_df[
-                                              'height'] < crop_bottom - crop_top) &
-                                          (truncated_text_df['text'].str.isdigit() | truncated_text_df['text'].str.match(r'[xX]{1,2}'))]
+                                          # (truncated_text_df['left'] + truncated_text_df[
+                                          #     'width'] < crop_right - crop_left) &
+                                          # (truncated_text_df['top'] + truncated_text_df[
+                                          #     'height'] < crop_bottom - crop_top) &
+                                          ((truncated_text_df['text'].str.isdigit()) | (truncated_text_df['text'] == 'X'))]
+
     # truncated_text_df = OCRScript_v3.merge_df_rows_by_line_num(truncated_text_df)
     # Keep only the rows that contain only digits (a.k.a. notification counts or pickup counts) or 'X' (Twitter)
     # truncated_text_df = truncated_text_df[(truncated_text_df['text'].str.isdigit()) | (truncated_text_df['text'].str.match(r'[xX]{1,2}'))]
@@ -1261,7 +1268,7 @@ if __name__ == '__main__':
 
             if show_images:
                 show_image(app_area_df, scaled_cropped_image)
-            app_area_df['text'] = app_area_df['text'].apply(lambda x: 'X' if re.match(r'[xX]{2}', x) else x)
+            # app_area_df['text'] = app_area_df['text'].apply(lambda x: 'X' if re.match(r'[xX]{2}', x) else x)
 
             print("Text found in app-area:")
             print(app_area_df[['left', 'top', 'width', 'height', 'conf', 'text']])
@@ -1443,8 +1450,8 @@ if __name__ == '__main__':
             confident_text_from_prescan = \
                 cropped_prescan_df[(cropped_prescan_df['right'] > 0.05 * scaled_cropped_filtered_image.shape[1]) &
                                    ((cropped_prescan_df['conf'] > 80) |
-                                    (cropped_prescan_df['text'].str.fullmatch(value_format) & cropped_prescan_df['conf'] > 50)) |
-                                   (cropped_prescan_df['text'].str.fullmatch(r'[xX]{1,2}'))]
+                                    ((cropped_prescan_df['text'].str.fullmatch(value_format)) & (cropped_prescan_df['conf'] > 50))) |
+                                   (cropped_prescan_df['text'].str.fullmatch('X'))]
             columns_to_scale = ['left', 'top', 'width', 'height']
             confident_text_from_prescan.loc[:, columns_to_scale] = \
                 confident_text_from_prescan.loc[:, columns_to_scale].apply(lambda x: x * app_area_scale_factor).astype(int)
@@ -1454,7 +1461,7 @@ if __name__ == '__main__':
             if show_images:
                 show_image(app_area_2_df, scaled_cropped_image)
 
-            app_area_2_df['text'] = app_area_2_df['text'].apply(lambda x: 'X' if re.match(r'[xX]{2}', x) else x)
+            # app_area_2_df['text'] = app_area_2_df['text'].apply(lambda x: 'X' if re.match(r'[xX]{2}', x) else x)
 
             print("Text found in app-area:")
             print(app_area_2_df[['left', 'top', 'width', 'height', 'conf', 'text']])
