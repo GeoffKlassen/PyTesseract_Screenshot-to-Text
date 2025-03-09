@@ -31,10 +31,10 @@ DATE_RANGE_FORMAT = {ITA: [r'\d{1,2}-\d{1,2}\s?MMM',
 
 # hhh/HHH stands for the short/long format for hours; mmm/MMM stands for the short/long format for minutes.
 # The list of abbreviations for the necessary language will be subbed in as needed to create the full regex.
-TIME_FORMATS = [r'^[01ilLT]?[0-9aAilLStT]\s?hhh\s?[0-5aAilLT]?[0-9aAilLoStT]\s?mmm$',  # Format for ## hr ## min
-                r'^[01ilLT]?[0-9aAilLStT]\s?HHH\s?[0-5aAilLT]?[0-9aAilLoStT]\s?MMM$',  # Format for ## hours ## minutes
+TIME_FORMATS = [r'^[0-9ilLT]?[0-9aAilLStT]\s?hhh\s?[0-9aAilLT]?[0-9aAilLoStT]\s?mmm$',  # Format for ## hr ## min
+                r'^[0-9ilLT]?[0-9aAilLStT]\s?HHH\s?[0-9aAilLT]?[0-9aAilLoStT]\s?MMM$',  # Format for ## hours ## minutes
                 r'^[01ilLT]?[0-9aAilLStT]\s?HHH$',                                     # Format for ## hours
-                r'^[0-5aAilT]?[0-9AlLOStT]\s?MMM$']                                    # Format for ## minutes
+                r'^[0-9aAilT]?[0-9AlLOStT]\s?MMM$']                                    # Format for ## minutes
 # Sometimes pytesseract mistakes digits for A, I, L, S, or T (e.g.  A = 4,   I/L/T = 1,   S = 5)
 # Including these letters in the regex ensures that times with a misread digit still match a time format.
 
@@ -678,6 +678,10 @@ def convert_string_time_to_minutes(str_time, screenshot):
     hours, str_after_hours = split_time(str_time, hours_format)
     minutes, _ = split_time(str_after_hours, minutes_format)
 
+    if minutes >= 60 or hours >= 24:
+        print(f"'{str_time}' is not a proper time format. Value will be accepted, but screenshot will be flagged.")
+        screenshot.add_error(ERR_MISREAD_TIME)
+
     time_in_min = (hours * 60) + minutes
 
     return time_in_min
@@ -966,7 +970,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                 app_numbers = new_number if app_numbers.empty else pd.concat([app_numbers, new_number], ignore_index=True)
                 previous_text = NUMBER
 
-            elif app == '':
+            elif app == '':  # Only number
                 new_number = pd.DataFrame({'number': [num], 'number_conf': [row_conf]})
                 app_numbers = new_number if app_numbers.empty else pd.concat([app_numbers, new_number], ignore_index=True)
                 previous_text = NUMBER
@@ -1027,6 +1031,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
             time, _ = filter_time_text(s_time_only, NO_CONF, hours_format, minutes_format)
             if time != s_time_only:
                 print(f"Filtering time text: Replaced '{s_time_only}' with '{time}'.")
+
 
         return name, time
 

@@ -460,10 +460,11 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
         return daily_tot, daily_tot_conf
 
 
-def convert_text_time_to_minutes(time_as_string):
+def convert_text_time_to_minutes(time_as_string, screenshot):
     """
         For Screentime screenshots, coverts the daily total usage time (String) into a number of minutes (int).
         :param time_as_string: The length of time to convert, in proper format (no misread characters), e.g. 1h 23min
+        :param screenshot:
         :return: (int) The daily total time converted to minutes
     """
     if str(time_as_string) == NO_TEXT:
@@ -488,7 +489,7 @@ def convert_text_time_to_minutes(time_as_string):
             return 0
 
     # Initialize the minutes counter
-    total_usage_time_mins = 0
+    total_usage_time_in_minutes = 0
 
     # See if the time value has seconds in it -- if it does, it won't contain minutes, so the number of minutes is 0
     usage_time_seconds = extract_unit_of_time_as_int(time_as_string, SECONDS_FORMAT)
@@ -497,10 +498,14 @@ def convert_text_time_to_minutes(time_as_string):
         usage_time_hours = extract_unit_of_time_as_int(time_as_string, HOURS_FORMAT)
         usage_time_hours_to_minutes = (usage_time_hours * 60) if usage_time_hours else 0
 
-        total_usage_time_mins = extract_unit_of_time_as_int(time_as_string, MINUTES_FORMAT)
-        total_usage_time_mins += usage_time_hours_to_minutes
+        usage_time_mins = extract_unit_of_time_as_int(time_as_string, MINUTES_FORMAT)
+        total_usage_time_in_minutes = usage_time_mins + usage_time_hours_to_minutes
 
-    return total_usage_time_mins
+        if usage_time_mins >= 60 or usage_time_hours >= 24:
+            print(f"'{time_as_string}' is not a proper time format. Value will be accepted, but screenshot will be flagged.")
+            screenshot.add_error(ERR_MISREAD_TIME)
+
+    return total_usage_time_in_minutes
 
 
 def get_total_pickups_2nd_location(screenshot, img):
@@ -925,10 +930,11 @@ def consolidate_overlapping_text(df):
     return merged_df
 
 
-def get_app_names_and_numbers(screenshot, df, category, max_apps):
+def get_app_names_and_numbers(screenshot, crop_img, df, category, max_apps):
     """
     Extracts the app-specific information from the given dataframe for the given screenshot.
     :param screenshot: The screenshot object which the app data is for
+    :param crop_img:
     :param df: The dataframe of text to search for app names and app values (times/numbers)
     :param category: The category of data to search for (i.e. screentime, pickukps, notifications)
     :param max_apps: The maximum number of apps to search for
@@ -982,6 +988,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
             # row_height > 0.75 * df['height'].mean() and \
             if (len(row_text) >= 3 or row_text == 'X') and \
                     not re.match(value_format, row_text, re.IGNORECASE) and \
+                    (row_left < int(0.2 * crop_img.shape[1]) or row_text == 'X') and \
                     row_text[0].isalnum() or \
                     row_text == '4' and row_height > 0.75 * df['height'].mean():  # if current row text is app name
                 if prev_row_type == NAME:  # two app names in a row
@@ -995,7 +1002,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps):
                 prev_app_height = row_height
             elif (category == SCREENTIME and re.search(misread_time_format_iOS, row_text, re.IGNORECASE) or  # used to be re.match -- revert if re.search causes issues
                   category != SCREENTIME and re.search(misread_number_format_iOS, row_text, re.IGNORECASE) and
-                  len(str(row_text)) < 5):  # used to be re.match -- revert if re.search causes issues
+                  len(str(row_text)) < 5) or row_left > int(0.2 * crop_img.shape[1]):  # used to be re.match -- revert if re.search causes issues
                 # if current row text is number
                 # It is unrealistic for a single app to have more than 10000 notifications/pickups in one
                 # day. However, sometimes the 'hours' row gets read as a number (e.g., 6 12 18), so such rows should

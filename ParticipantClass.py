@@ -76,7 +76,7 @@ class Participant:
     def set_language(self, lang):
         self.language = lang
 
-    def add_screenshot(self, ss):
+    def add_screenshot_data(self, ss):
         category = ss.category_detected
         device_os = ss.device_os_detected
         if category in [PICKUPS, UNLOCKS]:

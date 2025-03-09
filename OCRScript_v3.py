@@ -252,7 +252,7 @@ def merge_df_rows_by_height(df):
     for i in df.index:
         if i == 0:
             continue
-        if abs(df.loc[i]['top'] - df.loc[i - 1]['top']) < 15 and df.loc[i]['text'] != "X":
+        if abs(df.loc[i]['top'] - df.loc[i - 1]['top']) < 15:  # and (df.loc[i]['text'] != "X"):  # Not sure why I did the "X" check
             # If two rows' heights are within 15 pixels of each other and the current row is not "X" (Twitter)
             # TODO replace 15 with a percentage of the screenshot width (define moe = x% of screenshot width)
             if df.loc[i]['left'] > df.loc[i - 1]['left']:
@@ -1091,7 +1091,7 @@ if __name__ == '__main__':
             if current_screenshot.category_submitted == SCREENTIME:
                 current_screenshot.set_daily_total_minutes(NO_NUMBER)
             current_screenshot.set_app_data(empty_app_data)
-            current_participant.add_screenshot(current_screenshot)
+            current_participant.add_screenshot_data(current_screenshot)
 
             add_screenshot_info_to_master_df(current_screenshot, index)
 
@@ -1149,7 +1149,7 @@ if __name__ == '__main__':
             if current_screenshot.category_submitted == SCREENTIME:
                 current_screenshot.set_daily_total_minutes(NO_NUMBER)
             current_screenshot.set_app_data(empty_app_data)
-            current_participant.add_screenshot(current_screenshot)
+            current_participant.add_screenshot_data(current_screenshot)
 
             add_screenshot_info_to_master_df(current_screenshot, index)
             update_eta(list_of_recent_times)  # Update the ETA without adding the current screenshot's time to the list
@@ -1230,7 +1230,7 @@ if __name__ == '__main__':
                 if study_category == SCREENTIME:
                     current_screenshot.set_daily_total_minutes(NO_NUMBER)
                 current_screenshot.set_app_data(empty_app_data)
-                current_participant.add_screenshot(current_screenshot)
+                current_participant.add_screenshot_data(current_screenshot)
 
                 add_screenshot_info_to_master_df(current_screenshot, index)
                 update_eta(list_of_recent_times)  # Update the ETA w/o adding the current screenshot's time to the list
@@ -1311,7 +1311,7 @@ if __name__ == '__main__':
                     f"No app-level data for {android_version} dashboard when daily total {dashboard_category} = 0. "
                     f"Skipping search for app-level data.")
                 current_screenshot.set_app_data(empty_app_data)
-                current_participant.add_screenshot(current_screenshot)
+                current_participant.add_screenshot_data(current_screenshot)
 
                 add_screenshot_info_to_master_df(current_screenshot, index)
 
@@ -1324,7 +1324,7 @@ if __name__ == '__main__':
                 print(f"{android_version} Dashboard does not contain app-level {dashboard_category} data. "
                       f"Skipping search for app data.")
                 current_screenshot.set_app_data(empty_app_data)
-                current_participant.add_screenshot(current_screenshot)
+                current_participant.add_screenshot_data(current_screenshot)
 
                 add_screenshot_info_to_master_df(current_screenshot, index)
 
@@ -1348,7 +1348,7 @@ if __name__ == '__main__':
                 print(f"Crop region not found or includes daily total. Setting all app-specific data to N/A.")
                 current_screenshot.add_error(ERR_APP_DATA)
                 current_screenshot.set_app_data(empty_app_data)
-                current_participant.add_screenshot(current_screenshot)
+                current_participant.add_screenshot_data(current_screenshot)
 
                 add_screenshot_info_to_master_df(current_screenshot, index)
 
@@ -1392,7 +1392,6 @@ if __name__ == '__main__':
                                                          coordinates=crop_coordinates)
 
             dt = current_screenshot.daily_total if str(current_screenshot.daily_total) != NO_TEXT else "N/A"
-            print("\nApp data found:")
             if dashboard_category == SCREENTIME:
                 for i in range(1, max_apps_per_category + 1):
                     if i in app_data.index:  # Make sure the index exists
@@ -1401,17 +1400,21 @@ if __name__ == '__main__':
                             screenshot=current_screenshot)
                 app_data['minutes'] = app_data['minutes'].astype(int)
 
+                print("\nApp data found:")
                 print(app_data[['name', 'number', 'minutes']])
                 print(f"Daily total {dashboard_category}: {dt} {dtm}")
-                if current_screenshot.daily_total_minutes != -1:
+                if current_screenshot.daily_total_minutes is not None and current_screenshot.daily_total_minutes != -1:
                     sum_app_minutes = app_data[app_data['minutes'] != NO_CONF]['minutes'].astype(int).sum()
                     if int(current_screenshot.daily_total_minutes) < sum_app_minutes:
                         current_screenshot.add_error(ERR_TOTAL_BELOW_APP_SUM)
 
             else:
+                print("\nApp data found:")
                 print(app_data[['name', 'number']])
                 print(f"Daily total {dashboard_category}: {dt}")
-                if current_screenshot.daily_total != -1 and not (device_os == ANDROID and dashboard_category_detected == UNLOCKS):
+                if current_screenshot.daily_total is not None and \
+                        current_screenshot.daily_total != -1 and \
+                        not dashboard_category_detected == UNLOCKS:
                     # Android does not calculate daily unlocks as the sum of the times each app was opened.
                     # Apps can be opened more than once per unlock.
                     sum_app_numbers = app_data[app_data['number'] != NO_CONF]['number'].astype(int).sum()
@@ -1419,7 +1422,7 @@ if __name__ == '__main__':
                         current_screenshot.add_error(ERR_TOTAL_BELOW_APP_SUM)
 
             current_screenshot.set_app_data(app_data)
-            current_participant.add_screenshot(current_screenshot)
+            current_participant.add_screenshot_data(current_screenshot)
 
             # Collect some review-oriented statistics on the screenshot
             # Put the data from the screenshot into the master CSV for all screenshots
@@ -1463,7 +1466,7 @@ if __name__ == '__main__':
 
             if dashboard_category == SCREENTIME:
                 # Get the daily total usage (if it's present in the screenshot)
-                daily_total_minutes = iOS.convert_text_time_to_minutes(daily_total)
+                daily_total_minutes = iOS.convert_text_time_to_minutes(daily_total, current_screenshot)
 
                 dtm = (" (" + str(daily_total_minutes) + " minutes)") if daily_total_conf != NO_CONF else ""
                 print(f"Daily total {dashboard_category}: {dt}{dtm}")
@@ -1509,7 +1512,7 @@ if __name__ == '__main__':
                 print(f"No app-level data available when daily total {dashboard_category} is {daily_total}.")
                 print(f"Setting all app-specific data to N/A.")
                 current_screenshot.set_app_data(empty_app_data)
-                current_participant.add_screenshot(current_screenshot)
+                current_participant.add_screenshot_data(current_screenshot)
 
                 add_screenshot_info_to_master_df(current_screenshot, index)
 
@@ -1523,7 +1526,7 @@ if __name__ == '__main__':
                 print(f"Suitable crop region not detected. Setting all app-specific data to N/A.")
                 current_screenshot.add_error(ERR_APP_DATA)
                 current_screenshot.set_app_data(empty_app_data)
-                current_participant.add_screenshot(current_screenshot)
+                current_participant.add_screenshot_data(current_screenshot)
 
                 add_screenshot_info_to_master_df(current_screenshot, index)
 
@@ -1565,7 +1568,7 @@ if __name__ == '__main__':
             app_area_df = extract_app_info(current_screenshot, scaled_cropped_filtered_image, crop_coordinates, app_area_scale_factor)
             if ERR_APP_DATA in current_screenshot.errors:
                 current_screenshot.set_app_data(empty_app_data)
-                current_participant.add_screenshot(current_screenshot)
+                current_participant.add_screenshot_data(current_screenshot)
 
                 add_screenshot_info_to_master_df(current_screenshot, index)
 
@@ -1605,11 +1608,11 @@ if __name__ == '__main__':
             #     dashboard_category = current_screenshot.category_detected
 
             app_data = iOS.get_app_names_and_numbers(screenshot=current_screenshot,
+                                                     crop_img=scaled_cropped_filtered_image,
                                                      df=app_area_2_df,
                                                      category=dashboard_category,
                                                      max_apps=max_apps_per_category)
             dt = current_screenshot.daily_total if str(current_screenshot.daily_total) != NO_TEXT else "N/A"
-            print("\nApp data found:")
             if dashboard_category == SCREENTIME:
                 for i in range(1, max_apps_per_category + 1):
                     if i in app_data.index:  # Make sure the index exists
@@ -1617,22 +1620,23 @@ if __name__ == '__main__':
                             str_time=app_data.loc[i, 'number'],
                             screenshot=current_screenshot)
                 app_data['minutes'] = app_data['minutes'].astype(int)
+                print("\nApp data found:")
                 print(app_data[['name', 'number', 'minutes']])
                 print(f"Daily total {dashboard_category}: {dt}{dtm}")
 
                 # iOS Daily screentime can exceed the sum of the app times. Do not flag iOS screentime images.
 
             else:
+                print("\nApp data found:")
                 print(app_data[['name', 'number']])
                 print(f"Daily total {dashboard_category}: {dt}")
-                if current_screenshot.daily_total != -1 and not (
-                        device_os == ANDROID and dashboard_category_detected == UNLOCKS):
+                if current_screenshot.daily_total is not None and current_screenshot.daily_total != -1:
                     sum_app_numbers = app_data[app_data['number'] != NO_CONF]['number'].astype(int).sum()
                     if int(current_screenshot.daily_total) < sum_app_numbers:
                         current_screenshot.add_error(ERR_TOTAL_BELOW_APP_SUM)
 
             current_screenshot.set_app_data(app_data)
-            current_participant.add_screenshot(current_screenshot)
+            current_participant.add_screenshot_data(current_screenshot)
             # And also give it to the Participant object, checking to see if data already exists for that day & category
             #   (if it does, run the function (within Participant?) to determine how to merge the two sets of data together)
 
@@ -1646,7 +1650,7 @@ if __name__ == '__main__':
             update_eta(list_of_recent_times)  # Update ETA without adding current screenshot's time to the list
             continue
 
-        # Count the number of top-3 apps/numbers/times whose confidence is below the confidence threshold
+        # Count the number of top-n apps/numbers/times whose confidence is below the confidence threshold
         count_below_conf_limit = app_data[['name_conf', 'number_conf']].map(
             lambda x: 0 < x < conf_limit).sum().sum() + (1 if daily_total_conf < conf_limit else 0)
 
