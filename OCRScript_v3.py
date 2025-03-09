@@ -638,15 +638,15 @@ def get_or_create_participant(users, user_id, dev_id):
     return new_user
 
 
-def get_os(dev_id):
+def get_os(dev_id, screenshot=None):
     """ Returns the (almost certain) device OS based on the Device ID.
 
     :param dev_id: The Device ID of the device used to submit an image.
-
+    :param screenshot: The current screenshot (available in case a flag needs to be added for the Device ID)
     :returns: The operating system of the device (iOS or Android); if unsure, returns 'Unknown'.
 
     As of February 7, 2025, all iPhone Device IDs in Avicenna CSVs appear as 32-digit hexadecimal numbers, and
-    all Android device IDs in Avicenna CSVs appear as 16-digit hexadecimal numbers.
+    all Android device IDs in Avicenna CSVs appear as 16-digit hexadecimal (or sometimes alphanumeric) numbers.
     If a user submits a survey response via a web browser instead, the Device ID will reflect that browser:
 
     W_MACOSX_SAFARI             - macOS (MacBook or iMac)
@@ -654,17 +654,18 @@ def get_os(dev_id):
     W_ANDROID_CHROMEMOBILE      - Android Chrome browser
     W_ANDROID_FIREFOXMOBILE     - Android Firefox browser
     """
+    if not bool(re.compile(r'^[0-9a-fA-F]+$').match(dev_id)) and screenshot is not None:
+        screenshot.add_error(ERR_DEVICE_ID)
     if dev_id is None:
         return None
-    elif not bool(re.compile(r'^[0-9a-fA-F]+$').match(dev_id)):
-        # If the Device ID is not a hexadecimal string, we cannot guarantee the survey response is from a phone.
-        return UNKNOWN
     elif len(dev_id) == 16:
         return ANDROID
     elif len(dev_id) == 32:
         return IOS
     else:
         # If the Device ID is a hexadecimal string that is not 16- or 32-digits, we can't guarantee the phone OS.
+        if screenshot is not None:
+            screenshot.add_error(ERR_DEVICE_ID)
         return UNKNOWN
 
 
@@ -967,12 +968,16 @@ def update_eta(most_recent_times):
 
 
 def add_screenshot_info_to_master_df(screenshot, idx):
-    print(screenshot.android_version)
+    """
+
+    :param screenshot:
+    :param idx:
+    :return:
+    """
     all_screenshots_df.loc[idx, 'image_url'] = screenshot.url
     all_screenshots_df.loc[idx, 'participant_id'] = screenshot.user_id
     all_screenshots_df.loc[idx, 'language'] = screenshot.language
-    all_screenshots_df.loc[idx, 'device_os_submitted'] = screenshot.device_os_submitted
-    all_screenshots_df.loc[idx, 'device_os_detected'] = screenshot.device_os_detected
+    all_screenshots_df.loc[idx, 'device_os'] = screenshot.device_os_detected
     all_screenshots_df.loc[idx, 'android_version'] = screenshot.android_version
     all_screenshots_df.loc[idx, 'date_submitted'] = screenshot.date_submitted
     all_screenshots_df.loc[idx, 'date_detected'] = screenshot.date_detected
@@ -1035,6 +1040,7 @@ if __name__ == '__main__':
     # Cycle through the images, creating a screenshot object for each one
 
     all_screenshots_df = ScreenshotClass.initialize_data_row()
+
     participants = []
     for index in url_list.index:
         if not (test_lower_bound <= index+1 <= test_upper_bound):
@@ -1045,16 +1051,20 @@ if __name__ == '__main__':
 
         screenshot_time_start = time.time()
 
+        device_id = url_list[DEVICE_ID][index]
         # Load the participant for the current screenshot if they already exist, or create a new participant if not
         current_participant = get_or_create_participant(users=participants,
                                                         user_id=url_list[PARTICIPANT_ID][index],
-                                                        dev_id=url_list[DEVICE_ID][index])
+                                                        dev_id=device_id)
 
         current_screenshot = Screenshot(participant=current_participant,
                                         url=url_list[IMG_URL][index],
-                                        device_os=get_os(url_list[DEVICE_ID][index]),
+                                        # device_os=get_os(url_list[DEVICE_ID][index]),
                                         date=url_list[RESPONSE_DATE][index],
                                         category=url_list[IMG_RESPONSE_TYPE][index])
+        device_os = get_os(device_id, current_screenshot)
+        current_screenshot.set_device_os(device_os)
+
         print(current_screenshot)
 
         """ FOR ANDROID TESTING: SKIP iOS IMAGES"""
@@ -1067,8 +1077,8 @@ if __name__ == '__main__':
         # If screenshot cannot be downloaded, set data for its submitted category to N/A
         if grey_image.size == 0:
             category_submitted = url_list[IMG_RESPONSE_TYPE][index]
-            print(f"Error reading data from URL. Setting {category_submitted} values to N/A.")
-            current_screenshot.add_error(ERR_DATA_NOT_READ)
+            print(f"Error downloading file from URL. Setting {category_submitted} values to N/A.")
+            current_screenshot.add_error(ERR_FILE_NOT_FOUND)
             current_screenshot.set_daily_total(NO_TEXT)
             if current_screenshot.category_submitted == SCREENTIME:
                 current_screenshot.set_daily_total_minutes(NO_NUMBER)
@@ -1183,12 +1193,12 @@ if __name__ == '__main__':
         if current_screenshot.device_os_submitted == ANDROID and num_iOS_headings > num_Android_headings:
             print("Screenshot has Android-style Device ID but contains iOS headings. "
                   f"Setting device OS to '{IOS}'.")
-            current_screenshot.device_os_detected = IOS
+            current_screenshot.set_device_os_detected(IOS)
             current_screenshot.add_error(ERR_DEVICE_OS)
         elif current_screenshot.device_os_submitted == IOS and num_Android_headings > num_iOS_headings:
             print("Screenshot has iOS-style Device ID but contains Android headings. "
                   f"Setting device OS to '{ANDROID}'.")
-            current_screenshot.device_os_detected = ANDROID
+            current_screenshot.set_device_os_detected(ANDROID)
             current_screenshot.add_error(ERR_DEVICE_OS)
 
 
@@ -1621,6 +1631,8 @@ if __name__ == '__main__':
 
         """ End of the for-loop of all URLs """
 
+    all_screenshots_df.index += 1  # So that the index lines up with the file number
+
     print("\nCompiling participants' temporal data...", end='')
     all_usage_dataframes = []  # Initialize
     for p in participants:
@@ -1631,39 +1643,9 @@ if __name__ == '__main__':
 
     print("Done.")
 
-    # print("Compiling all screenshot data...", end='')
-    # all_screenshots_df = ScreenshotClass.initialize_data_row()
-    # for idx, s in enumerate(screenshots):
-    #     all_screenshots_df.loc[idx, 'image_url'] = s.url
-    #     all_screenshots_df.loc[idx, 'participant_id'] = s.user_id
-    #     all_screenshots_df.loc[idx, 'language'] = s.language
-    #     all_screenshots_df.loc[idx, 'device_os_submitted'] = s.device_os_submitted
-    #     all_screenshots_df.loc[idx, 'device_os_detected'] = s.device_os_detected
-    #     all_screenshots_df.loc[idx, 'android_version'] = s.android_version
-    #     all_screenshots_df.loc[idx, 'date_submitted'] = s.date_submitted
-    #     all_screenshots_df.loc[idx, 'date_detected'] = s.date_detected
-    #     all_screenshots_df.loc[idx, 'day_type'] = s.time_period
-    #     all_screenshots_df.loc[idx, 'category_submitted'] = s.category_submitted
-    #     all_screenshots_df.loc[idx, 'category_detected'] = s.category_detected
-    #     all_screenshots_df.loc[idx, 'daily_total'] = s.daily_total
-    #     for n in range(1, max_apps_per_category + 1):
-    #         all_screenshots_df.loc[idx, f'app_{n}_name'] = s.app_data['name'][n]
-    #         all_screenshots_df.loc[idx, f'app_{n}_number'] = s.app_data['number'][n]
-    #     all_screenshots_df.loc[idx, 'num_review_reasons'] = len(s.errors)
-    #     for col in s.data_row.columns:
-    #         if col == f"ERR Values below {int(conf_limit)}% confidence":
-    #             all_screenshots_df.loc[idx, col] = s.num_values_low_conf
-    #         elif col == "ERR Missed values":
-    #             all_screenshots_df.loc[idx, col] = s.num_missed_values
-    #         elif col.startswith("ERR"):
-    #             all_screenshots_df.loc[idx, col] = True
-    #         else:
-    #             pass
-    # print("Done.")
-
     print("Exporting CSVs...", end='')
-    all_ios_screenshots_df = all_screenshots_df[all_screenshots_df['device_os_detected'] == IOS]
-    all_android_screenshots_df = all_screenshots_df[all_screenshots_df['device_os_detected'] == ANDROID]
+    all_ios_screenshots_df = all_screenshots_df[all_screenshots_df['device_os'] == IOS]
+    all_android_screenshots_df = all_screenshots_df[all_screenshots_df['device_os'] == ANDROID]
 
     all_screentime_screenshots_df = all_screenshots_df[all_screenshots_df['category_detected'] == SCREENTIME]
     all_pickups_screenshots_df = all_screenshots_df[(all_screenshots_df['category_detected'] == PICKUPS) |

@@ -13,7 +13,7 @@ from LanguageDictionaries import *
 """
 
 
-study_to_analyze = studies[2]
+study_to_analyze = studies[1]
 # Use studies[0] for the HappyB2.0 study (pre-launch prep)
 # Use studies[1] for the HappyB2.0 study (2024 Aug-Dec)
 # Use studies[2] for the BCH study
@@ -63,8 +63,17 @@ ERR_CONFIDENCE = f"ERR Values below {int(conf_limit)}% confidence"
 # Location of PyTesseract on local drive
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Users\gbk546\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'  # At U of S
 
-test_lower_bound = 76
-test_upper_bound = 19313
+test_lower_bound = 1
+# 10344 - Times misread due to font - 2 br 21 min
+# 14361 - Times misread due to font - 1 kr 30 min, 1 kr 23 min
+# 14498 - Replaces text that doesn't line up. Code says "## minutes" doesn't match a time format. User 102184, 2024-09-21, screentime
+# 14480 - user 101700 - screentime detected, 2024-09-21
+# 14496 - user 102084, submitted screentime, detected screentime, 2024-09-21
+##### THESE two users submitted the same screenshot! Their data cannot be trusted.
+# 101790 and 101819 - same screenshot
+# 15102 - '1 hour' is being replaced with '1 hours' -- why?
+# 15248 - user 101832 - cropped out the app region from the screenshot. suspicious...
+test_upper_bound = 10
 # 553 for HappyB2.0 (pre-launch)
 # 19313 URLs for HappyB2.0 2024 Aug-Dec
 # 452 for BCH study

@@ -12,6 +12,7 @@ Current languages include:
     Italian
 Languages to add:
     Spanish (two versions?)
+    Portuguese
 
 Dictionaries included:
     MONTH_ABBREVIATIONS             - used for determining the date (or date range) as it appears in the screenshot
@@ -48,7 +49,8 @@ LANGUAGE_KEYWORDS = {GER: ['Gestern', 'Heute', 'Benachrichtigungen', 'Entsperrun
                      ENG: ['Screen time', 'SCREEN', 'Updated', 'Yesterday', 'yesterday', 'Today', 'View more', 'today',
                            'received', 'Unlocks', 'unlocks', 'Digital Wellbeing', 'View all', 'Show sites',
                            'Set limits for', 'Set timers for', 'Activity details'],
-                     FRA: ['Applications les plus', 'fois', 'Notifications', 'Hier']
+                     FRA: ['Applications les plus', 'fois', 'Hier', 'Deverrouillages', 'numerique', 'AUJOURDHUI']
+                     # French used to include 'Notifications'
                      }
 # If one of the keywords above is found in a given screenshot, that screenshot is classified as being of the language of
 # that keyword. Otherwise, the screenshot is classified as being of the previously detected language for its participant

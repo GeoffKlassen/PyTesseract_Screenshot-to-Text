@@ -7,7 +7,7 @@ from ConvenienceVariables import *
 
 def initialize_data_row():
     df = pd.DataFrame(columns=['image_url', 'participant_id', 'language',
-                               'device_os_submitted', 'device_os_detected', 'android_version',
+                               'device_os', 'android_version',
                                'date_submitted', 'date_detected', 'day_type',
                                'category_submitted', 'category_detected'])
     df[f'daily_total'] = None
@@ -94,6 +94,10 @@ class Screenshot:
                                                            HOURS_AXIS_HEADING in df[HEADING_COLUMN].values) else False
         else:
             pass
+
+    def set_device_os(self, dev_os):
+        self.device_os_submitted = dev_os
+        self.device_os_detected = dev_os
 
     def set_text(self, text):
         self.text = text

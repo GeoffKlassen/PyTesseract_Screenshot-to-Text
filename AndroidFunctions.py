@@ -102,7 +102,7 @@ KEYWORDS_FOR_VIEW_MORE = {ITA: ['Visualizza altro'],
                           FRA: ['Afficher plus']}
 
 GOOGLE_SCREENTIME_FORMATS = {ITA: ['# ora', '# h e # min', '# minuti', '1 minuto', 'Meno di 1 minuto'],
-                             ENG: ['# hours',
+                             ENG: ['# hours', '# hour',
                                    '# hours # minutes', '# hours # minute', '# hour # minutes', '# hour # minute',
                                    '# hrs # mins', '# hr # mins', '# hrs # min', '# hr # min', '#h #m',
                                    '# minutes', '1 minute', 'Less than 1 minute', '< 1 minute'],
@@ -120,7 +120,7 @@ SAMSUNG_NOTIFICATIONS_FORMATS = {ITA: ['# notifiche ricevute', "# ricevute"],
                                  ENG: ['# notifications', '# notification', '# received'],
                                  # TODO Should this include '# notifications received'?
                                  GER: ['# Benachrichtigungen'],  # TODO Make sure this is correct
-                                 FRA: ['# notifications', '# notification']}  # TODO Fill this in
+                                 FRA: ['# notifications', '# notification']}
 SAMSUNG_UNLOCKS_FORMAT = {ITA: ['# volte', '# in totale'],
                           ENG: ['# times'],
                           GER: ['TODO FILL THIS IN'],  # TODO Fill this in
@@ -479,6 +479,8 @@ def filter_time_text(text, conf, hr_f, min_f):
     text2 = re.sub(r"((?<=\d\s)hy)|((?<=\d)hy)", "hr", text2)
     text2 = re.sub(r"((?<=\d\s)ty)|((?<=\d)ty)", "hr", text2)
     text2 = re.sub(r"((?<=\d\s)he)|((?<=\d)he)", "hr", text2)
+    text2 = re.sub(r"((?<=\d\s)by)|((?<=\d)by)", "hr", text2)
+    text2 = re.sub(r"((?<=\d\s)kr)|((?<=\d)kr)", "hr", text2)
     text2 = text2.replace('hr.', 'hr')
 
     # Replace common misread characters (e.g. pytesseract sometimes misreads '1h' as 'Th'/'th').
