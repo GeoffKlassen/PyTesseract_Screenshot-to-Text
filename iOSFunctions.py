@@ -452,8 +452,10 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
         if daily_total_2nd_scan_conf != NO_CONF:
             print(f"Total {category}, 2nd scan: {daily_total_2nd_scan} (conf = {daily_total_2nd_scan_conf})")
 
+        val_format = misread_time_format_iOS if category == SCREENTIME else misread_number_format_iOS
         daily_tot, daily_tot_conf = OCRScript_v3.choose_between_two_values(daily_total_1st_scan, daily_total_1st_scan_conf,
-                                                                           daily_total_2nd_scan, daily_total_2nd_scan_conf)
+                                                                           daily_total_2nd_scan, daily_total_2nd_scan_conf,
+                                                                           val_fmt=val_format)
 
         return daily_tot, daily_tot_conf
 
@@ -587,7 +589,8 @@ def get_total_pickups_2nd_location(screenshot, img):
 
     total, total_conf = OCRScript_v3.choose_between_two_values(total_pickups_1st_scan, total_pickups_1st_scan_conf,
                                                                total_pickups_2nd_scan, total_pickups_2nd_scan_conf,
-                                                               value_is_number=True)
+                                                               value_is_number=True,
+                                                               val_fmt=misread_number_format_iOS)
 
     print(f"Total pickups, 2nd location: {total} (conf = {total_conf}).")
     return total, total_conf

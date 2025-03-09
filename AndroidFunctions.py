@@ -192,9 +192,9 @@ def get_time_formats_in_lang(lang):
     long_format = long_format.replace(" ", r"\s?")
     long_format = "(" + long_format + ")"
 
-    eol_format = '|'.join([short_format, long_format]).replace("^", "\\s")  # eol = 'end of line'
+    end_of_line_format = '|'.join([short_format, long_format]).replace("^", "\\s")  # eol = 'end of line'
 
-    return short_format, long_format, eol_format
+    return short_format, long_format, end_of_line_format
 
 
 def get_headings(screenshot, time_fmt_short):
@@ -602,7 +602,8 @@ def get_daily_total_and_confidence(screenshot, image, heading):
         total_value_2nd_scan_conf = NO_CONF
 
     total_value, total_conf = OCRScript_v3.choose_between_two_values(total_value_1st_scan, total_value_1st_scan_conf,
-                                                                     total_value_2nd_scan, total_value_2nd_scan_conf)
+                                                                     total_value_2nd_scan, total_value_2nd_scan_conf,
+                                                                     screenshot.time_format_long)
     total_value = str(total_value)
 
     if screenshot.category_detected != SCREENTIME:

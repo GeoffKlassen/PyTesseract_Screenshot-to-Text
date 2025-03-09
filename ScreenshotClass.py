@@ -38,6 +38,9 @@ class Screenshot:
         self.height = 0
         self.width = 0
         self.is_light_mode = None
+        self.time_format_short = None
+        self.time_format_long = None
+        self.time_format_end_of_line = None
         self.scale_factor = None  # Might not be necessary?
         self.language = None
         self.date_format = None
@@ -126,6 +129,11 @@ class Screenshot:
 
     def set_date_format(self, fmt):
         self.date_format = fmt
+
+    def set_time_formats(self, fmts):
+        self.time_format_short = fmts[0]
+        self.time_format_long = fmts[1]
+        self.time_format_end_of_line = fmts[2]
 
     def set_app_data(self, data):
         self.app_data = data

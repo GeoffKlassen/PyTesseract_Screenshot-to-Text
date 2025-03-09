@@ -123,8 +123,7 @@ class Participant:
                 self.usage_data_conf.loc[date_index, f'{category}_app_{i}_name'] = ss.app_data['name_conf'][i]
                 self.usage_data_conf.loc[date_index, f'{category}_app_{i}_number'] = ss.app_data['number_conf'][i]
                 if category == SCREENTIME:
-                    self.usage_data.loc[date_index, f'{category}_app_{i}_minutes'] = \
-                        iOSFunctions.convert_text_time_to_minutes(ss.app_data['number'][i])
+                    self.usage_data.loc[date_index, f'{category}_app_{i}_minutes'] = ss.app_data['minutes'][i]
                     self.usage_data_conf.loc[date_index, f'{category}_app_{i}_minutes'] = \
                         ss.app_data['number_conf'][i]
 
@@ -246,6 +245,7 @@ class Participant:
             print("\nTable of app comparisons to be made:")
             print(compare_df[['ex_name', 'ex_number', 'new_name', 'new_number']][1:])
             print()
+            value_format = ss.time_format_long if category == SCREENTIME else None
 
             for i in range(1, MAX_APPS + 1):
                 updated_app_name = False  # Initialize
@@ -271,11 +271,10 @@ class Participant:
                         existing_name, compare_df.loc[i, 'ex_name_conf'])
 
                 else:
-
                     (best_app_name, best_app_number) = OCRScript_v3.choose_between_two_values(text1=compare_df.loc[i, 'ex_name'],
-                                                                                               conf1=compare_df.loc[i, 'ex_name_conf'],
-                                                                                               text2=compare_df.loc[i, 'new_name'],
-                                                                                               conf2=compare_df.loc[i, 'new_name_conf'])
+                                                                                              conf1=compare_df.loc[i, 'ex_name_conf'],
+                                                                                              text2=compare_df.loc[i, 'new_name'],
+                                                                                              conf2=compare_df.loc[i, 'new_name_conf'])
                     if best_app_name == new_name != existing_name:
                         updated_app_name = True
 
@@ -309,7 +308,8 @@ class Participant:
                         OCRScript_v3.choose_between_two_values(text1=compare_df.loc[i, 'ex_number'],
                                                                conf1=compare_df.loc[i, 'ex_number_conf'],
                                                                text2=compare_df.loc[i, 'new_number'],
-                                                               conf2=compare_df.loc[i, 'new_number_conf']))
+                                                               conf2=compare_df.loc[i, 'new_number_conf'],
+                                                               val_fmt=value_format))
 
                 if category == SCREENTIME:
                     if self.usage_data.loc[date_index, f'{category}_app_{i}_number'] == compare_df.loc[i, 'new_number']:

@@ -669,7 +669,7 @@ def get_os(dev_id, screenshot=None):
         return UNKNOWN
 
 
-def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False):
+def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False, val_fmt=None):
     """
 
     :param text1:
@@ -677,6 +677,7 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False)
     :param text2:
     :param conf2:
     :param value_is_number:
+    :param val_fmt:
     :return:
     """
     str_text1 = str(text1)
@@ -686,7 +687,9 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False)
     c1 = f"(conf = {conf1})" if conf1 != NO_CONF else ""
     c2 = f"(conf = {conf2})" if conf2 != NO_CONF else ""
 
-    val_fmt = misread_number_format_iOS if value_is_number else misread_time_format_iOS
+    if val_fmt is None:
+        val_fmt = misread_number_format_iOS if value_is_number else misread_time_format_iOS
+
     format_name = 'number' if value_is_number else 'time'
 
     print(f"Comparing scan 1: {t1} {c1}\n       vs scan 2: {t2} {c2}  ——  ", end='')
@@ -1201,6 +1204,8 @@ if __name__ == '__main__':
             current_screenshot.set_device_os_detected(ANDROID)
             current_screenshot.add_error(ERR_DEVICE_OS)
 
+        if current_screenshot.device_os_detected == ANDROID:
+            current_screenshot.set_time_formats(time_formats)
 
         """
             Here, the phone OS determines which branch of code we run to extract the daily total and app-level data.
@@ -1457,7 +1462,8 @@ if __name__ == '__main__':
                                                                                                    bw_image_scaled)
                 print("Comparing both locations for total pickups:")
                 daily_total, daily_total_conf = choose_between_two_values(daily_total, daily_total_conf,
-                                                                          daily_total_2nd_loc, daily_total_2nd_loc_conf)
+                                                                          daily_total_2nd_loc, daily_total_2nd_loc_conf,
+                                                                          val_fmt=misread_number_format_iOS)
                 current_screenshot.set_daily_total(daily_total, daily_total_conf)
                 if daily_total_conf == NO_CONF:
                     if current_screenshot.total_heading_found:
