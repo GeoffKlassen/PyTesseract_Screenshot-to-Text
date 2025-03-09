@@ -1018,6 +1018,9 @@ if __name__ == '__main__':
                                             device_id_col=device_id_col_name)
         print(f"Done.\n{current_list.shape[0]} URLs found.")
         url_list = pd.concat([url_list, current_list], ignore_index=True)
+        if len(url_list) >= test_upper_bound:
+            print(f"URL list now contains at least {test_upper_bound} images. No further URLs needed.")
+            break
 
     num_urls = url_list.shape[0]
     print(f'Total URLs from all surveys: {num_urls}')
@@ -1045,12 +1048,14 @@ if __name__ == '__main__':
     all_screenshots_df = ScreenshotClass.initialize_data_row()
 
     participants = []
+    test_upper_bound = test_lower_bound if test_upper_bound < test_lower_bound else test_upper_bound
     for index in url_list.index:
         if not (test_lower_bound <= index+1 <= test_upper_bound):
             # Only extract data from the images within the bounds specified in RuntimeValues.py
             continue
 
-        print(f"\n\nFile {index + 1} of {num_urls}: {url_list[IMG_URL][index]}")
+        min_url_index = min(num_urls, test_upper_bound)
+        print(f"\n\nFile {index + 1} of {min_url_index}: {url_list[IMG_URL][index]}")
 
         screenshot_time_start = time.time()
 
@@ -1398,9 +1403,20 @@ if __name__ == '__main__':
 
                 print(app_data[['name', 'number', 'minutes']])
                 print(f"Daily total {dashboard_category}: {dt} {dtm}")
+                if current_screenshot.daily_total_minutes != -1:
+                    sum_app_minutes = app_data[app_data['minutes'] != NO_CONF]['minutes'].astype(int).sum()
+                    if int(current_screenshot.daily_total_minutes) < sum_app_minutes:
+                        current_screenshot.add_error(ERR_TOTAL_BELOW_APP_SUM)
+
             else:
                 print(app_data[['name', 'number']])
                 print(f"Daily total {dashboard_category}: {dt}")
+                if current_screenshot.daily_total != -1 and not (device_os == ANDROID and dashboard_category_detected == UNLOCKS):
+                    # Android does not calculate daily unlocks as the sum of the times each app was opened.
+                    # Apps can be opened more than once per unlock.
+                    sum_app_numbers = app_data[app_data['number'] != NO_CONF]['number'].astype(int).sum()
+                    if int(current_screenshot.daily_total) < sum_app_numbers:
+                        current_screenshot.add_error(ERR_TOTAL_BELOW_APP_SUM)
 
             current_screenshot.set_app_data(app_data)
             current_participant.add_screenshot(current_screenshot)
@@ -1603,9 +1619,17 @@ if __name__ == '__main__':
                 app_data['minutes'] = app_data['minutes'].astype(int)
                 print(app_data[['name', 'number', 'minutes']])
                 print(f"Daily total {dashboard_category}: {dt}{dtm}")
+
+                # iOS Daily screentime can exceed the sum of the app times. Do not flag iOS screentime images.
+
             else:
                 print(app_data[['name', 'number']])
                 print(f"Daily total {dashboard_category}: {dt}")
+                if current_screenshot.daily_total != -1 and not (
+                        device_os == ANDROID and dashboard_category_detected == UNLOCKS):
+                    sum_app_numbers = app_data[app_data['number'] != NO_CONF]['number'].astype(int).sum()
+                    if int(current_screenshot.daily_total) < sum_app_numbers:
+                        current_screenshot.add_error(ERR_TOTAL_BELOW_APP_SUM)
 
             current_screenshot.set_app_data(app_data)
             current_participant.add_screenshot(current_screenshot)

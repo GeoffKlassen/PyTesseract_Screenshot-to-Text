@@ -53,7 +53,7 @@ save_downloaded_images = True  # If True, images downloaded at runtime are saved
 user = "geoff.klassen@usask.ca"
 passw = "Phi1*618ah"
 
-show_images = True  # If True, images of the screenshots will be shown during runtime (mostly for debugging).
+show_images = False  # If True, images of the screenshots will be shown during runtime (mostly for debugging).
 
 app_area_scale_factor = 1  # In addition to the screenshot_scale_factor, this is how much to scale the cropped image
                               # when searching for app-level data
@@ -63,7 +63,7 @@ ERR_CONFIDENCE = f"ERR Values below {int(conf_limit)}% confidence"
 # Location of PyTesseract on local drive
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Users\gbk546\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'  # At U of S
 
-test_lower_bound = 15102
+test_lower_bound = 1759
 # FIXED 10344 - Times misread due to font - 2 br 21 min
 # FIXED 14361 - Times misread due to font - 1 kr 30 min, 1 kr 23 min
 # FIXED 14498 - Replaces text that doesn't line up. Code says "## minutes" doesn't match a time format. User 102184, 2024-09-21, screentime
@@ -73,7 +73,7 @@ test_lower_bound = 15102
 # 101790 and 101819 - same screenshot
 # 15102 - '1 hour' is being replaced with '1 hours' -- why?
 # 15248 - user 101832 - cropped out the app region from the screenshot. suspicious...
-test_upper_bound = 19313
+test_upper_bound = 1789
 # 553 for HappyB2.0 (pre-launch)
 # 19313 URLs for HappyB2.0 2024 Aug-Dec
 # 452 for BCH study

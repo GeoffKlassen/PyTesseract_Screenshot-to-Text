@@ -988,6 +988,10 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
             s_words = _s.split()
             s_last_word = s_words[-1]
             for val in dict_row:
+                if s_last_word == val:
+                    return _s
+
+            for val in dict_row:
                 if OCRScript_v3.levenshtein_distance(s_last_word, val) <= _moe:
                     s_words[-1] = val
                     _s = ' '.join(s_words)

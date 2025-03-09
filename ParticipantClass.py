@@ -5,6 +5,7 @@ import OCRScript_v3
 import RuntimeValues
 import iOSFunctions
 
+ANDROID = ConvenienceVariables.ANDROID
 SCREENTIME = ConvenienceVariables.SCREENTIME
 PICKUPS = ConvenienceVariables.PICKUPS
 NOTIFICATIONS = ConvenienceVariables.NOTIFICATIONS
@@ -15,6 +16,7 @@ NO_NUMBER = ConvenienceVariables.NO_NUMBER
 NO_CONF = ConvenienceVariables.NO_CONF
 ERR_FILE_NOT_FOUND = ConvenienceVariables.ERR_FILE_NOT_FOUND
 ERR_UNREADABLE_DATA = ConvenienceVariables.ERR_UNREADABLE_DATA
+ERR_DUPLICATE_DATA = ConvenienceVariables.ERR_DUPLICATE_DATA
 
 EMPTY_CELL = ''
 
@@ -76,6 +78,7 @@ class Participant:
 
     def add_screenshot(self, ss):
         category = ss.category_detected
+        device_os = ss.device_os_detected
         if category in [PICKUPS, UNLOCKS]:
             category = PICKUPS
 
@@ -130,12 +133,15 @@ class Participant:
         else:
             print(f"\nExisting {ss.category_detected} data found for participant {self.user_id} on {ss.date_detected}. "
                   f"Comparisons must be made.")
+            value_format = ss.time_format_long if (category == SCREENTIME and device_os == ANDROID) else None
+
             (self.usage_data.loc[date_index, f'total_{category}'],
              self.usage_data_conf.loc[date_index, f'total_{category}']) = (
                 OCRScript_v3.choose_between_two_values(text1=self.usage_data.loc[date_index, f'total_{category}'],
                                                        conf1=self.usage_data_conf.loc[date_index, f'total_{category}'],
                                                        text2=ss.daily_total,
-                                                       conf2=ss.daily_total_conf))
+                                                       conf2=ss.daily_total_conf,
+                                                       val_fmt=value_format))
             moe = 2
             existing_data_lineup_index = -1
             new_data_lineup_index = -1
@@ -204,6 +210,7 @@ class Participant:
             max_lineup = max([existing_data_lineup_index, new_data_lineup_index])
             compare_df = pd.DataFrame(columns=['ex_name', 'ex_name_conf', 'ex_number', 'ex_number_conf',
                                                'new_name', 'new_name_conf', 'new_number', 'new_number_conf'])
+
             for i in range(MAX_APPS + 1):
                 ex_index = i + existing_data_lineup_index - max_lineup
                 if ex_index > 0:
@@ -245,7 +252,10 @@ class Participant:
             print("\nTable of app comparisons to be made:")
             print(compare_df[['ex_name', 'ex_number', 'new_name', 'new_number']][1:])
             print()
-            value_format = ss.time_format_long if category == SCREENTIME else None
+            if compare_df['ex_name'].equals(compare_df['new_name']) and \
+                    compare_df['ex_number'].equals(compare_df['new_number']):
+                print("Note: Current screenshot data matches existing data. Screenshot will be flagged.\n")
+                ss.add_error(ERR_DUPLICATE_DATA)
 
             for i in range(1, MAX_APPS + 1):
                 updated_app_name = False  # Initialize
