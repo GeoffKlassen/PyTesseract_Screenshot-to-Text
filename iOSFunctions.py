@@ -988,9 +988,9 @@ def get_app_names_and_numbers(screenshot, crop_img, df, category, max_apps):
             # row_height > 0.75 * df['height'].mean() and \
             if (len(row_text) >= 3 or row_text == 'X') and \
                     not re.match(value_format, row_text, re.IGNORECASE) and \
-                    (row_left < int(0.2 * crop_img.shape[1]) or row_text == 'X') and \
                     row_text[0].isalnum() or \
-                    row_text == '4' and row_height > 0.75 * df['height'].mean():  # if current row text is app name
+                    row_text == '4' and row_height > 0.75 * df['height'].mean():  # if current row text is app name    # (row_left < int(0.2 * crop_img.shape[1]) or row_text == 'X') and \
+
                 if prev_row_type == NAME:  # two app names in a row
                     if len(app_names) - 1 <= max_apps:
                         num_missed_app_values += 1
@@ -1000,9 +1000,9 @@ def get_app_names_and_numbers(screenshot, crop_img, df, category, max_apps):
                 prev_row_type = NAME
                 prev_app_name = row_text
                 prev_app_height = row_height
-            elif (category == SCREENTIME and re.search(misread_time_format_iOS, row_text, re.IGNORECASE) or  # used to be re.match -- revert if re.search causes issues
+            elif (category == SCREENTIME and re.search(misread_time_format_iOS, row_text, re.IGNORECASE) or
                   category != SCREENTIME and re.search(misread_number_format_iOS, row_text, re.IGNORECASE) and
-                  len(str(row_text)) < 5) or row_left > int(0.2 * crop_img.shape[1]):  # used to be re.match -- revert if re.search causes issues
+                  len(str(row_text)) < 5):  # or row_left > int(0.2 * crop_img.shape[1]):
                 # if current row text is number
                 # It is unrealistic for a single app to have more than 10000 notifications/pickups in one
                 # day. However, sometimes the 'hours' row gets read as a number (e.g., 6 12 18), so such rows should
