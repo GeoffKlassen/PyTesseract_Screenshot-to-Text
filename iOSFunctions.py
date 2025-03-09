@@ -502,7 +502,7 @@ def convert_text_time_to_minutes(time_as_string, screenshot):
         total_usage_time_in_minutes = usage_time_mins + usage_time_hours_to_minutes
 
         if usage_time_mins >= 60 or usage_time_hours >= 24:
-            print(f"'{time_as_string}' is not a proper time format. Value will be accepted, but screenshot will be flagged.")
+            print(f"'{time_as_string}' is not a proper time value. Value will be accepted, but screenshot will be flagged.")
             screenshot.add_error(ERR_MISREAD_TIME)
 
     return total_usage_time_in_minutes

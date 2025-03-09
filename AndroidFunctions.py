@@ -679,7 +679,7 @@ def convert_string_time_to_minutes(str_time, screenshot):
     minutes, _ = split_time(str_after_hours, minutes_format)
 
     if minutes >= 60 or hours >= 24:
-        print(f"'{str_time}' is not a proper time format. Value will be accepted, but screenshot will be flagged.")
+        print(f"'{str_time}' is not a proper time value. Value will be accepted, but screenshot will be flagged.")
         screenshot.add_error(ERR_MISREAD_TIME)
 
     time_in_min = (hours * 60) + minutes
