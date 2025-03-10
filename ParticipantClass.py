@@ -177,8 +177,9 @@ class Participant:
                     new_values = ss.app_data.loc[:, 'number']
                 # Select the row with index 'date_index' for the specified columns
                 existing_values_row = self.usage_data.loc[date_index, existing_values_columns]
+                existing_values_row = existing_values_row.astype(int)
 
-                # Exclude values equal to -99999
+                # Exclude values equal to NO_NUMBER
                 filtered_ex_values = existing_values_row[existing_values_row != NO_NUMBER]
                 if filtered_ex_values.empty:
                     pass
@@ -292,7 +293,7 @@ class Participant:
                      self.usage_data_conf.loc[date_index, f'{category}_app_{i}_name']) = (best_app_name, best_app_number)
 
                 if updated_app_name:
-                    print(f"Existing app number '{existing_number}' will also be updated to '{new_number}'.")
+                    print(f"Existing app number '{existing_number if existing_number != NO_TEXT else 'N/A'}' will also be updated to '{new_number}'.")
                     (self.usage_data.loc[date_index, f'{category}_app_{i}_number'],
                      self.usage_data_conf.loc[date_index, f'{category}_app_{i}_number']) = (
                         new_number, compare_df.loc[i, 'new_number_conf'])

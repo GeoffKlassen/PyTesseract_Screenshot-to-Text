@@ -1047,7 +1047,7 @@ def get_app_names_and_numbers(screenshot, crop_img, df, category, max_apps):
     if category == SCREENTIME and screenshot.daily_total in app_numbers['number'].values and \
             screenshot.daily_total != NO_TEXT:
         print(f"Daily total {category} ({screenshot.daily_total}) matches one of the app usage times.")
-        print(f"Resetting daily total {category} to {NO_NUMBER}.")
+        print(f"Resetting daily total {category} to N/A.")
         screenshot.add_error(ERR_TOTAL_SCREENTIME)
         screenshot.set_daily_total(NO_TEXT, NO_CONF)
         screenshot.set_daily_total_minutes(NO_NUMBER)
