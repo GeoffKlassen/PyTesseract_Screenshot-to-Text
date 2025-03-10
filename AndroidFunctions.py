@@ -532,7 +532,7 @@ def get_daily_total_and_confidence(screenshot, image, heading):
         text2 = text.replace("A", "4")
         text2 = text2.replace("O", "0")
         text2 = text2.replace("I", "1")
-        text2 = text2.replace("L", "1")
+        text2 = re.sub(r"L|l", "1", text2)
         text2 = text2.replace("S", "5")
         text2 = text2.replace("T", "1")
         if text2 != text:

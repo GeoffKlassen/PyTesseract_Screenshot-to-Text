@@ -1317,6 +1317,15 @@ if __name__ == '__main__':
             daily_total, daily_total_conf = Android.get_daily_total_and_confidence(screenshot=current_screenshot,
                                                                                    image=bw_image_scaled,
                                                                                    heading=dashboard_category)
+            if dashboard_category != SCREENTIME:
+                try:
+                    daily_total = str(int(daily_total))
+                except ValueError:
+                    print(f"Daily total {dashboard_category} '{daily_total}' is not a number. Resetting to N/A (confidence = {NO_CONF}).")
+                    current_screenshot.add_error(ERR_NOT_A_NUMBER)
+                    daily_total = NO_TEXT
+                    daily_total_conf = NO_CONF
+
             current_screenshot.set_daily_total(daily_total, daily_total_conf)
             if daily_total_conf == NO_CONF:
                 current_screenshot.add_error(ERR_DAILY_TOTAL)
