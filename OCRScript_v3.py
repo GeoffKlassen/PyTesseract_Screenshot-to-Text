@@ -978,26 +978,41 @@ def add_screenshot_info_to_master_df(screenshot, idx):
     :param idx:
     :return:
     """
-    string_to_hash = (str(screenshot.device_os_detected) +
-                      str(screenshot.date_detected) +
-                      str(screenshot.category_detected) +
-                      str(screenshot.daily_total))
-    for n in range(1, max_apps_per_category + 1):
-        string_to_hash += screenshot.app_data['name'][n] + str(screenshot.app_data['number'][n])
-    current_screenshot_hash = hashlib.md5(string_to_hash.encode()).hexdigest()
-    matching_screenshots = all_screenshots_df[all_screenshots_df['hashed'] == current_screenshot_hash]
-    if not matching_screenshots.empty:
-        screenshot.add_error(ERR_DUPLICATE_DATA)
-        if not (ERR_DUPLICATE_DATA in all_screenshots_df.columns):
-            all_screenshots_df[ERR_DUPLICATE_DATA] = None
-        if not (matching_screenshots['participant_id'].eq(screenshot.user_id).all()):
-            same_or_other_user = "MANY USERS"
-        else:
-            same_or_other_user = "SAME USER"
-        for n in matching_screenshots.index:
-            if all_screenshots_df.loc[n, ERR_DUPLICATE_DATA] is None:
-                all_screenshots_df.loc[n, 'num_review_reasons'] += 1
-        all_screenshots_df.loc[all_screenshots_df['hashed'] == current_screenshot_hash, ERR_DUPLICATE_DATA] = same_or_other_user
+    same_or_other_user = None  # Initialize
+    if screenshot.daily_total_conf == NO_CONF and \
+            screenshot.app_data['name_conf'].eq(NO_CONF).all() and \
+            screenshot.app_data['number_conf'].eq(NO_CONF).all():
+        # Do not hash screenshots that contain no daily total or app-level info.
+        current_screenshot_hash = None
+    else:
+        # Create a hash for the screenshot, using its detected data.
+        string_to_hash = (str(screenshot.language) +
+                          str(screenshot.device_os_detected) +
+                          str(screenshot.android_version) +
+                          str(screenshot.date_detected) +
+                          str(screenshot.time_period) +
+                          str(screenshot.category_detected) +
+                          str(screenshot.daily_total))
+        for n in range(1, max_apps_per_category + 1):
+            string_to_hash += screenshot.app_data['name'][n] + str(screenshot.app_data['number'][n])
+        current_screenshot_hash = hashlib.md5(string_to_hash.encode()).hexdigest()
+        # Find all other screenshots with the same hash
+        matching_screenshots = all_screenshots_df[(all_screenshots_df['hashed'] == current_screenshot_hash) &
+                                                  (all_screenshots_df['hashed'] is not None)]
+        if not matching_screenshots.empty:
+            # There are other screenshots with the same data
+            screenshot.add_error(ERR_DUPLICATE_DATA)
+            if not (ERR_DUPLICATE_DATA in all_screenshots_df.columns):
+                # Make sure the ERR_DUPLICATE_DATA column exists
+                all_screenshots_df[ERR_DUPLICATE_DATA] = None
+            if not (matching_screenshots['participant_id'].eq(screenshot.user_id).all()):
+                same_or_other_user = "MULTIPLE USERS"
+            else:
+                same_or_other_user = "SAME USER"
+            for n in matching_screenshots.index:
+                if all_screenshots_df.loc[n, ERR_DUPLICATE_DATA] is None:
+                    all_screenshots_df.loc[n, 'num_review_reasons'] += 1
+            all_screenshots_df.loc[all_screenshots_df['hashed'] == current_screenshot_hash, ERR_DUPLICATE_DATA] = same_or_other_user
 
     all_screenshots_df.loc[idx, 'image_url'] = screenshot.url
     all_screenshots_df.loc[idx, 'participant_id'] = screenshot.user_id
