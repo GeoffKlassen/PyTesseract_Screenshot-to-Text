@@ -940,7 +940,7 @@ def get_app_names_and_numbers(screenshot, crop_img, df, category, max_apps):
     :param max_apps: The maximum number of apps to search for
     :return: A dataframe of length max_apps, with app names and numbers, and their respective confidence values.
     """
-
+    crop_width = crop_img.shape[1]
     empty_name_row = pd.DataFrame({'name': [NO_TEXT], 'name_conf': [NO_CONF]})
     empty_number_row = pd.DataFrame({'number': [NO_TEXT], 'number_conf': [NO_CONF]}) if category == SCREENTIME else (
                        pd.DataFrame({'number': [NO_NUMBER], 'number_conf': [NO_CONF]}))
@@ -989,7 +989,10 @@ def get_app_names_and_numbers(screenshot, crop_img, df, category, max_apps):
             if (len(row_text) >= 3 or row_text == 'X') and \
                     not re.match(value_format, row_text, re.IGNORECASE) and \
                     row_text[0].isalnum() or \
-                    row_text == '4' and row_height > 0.75 * df['height'].mean():  # if current row text is app name    # (row_left < int(0.2 * crop_img.shape[1]) or row_text == 'X') and \
+                    (row_text == '4' and
+                     row_height > 0.75 * df['height'].mean() and
+                     row_left < int(0.15 * crop_width) and
+                     prev_row_type != NAME):  # if current row text is app name    # (row_left < int(0.2 * crop_img.shape[1]) or row_text == 'X') and \
 
                 if prev_row_type == NAME:  # two app names in a row
                     if len(app_names) - 1 <= max_apps:
