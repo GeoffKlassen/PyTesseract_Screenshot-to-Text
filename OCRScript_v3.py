@@ -1744,8 +1744,8 @@ if __name__ == '__main__':
                                                     (all_screenshots_df['category_detected'] == UNLOCKS)]
     all_notifications_screenshots_df = all_screenshots_df[all_screenshots_df['category_detected'] == NOTIFICATIONS]
 
-    all_participants_df.to_csv(f"{study_to_analyze['Name']}_all_participants_data.csv")
-    all_screenshots_df.to_csv(f"{study_to_analyze['Name']}_all_screenshots_data.csv")
+    all_participants_df.to_csv(f"{study_to_analyze['Name']}_all_participants_temporal_data.csv")
+    all_screenshots_df.to_csv(f"{study_to_analyze['Name']}_all_screenshots.csv")
 
     all_ios_screenshots_df.to_csv(f"{study_to_analyze['Name']}_all_ios_data.csv")
     all_android_screenshots_df.to_csv(f"{study_to_analyze['Name']}_all_android_data.csv")
