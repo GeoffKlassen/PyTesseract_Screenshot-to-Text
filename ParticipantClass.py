@@ -252,10 +252,10 @@ class Participant:
             print("\nTable of app comparisons to be made:")
             print(compare_df[['ex_name', 'ex_number', 'new_name', 'new_number']][1:])
             print()
-            if compare_df['ex_name'].equals(compare_df['new_name']) and \
-                    compare_df['ex_number'].equals(compare_df['new_number']):
-                print("Note: Current screenshot data matches existing data. Screenshot will be flagged.\n")
-                ss.add_error(ERR_DUPLICATE_DATA)
+            # if compare_df['ex_name'].equals(compare_df['new_name']) and \
+            #         compare_df['ex_number'].equals(compare_df['new_number']):
+            #     print("Note: Current screenshot data matches existing data. Screenshot will be flagged.\n")
+            #     ss.add_error(ERR_DUPLICATE_DATA)
 
             for i in range(1, MAX_APPS + 1):
                 updated_app_name = False  # Initialize

@@ -14,6 +14,7 @@ def initialize_data_row():
     for i in range(1, RuntimeValues.max_apps_per_category + 1):
         df[f'app_{i}_name'] = None
         df[f'app_{i}_number'] = None
+    df['hashed'] = None
     df['num_review_reasons'] = None
     return df
 

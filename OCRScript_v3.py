@@ -1,3 +1,4 @@
+import hashlib
 from os import truncate
 
 from pandas.core.methods.selectn import SelectNSeries
@@ -977,6 +978,27 @@ def add_screenshot_info_to_master_df(screenshot, idx):
     :param idx:
     :return:
     """
+    string_to_hash = (str(screenshot.device_os_detected) +
+                      str(screenshot.date_detected) +
+                      str(screenshot.category_detected) +
+                      str(screenshot.daily_total))
+    for n in range(1, max_apps_per_category + 1):
+        string_to_hash += screenshot.app_data['name'][n] + str(screenshot.app_data['number'][n])
+    current_screenshot_hash = hashlib.md5(string_to_hash.encode()).hexdigest()
+    matching_screenshots = all_screenshots_df[all_screenshots_df['hashed'] == current_screenshot_hash]
+    if not matching_screenshots.empty:
+        screenshot.add_error(ERR_DUPLICATE_DATA)
+        if not (ERR_DUPLICATE_DATA in all_screenshots_df.columns):
+            all_screenshots_df[ERR_DUPLICATE_DATA] = None
+        if not (matching_screenshots['participant_id'].eq(screenshot.user_id).all()):
+            same_or_other_user = "MANY USERS"
+        else:
+            same_or_other_user = "SAME USER"
+        for n in matching_screenshots.index:
+            if all_screenshots_df.loc[n, ERR_DUPLICATE_DATA] is None:
+                all_screenshots_df.loc[n, 'num_review_reasons'] += 1
+        all_screenshots_df.loc[all_screenshots_df['hashed'] == current_screenshot_hash, ERR_DUPLICATE_DATA] = same_or_other_user
+
     all_screenshots_df.loc[idx, 'image_url'] = screenshot.url
     all_screenshots_df.loc[idx, 'participant_id'] = screenshot.user_id
     all_screenshots_df.loc[idx, 'language'] = screenshot.language
@@ -992,12 +1014,16 @@ def add_screenshot_info_to_master_df(screenshot, idx):
     for n in range(1, max_apps_per_category + 1):
         all_screenshots_df.loc[idx, f'app_{n}_name'] = screenshot.app_data['name'][n]
         all_screenshots_df.loc[idx, f'app_{n}_number'] = screenshot.app_data['number'][n]
+
+    all_screenshots_df.loc[idx, 'hashed'] = current_screenshot_hash
     all_screenshots_df.loc[idx, 'num_review_reasons'] = len(screenshot.errors)
     for col in screenshot.data_row.columns:
         if col == ERR_CONFIDENCE:
             all_screenshots_df.loc[idx, col] = screenshot.num_values_low_conf
         elif col == ERR_MISSING_VALUE:
             all_screenshots_df.loc[idx, col] = screenshot.num_missed_values
+        elif col == ERR_DUPLICATE_DATA:
+            all_screenshots_df.loc[idx, col] = same_or_other_user
         elif col.startswith("ERR"):
             all_screenshots_df.loc[idx, col] = True
         else:
@@ -1414,11 +1440,12 @@ if __name__ == '__main__':
                 print(f"Daily total {dashboard_category}: {dt}")
                 if current_screenshot.daily_total is not None and \
                         current_screenshot.daily_total != -1 and \
-                        not dashboard_category_detected == UNLOCKS:
+                        current_screenshot.category_detected != UNLOCKS:
                     # Android does not calculate daily unlocks as the sum of the times each app was opened.
                     # Apps can be opened more than once per unlock.
                     sum_app_numbers = app_data[app_data['number'] != NO_CONF]['number'].astype(int).sum()
                     if int(current_screenshot.daily_total) < sum_app_numbers:
+                        print(current_screenshot.category_detected)
                         current_screenshot.add_error(ERR_TOTAL_BELOW_APP_SUM)
 
             current_screenshot.set_app_data(app_data)
@@ -1678,6 +1705,7 @@ if __name__ == '__main__':
     print("Done.")
 
     print("Exporting CSVs...", end='')
+    all_screenshots_df.drop(columns=['hashed'], inplace=True)
     all_ios_screenshots_df = all_screenshots_df[all_screenshots_df['device_os'] == IOS]
     all_android_screenshots_df = all_screenshots_df[all_screenshots_df['device_os'] == ANDROID]
 
