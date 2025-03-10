@@ -782,7 +782,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
     # and that lie in the 'app info' cropped region
     # text.loc[text['text'].str.match(r'^[xX]+\s?[xX]*$'), 'text'] = 'X'
 
-    truncated_text_df = text[(text['conf'] > 0.5) | (text['text'] == 'X')]
+    truncated_text_df = text[(text['conf'] > 70) | (text['text'] == 'X')]
     truncated_text_df = truncated_text_df[(truncated_text_df['left'] > crop_left) &
                                           (truncated_text_df['top'] > crop_top) &
                                           (truncated_text_df['left'] < crop_right) &
@@ -1596,6 +1596,8 @@ if __name__ == '__main__':
             cropped_prescan_words['text'] = cropped_prescan_words['text'].astype(str)
             cropped_prescan_df['text'] = cropped_prescan_df['text'].astype(str)
             cropped_prescan_words = cropped_prescan_words[cropped_prescan_words['text'].str.fullmatch(r'[a-zA-Z0-9]+', na=False)]
+            cropped_prescan_words = cropped_prescan_words[~((cropped_prescan_words['text'] == '2') &
+                                                            (cropped_prescan_words['left'] < int(0.1 * cropped_image.shape[1])))]
             cropped_prescan_words = cropped_prescan_words.reset_index(drop=True)
 
             cropped_filtered_image = iOS.erase_value_bars_and_icons(screenshot=current_screenshot,

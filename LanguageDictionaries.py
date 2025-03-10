@@ -48,7 +48,7 @@ LANGUAGE_KEYWORDS = {GER: ['Gestern', 'Heute', 'Benachrichtigungen', 'Entsperrun
                            'batteria', 'atteria', 'Oggi'],
                      ENG: ['Screen time', 'SCREEN', 'Updated', 'Yesterday', 'yesterday', 'Today', 'View more', 'today',
                            'received', 'Unlocks', 'unlocks', 'Digital Wellbeing', 'View all', 'Show sites',
-                           'Set limits for', 'Set timers for', 'Activity details'],
+                           'Set limits for', 'Set timers for', 'Activity details', 'Activity history'],
                      FRA: ['Applications les plus', 'fois', 'Hier', 'Deverrouillages', 'numerique', 'AUJOURDHUI']
                      # French used to include 'Notifications'
                      }
