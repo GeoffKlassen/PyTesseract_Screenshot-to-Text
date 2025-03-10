@@ -379,7 +379,8 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
                 # so skip text that starts more than 15% away from the left edge of the screenshot,
                 # and skip text that ends more than 80% from the left edge of the screenshot.
                 if df.loc[i]['left'] > (0.15 * screenshot.width) or \
-                        df.loc[i]['left'] + df.loc[i]['width'] > (0.8 * screenshot.width):
+                        df.loc[i]['left'] + df.loc[i]['width'] > (0.8 * screenshot.width) or \
+                        df.loc[i]['height'] > int(1.5 * df.loc[i]['width']):
                     continue
                 row_text = df.loc[i]['text']
                 row_conf = round(df.loc[i, 'conf'], 4)  # 4 decimal points of precision for the confidence value
