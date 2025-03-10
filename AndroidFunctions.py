@@ -478,6 +478,7 @@ def filter_time_text(text, conf, hr_f, min_f):
     text2 = re.sub(r"bre|bra", "hrs", text)
     text2 = re.sub(r"Zhe|zhe", "2hr", text2)
     text2 = re.sub(r"br|Ar", "hr", text2)
+    text2 = re.sub(r"(?<=[\d\s])ming$", "mins", text2)
     text2 = re.sub(r"ii", "11", text2, re.IGNORECASE)
     text2 = re.sub(r"((?<=\d\s)tr)|((?<=\d)tr)", "hr", text2)
     text2 = re.sub(r"((?<=\d\s)hy)|((?<=\d)hy)", "hr", text2)
