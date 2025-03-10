@@ -964,8 +964,10 @@ def update_eta(most_recent_times):
     print(f"\n\nElapsed time:  {convert_seconds_to_hms(elapsed_time_in_seconds)}")
 
     if len(most_recent_times) > 0:
-        average_time_per_screenshot = sum(most_recent_times) / len(most_recent_times)
-        estimated_time_remaining = average_time_per_screenshot * (min([test_upper_bound, num_urls]) - index - 1)
+        average_time_per_recent_screenshot = sum(most_recent_times) / len(most_recent_times)
+        max_recent_times = max(most_recent_times)
+        estimated_time_per_screenshot = np.average([average_time_per_recent_screenshot, max_recent_times])
+        estimated_time_remaining = estimated_time_per_screenshot * (min([test_upper_bound, num_urls]) - index - 1)
         if estimated_time_remaining > 0:
             print(f"Estimated time remaining:  {convert_seconds_to_hms(estimated_time_remaining)}")
 

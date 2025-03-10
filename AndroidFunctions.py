@@ -498,6 +498,8 @@ def filter_time_text(text, conf, hr_f, min_f):
     text2 = replace_misread_digit('(o|O)', '0', text2)
     text2 = replace_misread_digit('(b)', '6', text2)
 
+    text2 = re.sub(r"^[0-9a-zA-Z]", '', text2)
+
     return text2, conf
 
 
