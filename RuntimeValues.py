@@ -63,7 +63,7 @@ ERR_CONFIDENCE = f"ERR Values below {int(conf_limit)}% confidence"
 # Location of PyTesseract on local drive
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Users\gbk546\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'  # At U of S
 
-test_lower_bound = 210
+test_lower_bound = 1
 # FIXED 10344 - Times misread due to font - 2 br 21 min
 # FIXED 14361 - Times misread due to font - 1 kr 30 min, 1 kr 23 min
 # FIXED 14498 - Replaces text that doesn't line up. Code says "## minutes" doesn't match a time format. User 102184, 2024-09-21, screentime

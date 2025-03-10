@@ -365,7 +365,7 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+',
                         x_rows_to_drop.append(idx)
                 else:
                     if initial_scan and df_words['left'][idx] < int(0.2 * img.shape[1]):
-                        df_words.loc[idx, 'left'] += int(2.25 * df_words['width'][idx])
+                        df_words.loc[idx, 'left'] += int(2.5 * df_words['width'][idx])
                         df_words.loc[idx, 'top'] -= int(0.33 * df_words['height'][idx])
                         df_words.loc[idx, 'height'] = int(0.75 * df_words.loc[idx, 'height'])
                         # df_words.loc[idx, 'width'] = int(0.66 * df_words.loc[idx, 'width'])
@@ -755,8 +755,9 @@ def extract_app_info(screenshot, image, coordinates, scale):
     bg_colour = WHITE if is_light_mode else BLACK
     lang = get_best_language(screenshot)
     crop_top, crop_left, crop_bottom, crop_right = coordinates[0], coordinates[1], coordinates[2], coordinates[3]
-    remove_chars = "[^a-zA-Z0-9+é:.!,()'&-]+" if screenshot.device_os_detected == IOS else '[^a-zA-Z0-9+\\(\\)\\-\\.é]+'
+    remove_chars = r"[^a-zA-Z0-9+é:.!,()'&\-]+" if screenshot.device_os_detected == IOS else r"[^a-zA-Z0-9+é.!()'&\-]+"  # r"[^a-zA-Z0-9+()'\-.\<é]+"
     # Android needs characters like commas (,) removed because they appear in screentime values
+
     _, app_info_scan_1 = extract_text_from_image(image, remove_chars=remove_chars)
 
     # If the first text found in the cropped image is too far down/right in the image to be app info, then consider the
@@ -1718,6 +1719,20 @@ if __name__ == '__main__':
     all_participants_df = all_participants_df.sort_values(by=['participant_id', 'date']).reset_index(drop=True)
 
     print("Done.")
+
+    if ERR_DUPLICATE_DATA in all_screenshots_df.columns:
+        duplicate_screenshots_df = all_screenshots_df[all_screenshots_df[ERR_DUPLICATE_DATA].notna()]
+        # Count occurrences of each participant_id
+        if not duplicate_screenshots_df.empty:
+            print("Compiling duplicate screenshot info...", end='')
+            counts = duplicate_screenshots_df['participant_id'].value_counts()
+
+            # Convert the result to a DataFrame
+            counts_df = counts.reset_index()
+            counts_df.columns = ['participant_id', 'count']
+
+            counts_df.to_csv(f"{study_to_analyze['Name']}_duplicate_screenshot_info.csv")
+            print("Done.")
 
     print("Exporting CSVs...", end='')
     all_screenshots_df.drop(columns=['hashed'], inplace=True)

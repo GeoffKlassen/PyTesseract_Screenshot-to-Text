@@ -108,6 +108,10 @@ GOOGLE_SCREENTIME_FORMATS = {ITA: ['# ora', '# h e # min', '# minuti', '1 minuto
                                    '# minutes', '1 minute', 'Less than 1 minute', '< 1 minute'],
                              GER: ['# Stunde', '# Std # Min', '# Minuten', '1 Minute', 'Weniger als 1 Minute'],
                              FRA: ['# heures', '# h et # min', '# minutes', '1 minute', 'Moins de 1 minute']}
+GOOGLE_LESS_THAN_1_MINUTE = {ITA: ['Meno di 1 minuto'],
+                             ENG: ['Less than 1 minute'],
+                             GER: ['Weniger als 1 Minute'],
+                             FRA: ['Moins de 1 minute']}
 GOOGLE_NOTIFICATIONS_FORMATS = {ITA: ['# notifiche'],
                                 ENG: ['# notifications', '# notification'],
                                 GER: ['# Benachrichtigungen'],
@@ -1009,6 +1013,9 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
         minutes_format = '|'.join([MIN, '|'.join(KEYWORDS_FOR_MIN[img_lang]), ('|'.join(KEYWORDS_FOR_MINUTES[img_lang]))])
 
         if screenshot.android_version == GOOGLE:
+            _moe = round(np.log(len(s))) + 1 if len(s) >= 1 else 1
+            if min(levenshtein_distance(s, item) for item in GOOGLE_LESS_THAN_1_MINUTE[img_lang]) < _moe:
+                return '', '0 minutes'
             # Sometimes words like 'minutes' can be misread as something like 'minuies'. These are still time values,
             # so we still want to process them as time values.
             s = replace_misread_time_words(s, KEYWORDS_FOR_MINUTES[img_lang], 2)
@@ -1031,7 +1038,6 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
             time, _ = filter_time_text(s_time_only, NO_CONF, hours_format, minutes_format)
             if time != s_time_only:
                 print(f"Filtering time text: Replaced '{s_time_only}' with '{time}'.")
-
 
         return name, time
 
