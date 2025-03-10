@@ -605,9 +605,15 @@ def get_daily_total_and_confidence(screenshot, image, heading):
         total_value_2nd_scan = NO_TEXT
         total_value_2nd_scan_conf = NO_CONF
 
+    if screenshot.category_detected is not None:
+        is_number = False if screenshot.category_detected == SCREENTIME else True
+    else:
+        is_number = False if screenshot.category_submitted == SCREENTIME else True
+
     total_value, total_conf = OCRScript_v3.choose_between_two_values(total_value_1st_scan, total_value_1st_scan_conf,
                                                                      total_value_2nd_scan, total_value_2nd_scan_conf,
-                                                                     screenshot.time_format_long)
+                                                                     value_is_number=is_number,
+                                                                     val_fmt=screenshot.time_format_long)
     total_value = str(total_value)
 
     if screenshot.category_detected != SCREENTIME:
