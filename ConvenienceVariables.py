@@ -126,7 +126,7 @@ misread_time_format_iOS = (r'\b[12T]?[0-9toAQ]\s?[hn]\s?[1-5tA]?[0-9tA]\s?mi?n?\
                        r'|\b[12T]?[0-9toA]\s?[hn]\b'
                        r'|\b[1-5tA]?[0-9itA]\s?mi?n?\b'
                        r'|\b[1-5]?[0-9O]\s?s\b')
-misread_number_format_iOS = r'\b[0-9AS]+\b'
+misread_number_format_iOS = r'\b[0-9ASLlTK]+\b'
 misread_time_or_number_format = '|'.join([misread_time_format_iOS, misread_number_format_iOS])
 
 # I don't think these are necessary
@@ -169,3 +169,4 @@ ERR_DUPLICATE_DATA = 'ERR Data matches other screenshot'
 ERR_TOTAL_BELOW_APP_SUM = 'ERR Daily total less than app sum'
 ERR_MISREAD_TIME = 'ERR Misread time value'
 ERR_NOT_A_NUMBER = 'ERR Daily total not a number'
+ERR_DUPLICATE_COUNTS = 'ERR Duplicate data occurrences'

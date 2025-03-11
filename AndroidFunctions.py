@@ -505,6 +505,20 @@ def filter_time_text(text, conf, hr_f, min_f):
     return text2, conf
 
 
+def filter_number_text(text):
+    text2 = text.replace("A", "4")
+    text2 = text2.replace("O", "0")
+    text2 = text2.replace("I", "1")
+    text2 = re.sub(r"L|l", "1", text2)
+    text2 = text2.replace("S", "5")
+    text2 = text2.replace("T", "1")
+    text2 = text2.replace("K", "3")
+    if text2 != text:
+        print(f"Replaced '{text}' with '{text2}'.")
+
+    return text2
+
+
 def get_daily_total_and_confidence(screenshot, image, heading):
     """
 
@@ -532,18 +546,6 @@ def get_daily_total_and_confidence(screenshot, image, heading):
             OCRScript_v3.show_image(rescan_df, scaled_cropped_image)
 
         return rescan_df
-
-    def filter_number_text(text):
-        text2 = text.replace("A", "4")
-        text2 = text2.replace("O", "0")
-        text2 = text2.replace("I", "1")
-        text2 = re.sub(r"L|l", "1", text2)
-        text2 = text2.replace("S", "5")
-        text2 = text2.replace("T", "1")
-        if text2 != text:
-            print(f"Replaced '{text}' with '{text2}'.")
-
-        return text2
 
     if headings_df[HEADING_COLUMN].eq(total_heading).any():
         total_value_row = headings_df[headings_df[HEADING_COLUMN] == total_heading].iloc[0]
@@ -1076,7 +1078,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
             index = len(s)
 
         name = s[:index].rstrip()
-        s_filtered, _ = filter_time_or_number_text(s[index:], NO_CONF, misread_number_format_iOS)
+        s_filtered = filter_number_text(s[index:])
         number = re.split(r'\s|[a-zA-Z]', s_filtered)[0]
         try:
             number = int(number)

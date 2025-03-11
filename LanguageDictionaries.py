@@ -114,7 +114,7 @@ KEYWORDS_FOR_DAY_BEFORE_YESTERDAY = {ITA: ['Laltro ieri'],  # Actual phrase is L
                                      FRA: ['Avant-hier']}
 
 DAY_ABBREVIATIONS = {ITA: {"TODO FILL THIS IN"},
-                     ENG: {"M", "T", "W", "F", "S",
+                     ENG: {"M", "T", "W", "F", "S", "w", "s",
                            "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun",
                            "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"},
                      GER: {"TODO FILL THIS IN"},

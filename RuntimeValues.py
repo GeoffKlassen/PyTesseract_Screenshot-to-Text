@@ -13,7 +13,7 @@ from LanguageDictionaries import *
 """
 
 
-study_to_analyze = studies[2]
+study_to_analyze = studies[1]
 # Use studies[0] for the HappyB2.0 study (pre-launch prep)
 # Use studies[1] for the HappyB2.0 study (2024 Aug-Dec)
 # Use studies[2] for the BCH study
