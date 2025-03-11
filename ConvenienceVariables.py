@@ -56,6 +56,7 @@ TOTAL_UNLOCKS = 'total unlocks'
 DAY_NAME_HEADING = 'day name'
 VIEW_MORE_HEADING = ' '.join(['view more', ANDROID])
 REST_OF_THE_DAY = ' '.join(['rest of the day', ANDROID])
+SEARCH_APPS = 'Search apps'
 
 GOOGLE = 'Google'
 VERSION_2018 = 'Android 2018'

@@ -67,6 +67,7 @@ class Screenshot:
         self.errors = []
         self.num_values_low_conf = 0
         self.num_missed_values = 0
+        self.text_hash = None
 
     def __str__(self):
         s_date = f"Date submitted: {self.date_submitted}".ljust(33)
@@ -173,3 +174,6 @@ class Screenshot:
 
     def set_device_os_detected(self, _os):
         self.device_os_detected = _os
+
+    def set_hash(self, _hash):
+        self.text_hash = _hash

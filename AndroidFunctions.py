@@ -130,6 +130,11 @@ SAMSUNG_UNLOCKS_FORMAT = {ITA: ['# volte', '# in totale'],
                           GER: ['TODO FILL THIS IN'],  # TODO Fill this in
                           FRA: ['TODO FILL THIS IN']}  # TODO Fill this in
 
+SAMSUNG_SEARCH_APPS = {ITA: ['TODO FILL THIS IN'],  # TODO Fill this in
+                       ENG: ['Search apps', 'Search for categories'],
+                       GER: ['TODO FILL THIS IN'],  # TODO Fill this in
+                       FRA: ['TODO FILL THIS IN']}  # TODO Fill this in
+
 # YOU_CAN_SET_DAILY_TIMERS = {ITA: 'Imposta i timer per le app',
 #                             ENG: 'You can set daily timers',
 #                             GER: 'Timer fur Apps einrichten',
@@ -300,6 +305,9 @@ def get_headings(screenshot, time_fmt_short):
 
         elif (min(OCRScript_v3.levenshtein_distance(row_text[-len(key):], key) for key in KEYWORDS_FOR_REST_OF_THE_DAY[lang])) < moe:
             df.loc[i, HEADING_COLUMN] = REST_OF_THE_DAY
+
+        elif (min(OCRScript_v3.levenshtein_distance(row_text[-len(key):], key) for key in SAMSUNG_SEARCH_APPS[lang])) < moe:
+            df.loc[i, HEADING_COLUMN] = SEARCH_APPS
         else:
             df = df.drop(i)
 
@@ -640,9 +648,14 @@ def get_daily_total_and_confidence(screenshot, image, heading):
         total_value_filtered, total_conf = filter_time_text(total_value, total_conf,
                                                             hours_format, minutes_format)
 
+    moe = int(np.log(len(total_value))) + 1
     if min(OCRScript_v3.levenshtein_distance(total_value[-len(key):], key) <= int(np.log(len(key)))
            for key in KEYWORDS_FOR_YESTERDAY[img_lang]):
         print("Daily total found ends in 'yesterday'. Could not find daily total.")
+        return NO_TEXT, NO_CONF
+
+    elif min(OCRScript_v3.levenshtein_distance(total_value, key) for key in SAMSUNG_SEARCH_APPS[img_lang]) <= moe:
+        print("Daily total matches heading 'Search apps' (or 'Search categories'). Could not find daily total.")
         return NO_TEXT, NO_CONF
 
     if total_heading == "total " + SCREENTIME and total_value != total_value_filtered:
@@ -704,11 +717,11 @@ def convert_string_time_to_minutes(str_time, screenshot):
     return time_in_min
 
 
-def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_short):
+def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_short):
     """
 
     :param image:
-    :param heading_above_apps:
+    :param headings_above_apps:
     :param screenshot:
     :param time_format_short:
     :return:
@@ -783,14 +796,22 @@ def crop_image_to_app_area(image, heading_above_apps, screenshot, time_format_sh
         crop_right = int(0.9 * screenshot.width) if android_version == VERSION_2018 else screenshot.width
         # Crop out the > arrows to the right of each app (these appear in the Samsung 2018 version of Dashboard)
 
-        if headings_df[HEADING_COLUMN].isin([heading_above_apps, DAYS_AXIS_HEADING]).any():
-            rows_above_apps = headings_df[headings_df[HEADING_COLUMN].isin([heading_above_apps, DAYS_AXIS_HEADING])]
-            if heading_above_apps in rows_above_apps[HEADING_COLUMN].values:
-                row_above_apps = rows_above_apps[rows_above_apps[HEADING_COLUMN] == heading_above_apps].iloc[0]
+        if headings_df[HEADING_COLUMN].isin(headings_above_apps + [DAYS_AXIS_HEADING]).any():
+            rows_above_apps = headings_df[headings_df[HEADING_COLUMN].isin(headings_above_apps + [DAYS_AXIS_HEADING])]
+            if any(heading in rows_above_apps[HEADING_COLUMN].values for heading in headings_above_apps):
+                row_above_apps = rows_above_apps[rows_above_apps[HEADING_COLUMN].isin(headings_above_apps)].iloc[0]
             else:
                 row_above_apps = rows_above_apps[rows_above_apps[HEADING_COLUMN] == DAYS_AXIS_HEADING].iloc[0]
             crop_top = row_above_apps['top'] + row_above_apps['height']
             headings_below_apps_df = headings_df[headings_df.index > row_above_apps.name]
+
+            text_df_below_heading = text_df[(text_df.index > row_above_apps.name) &
+                                            (text_df.index != text_df.index[-1]) &
+                                            (text_df['left'] > int(0.05 * screenshot.width))]
+            if not text_df_below_heading.empty:
+                crop_left = max(0, int(np.median(text_df_below_heading['left']) - 0.02 * screenshot.width))
+                crop_right = max(0, screenshot.width - crop_left - int(0.04 * screenshot.width))
+
             if not headings_below_apps_df.empty:
                 row_below_apps = headings_below_apps_df.iloc[0]
                 crop_bottom = row_below_apps['top']

@@ -725,7 +725,7 @@ def erase_value_bars_and_icons(screenshot, df, image):
 
         if erase_icon and left < 0.10 * image_width:
             # These values are from the scope of the parent function
-            cv2.rectangle(image, (0, top - int(0.5 * height)), (left - 2, image_height), background_colour, -1)
+            cv2.rectangle(image, (0, top - int(0.5 * height)), (int(0.7*left), image_height), background_colour, -1)
 
         # Find the top of the bar
         for row in range(r, min([image_height, r + h_max])):

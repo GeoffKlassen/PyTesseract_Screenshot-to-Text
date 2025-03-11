@@ -997,19 +997,8 @@ def add_screenshot_info_to_master_df(screenshot, idx):
         # Do not hash screenshots that contain no daily total or app-level info.
         current_screenshot_hash = None
     else:
-        # Create a hash for the screenshot, using its detected data.
-        string_to_hash = (str(screenshot.language) +
-                          str(screenshot.device_os_detected) +
-                          str(screenshot.android_version) +
-                          str(screenshot.date_detected) +
-                          str(screenshot.time_period) +
-                          str(screenshot.category_detected) +
-                          str(screenshot.daily_total))
-        for n in range(1, max_apps_per_category + 1):
-            string_to_hash += screenshot.app_data['name'][n] + str(screenshot.app_data['number'][n])
-        current_screenshot_hash = hashlib.md5(string_to_hash.encode()).hexdigest()
         # Find all other screenshots with the same hash
-        matching_screenshots = all_screenshots_df[(all_screenshots_df['hashed'] == current_screenshot_hash) &
+        matching_screenshots = all_screenshots_df[(all_screenshots_df['hashed'] == screenshot.text_hash) &
                                                   (all_screenshots_df['hashed'] is not None)]
         if not matching_screenshots.empty:
             num_duplicates = len(matching_screenshots) + 1
@@ -1049,7 +1038,7 @@ def add_screenshot_info_to_master_df(screenshot, idx):
         all_screenshots_df.loc[idx, f'app_{n}_name'] = screenshot.app_data['name'][n]
         all_screenshots_df.loc[idx, f'app_{n}_number'] = screenshot.app_data['number'][n]
 
-    all_screenshots_df.loc[idx, 'hashed'] = current_screenshot_hash
+    all_screenshots_df.loc[idx, 'hashed'] = screenshot.text_hash
     all_screenshots_df.loc[idx, 'num_review_reasons'] = len(screenshot.errors) - (1 if ERR_DUPLICATE_DATA in screenshot.errors else 0)
     for col in screenshot.data_row.columns:
         if col == ERR_CONFIDENCE:
@@ -1220,6 +1209,9 @@ if __name__ == '__main__':
         current_screenshot.set_text(text_df)
         current_screenshot.set_words_df(text_df_single_words)
 
+        all_text_in_one_string = ''.join(text_df['text'])
+        current_screenshot.set_hash(hashlib.md5(all_text_in_one_string.encode()).hexdigest())
+
         # Get the language of the image, and assign that language to the screenshot & user (if a language was detected)
         image_language, language_was_detected = determine_language_of_image(current_participant, text_df)
         current_screenshot.set_language(image_language)
@@ -1363,15 +1355,15 @@ if __name__ == '__main__':
             # For Samsung_2021 and 2018 versions of the dashboard, the Screentime heading and Notifications heading
             # both have sub-headings ('most used' and 'most notifications', respectively).
             if dashboard_category == SCREENTIME:
-                heading_above_apps = MOST_USED_APPS_HEADING
+                headings_above_apps = [MOST_USED_APPS_HEADING, SEARCH_APPS]
                 # Determine whether the row of text immediately above the app area is found
                 # (used in ParticipantClass for comparing two screenshots from the same person & day & category)
                 current_screenshot.set_screentime_subheading_found(False)
             elif dashboard_category == NOTIFICATIONS:
-                heading_above_apps = MOST_NOTIFICATIONS_HEADING
+                headings_above_apps = [MOST_NOTIFICATIONS_HEADING, SEARCH_APPS]
                 current_screenshot.set_notifications_subheading_found(False)
             else:  # dashboard_category == UNLOCKS, or no dashboard category
-                heading_above_apps = None
+                headings_above_apps = None
                 current_screenshot.set_pickups_subheading_found(False)
 
             # if the daily total is 0 (and not GOOGLE unlocks version), then there will be no app-level data to extract.
@@ -1405,7 +1397,7 @@ if __name__ == '__main__':
             # Crop the image to the app-specific region
             cropped_image, crop_coordinates = (
                 Android.crop_image_to_app_area(image=bw_image_scaled,
-                                               heading_above_apps=heading_above_apps,
+                                               headings_above_apps=headings_above_apps,
                                                screenshot=current_screenshot,
                                                time_format_short=time_format_short))
             (app_area_crop_top, app_area_crop_left,
