@@ -990,7 +990,7 @@ def get_app_names_and_numbers(screenshot, crop_img, df, category, max_apps):
             row_text = ' '.join(row_text.split()[1:]) if (len(row_text.split()) > 1 and row_left <= 2 and len(row_text.split()[0]) <= 2) else row_text
 
             # row_height > 0.75 * df['height'].mean() and \
-            if (len(row_text) >= 3 or row_text == 'X') and \
+            if row_left < int(0.5 * crop_width) and (len(row_text) >= 3 or row_text == 'X') and \
                     not re.match(value_format, row_text, re.IGNORECASE) and \
                     row_text[0].isalnum() or \
                     (row_text == '4' and

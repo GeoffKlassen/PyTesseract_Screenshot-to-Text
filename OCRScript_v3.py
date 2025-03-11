@@ -858,12 +858,12 @@ def extract_app_info(screenshot, image, coordinates, scale):
                     print("Horizontal area of solid colour found above first row of text; erasing that area.")
                     break
 
-        for i in app_info_scan_1.index:
-            if app_info_scan_1['conf'][i] < conf_limit:
+        for _i in app_info_scan_1.index:
+            if app_info_scan_1['conf'][_i] < conf_limit:
                 continue
-            upper_left_corner = (app_info_scan_1['left'][i] - 1, app_info_scan_1['top'][i] - 1)
-            bottom_right_corner = (app_info_scan_1['left'][i] + app_info_scan_1['width'][i] + 1,
-                                   app_info_scan_1['top'][i] + app_info_scan_1['height'][i] + 1)
+            upper_left_corner = (app_info_scan_1['left'][_i] - 1, app_info_scan_1['top'][_i] - 1)
+            bottom_right_corner = (app_info_scan_1['left'][_i] + app_info_scan_1['width'][_i] + 1,
+                                   app_info_scan_1['top'][_i] + app_info_scan_1['height'][_i] + 1)
             cv2.rectangle(image_missed_text, upper_left_corner, bottom_right_corner, bg_colour, -1)
 
         app_info_names_only = app_info_scan_1[~app_info_scan_1['text'].str.fullmatch(misread_time_or_number_format)]
@@ -899,6 +899,8 @@ def extract_app_info(screenshot, image, coordinates, scale):
         if not rows_with_hours_axis.empty:
             app_info = app_info[app_info.index > rows_with_hours_axis.index[0]]
 
+        app_info = app_info[app_info['left'] < int(0.95*image.shape[1])]
+
     app_info = app_info.reset_index(drop=True)
 
     return app_info
@@ -910,7 +912,7 @@ def get_dashboard_category(screenshot):
     :param screenshot:
     :return:
     """
-    device_os = screenshot.device_os_detected
+    dev_os = screenshot.device_os_detected
     heads_df = screenshot.headings_df
     # Get the category of data that is visible in the screenshot (Screen time, pickups, or notifications)
     if study_category is not None:
@@ -921,7 +923,7 @@ def get_dashboard_category(screenshot):
         category_detected = True
         category = study_category
     elif not heads_df.empty:
-        category = iOS.get_dashboard_category(screenshot) if device_os == IOS else \
+        category = iOS.get_dashboard_category(screenshot) if dev_os == IOS else \
             Android.get_dashboard_category(screenshot)
         if category is None:
             category_detected = False
@@ -963,21 +965,20 @@ def update_eta(ss_start_time, idx):
         str_time = str_hr + str_min + str_sec
         return str_time
 
-    elapsed_time_in_seconds = time.time() - start_time
-    ss_time = time.time() - ss_start_time
+    current_time = time.time()
+    elapsed_time_in_seconds = current_time - start_time
+    ss_time = current_time - ss_start_time
 
     print(f"\n\nElapsed time:  {convert_seconds_to_hms(elapsed_time_in_seconds)}")
 
     all_times.loc[idx, 'time'] = ss_time
     all_times.loc[idx, 'elapsed_time'] = elapsed_time_in_seconds
-    number_to_average = 20
     if not all_times.empty:
-        average_time_per_screenshot = sum(all_times['time']) / all_times.shape[0]
-        estimated_time_remaining = (average_time_per_screenshot - 0.2) * (min([test_upper_bound, num_urls]) - index - 1)
+        average_time_per_screenshot = np.median(all_times['time'])
+        estimated_time_remaining = (average_time_per_screenshot*0.8) * (min([test_upper_bound, num_urls]) - index - 1)
         all_times.loc[idx, 'eta'] = estimated_time_remaining
         if estimated_time_remaining > 0:
             print(f"Estimated time remaining:  {convert_seconds_to_hms(estimated_time_remaining)}")
-
 
     return
 
