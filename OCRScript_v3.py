@@ -1004,7 +1004,7 @@ def add_screenshot_info_to_master_df(screenshot, idx):
             num_duplicates = len(matching_screenshots) + 1
             # There are other screenshots with the same data
             screenshot.add_error(ERR_DUPLICATE_DATA)
-            screenshot.add_error(ERR_DUPLICATE_COUNTS)
+            # screenshot.add_error(ERR_DUPLICATE_COUNTS)
             if not (ERR_DUPLICATE_DATA in all_screenshots_df.columns):
                 # Make sure the ERR_DUPLICATE_DATA and ERR_DUPLICATE_COUNTS columns exist
                 all_screenshots_df[ERR_DUPLICATE_DATA] = None
@@ -1014,12 +1014,9 @@ def add_screenshot_info_to_master_df(screenshot, idx):
             else:
                 same_or_other_user = "SAME USER"
             for n in matching_screenshots.index:
-                if all_screenshots_df.loc[n, ERR_DUPLICATE_DATA] is None:
-                    all_screenshots_df.loc[n, 'num_review_reasons'] += 1
                 all_screenshots_df.loc[n, ERR_DUPLICATE_DATA] = same_or_other_user
                 all_screenshots_df.loc[n, ERR_DUPLICATE_COUNTS] = num_duplicates
-            # all_screenshots_df.loc[all_screenshots_df['hashed'] == current_screenshot_hash, ERR_DUPLICATE_DATA] = same_or_other_user
-            # all_screenshots_df.loc[all_screenshots_df['hashed'] == current_screenshot_hash, ERR_DUPLICATE_COUNTS] += 1
+                all_screenshots_df.loc[n, 'num_review_reasons'] += 1
 
     all_screenshots_df.loc[idx, 'image_url'] = screenshot.url
     all_screenshots_df.loc[idx, 'participant_id'] = screenshot.user_id
@@ -1039,7 +1036,7 @@ def add_screenshot_info_to_master_df(screenshot, idx):
         all_screenshots_df.loc[idx, f'app_{n}_number'] = screenshot.app_data['number'][n]
 
     all_screenshots_df.loc[idx, 'hashed'] = screenshot.text_hash
-    all_screenshots_df.loc[idx, 'num_review_reasons'] = len(screenshot.errors) - (1 if ERR_DUPLICATE_DATA in screenshot.errors else 0)
+    all_screenshots_df.loc[idx, 'num_review_reasons'] = len(screenshot.errors)
     for col in screenshot.data_row.columns:
         if col == ERR_CONFIDENCE:
             all_screenshots_df.loc[idx, col] = screenshot.num_values_low_conf
@@ -1047,8 +1044,7 @@ def add_screenshot_info_to_master_df(screenshot, idx):
             all_screenshots_df.loc[idx, col] = screenshot.num_missed_values
         elif col == ERR_DUPLICATE_DATA:
             all_screenshots_df.loc[idx, col] = same_or_other_user
-        elif col == ERR_DUPLICATE_COUNTS:
-            all_screenshots_df.loc[idx, col] = num_duplicates
+            all_screenshots_df.loc[idx, ERR_DUPLICATE_COUNTS] = num_duplicates
         elif col.startswith("ERR"):
             all_screenshots_df.loc[idx, col] = True
         else:
