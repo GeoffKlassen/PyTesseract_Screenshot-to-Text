@@ -35,7 +35,7 @@ TIME_FORMATS = [r'^[0-9ilLT]?[0-9aAilLStT]\s?hhh\s?[0-9aAilLT]?[0-9aAilLoStT]\s?
                 r'^[0-9ilLT]?[0-9aAilLStT]\s?HHH\s?[0-9aAilLT]?[0-9aAilLoStT]\s?MMM$',  # Format for ## hours ## minutes
                 r'^[01ilLT]?[0-9aAilLStT]\s?HHH$',                                     # Format for ## hours
                 r'^[0-9aAilT]?[0-9AlLOStT]\s?MMM$']                                    # Format for ## minutes
-# Sometimes pytesseract mistakes digits for A, I, L, S, or T (e.g.  A = 4,   I/L/T = 1,   S = 5)
+# Sometimes pytesseract mistakes digits for letters (e.g.  A = 4,   I/L/T = 1,   S = 5)
 # Including these letters in the regex ensures that times with a misread digit still match a time format.
 
 KEYWORDS_FOR_HOURS = {ITA: ['ore', 'ora'],
@@ -486,6 +486,8 @@ def filter_time_text(text, conf, hr_f, min_f):
     text2 = re.sub(r"((?<=\d\s)he)|((?<=\d)he)", "hr", text2)
     text2 = re.sub(r"((?<=\d\s)by)|((?<=\d)by)", "hr", text2)
     text2 = re.sub(r"((?<=\d\s)kr)|((?<=\d)kr)", "hr", text2)
+    text2 = re.sub(r"(7(?=\d))", "1", text2)
+    text2 = re.sub(r"(8(?=\d))", "3", text2)  # Might be better to replace 8's with 5's? Have to investigate
     text2 = text2.replace('hr.', 'hr')
 
     # Replace common misread characters (e.g. pytesseract sometimes misreads '1h' as 'Th'/'th').
@@ -498,7 +500,7 @@ def filter_time_text(text, conf, hr_f, min_f):
     text2 = replace_misread_digit('(o|O)', '0', text2)
     text2 = replace_misread_digit('(b)', '6', text2)
 
-    text2 = re.sub(r"^[0-9a-zA-Z]", '', text2)
+    text2 = re.sub(r"[^0-9a-zA-Z\s]", '', text2)
 
     return text2, conf
 
@@ -887,11 +889,13 @@ def consolidate_overlapping_text(df, time_format_eol):
         prev_top = df['top'][i - 1]
         prev_bottom = df['top'][i - 1] + df['height'][i - 1]
 
+        current_text = df['text'][i]
+        previous_text = df['text'][i - 1]
         current_textbox = Rectangle(current_left, current_top, current_right, current_bottom)
         prev_textbox = Rectangle(prev_left, prev_top, prev_right, prev_bottom)
 
-        current_num_digits = len(re.findall(r'\d', df['text'][i]))
-        prev_num_digits = len(re.findall(r'\d', df['text'][i - 1]))
+        current_num_digits = len(re.findall(r'\d', current_text))
+        prev_num_digits = len(re.findall(r'\d', previous_text))
 
         if calculate_overlap(current_textbox, prev_textbox) > 0.5:  # Used to be 0.3; revert if it causes issues.
             # If two text boxes overlap by at least 50%, consider them to be two readings of the same text.
@@ -901,21 +905,25 @@ def consolidate_overlapping_text(df, time_format_eol):
             elif (not re.search(time_format_eol, df.loc[i, 'text']) and
                   re.search(time_format_eol, df.loc[i - 1, 'text'])):
                 rows_to_drop.append(i)
+            elif current_text == "X" and previous_text != "X":
+                rows_to_drop.append(i - 1)
+            elif current_text != "X" and previous_text == "X":
+                rows_to_drop.append(i)
             elif current_num_digits > prev_num_digits:
                 rows_to_drop.append(i - 1)
             elif current_num_digits < prev_num_digits:
                 rows_to_drop.append(i)
-            elif len(df['text'][i - 1]) > len(df['text'][i]):
+            elif len(previous_text) > len(current_text):
                 rows_to_drop.append(i)
-            elif len(df['text'][i]) > len(df['text'][i - 1]):
+            elif len(current_text) > len(previous_text):
                 rows_to_drop.append(i - 1)
             elif df['conf'][i - 1] > df['conf'][i]:
-                if df['text'][i - 1] == 'min':
+                if previous_text == 'min':
                     rows_to_drop.append(i - 1)
                 else:
                     rows_to_drop.append(i)
             else:
-                if df['text'][i] == 'min':
+                if current_text == 'min':
                     rows_to_drop.append(i)
                 else:
                     rows_to_drop.append(i - 1)

@@ -6,7 +6,7 @@ from ConvenienceVariables import *
 
 
 def initialize_data_row():
-    df = pd.DataFrame(columns=['image_url', 'participant_id', 'language',
+    df = pd.DataFrame(columns=['image_url', 'participant_id', 'device_id', 'language',
                                'device_os', 'android_version',
                                'date_submitted', 'date_detected', 'day_type',
                                'category_submitted', 'category_detected'])
@@ -21,7 +21,7 @@ def initialize_data_row():
 
 class Screenshot:
 
-    def __init__(self, participant, url, device_os=None, date=None, category=None):
+    def __init__(self, participant, url, device_id=None, device_os=None, date=None, category=None):
         """Initialize an object of type Screenshot
             :param participant: the participant (object) that submitted this screenshot (has variable user_id)
             :param url: the full https://.../image.jpg URL as taken from the database of URLs
@@ -31,6 +31,7 @@ class Screenshot:
         self.url = url
         self.filename = url[url.rfind('/') + 1:] if url is not None else None
         self.user_id = participant.user_id
+        self.device_id = device_id
         self.device_os_submitted = device_os
         self.device_os_detected = device_os
         self.android_version = None

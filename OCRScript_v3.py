@@ -289,6 +289,11 @@ def merge_df_rows_by_line_num(df):
     df['right'] = df['left'] + df['width']
     df['bottom'] = df['top'] + df['height']
 
+
+    if df['text'].eq("X").any():
+        df['next_top'] = df['top'].shift(-1)
+        df.loc[(df['text'] == "X") & (df['bottom'] < df['next_top']), 'line_num'] = 0
+
     df_rows_merged = df.groupby(['page_num',
                                  'block_num',
                                  'par_num',
@@ -659,9 +664,9 @@ def get_os(dev_id, screenshot=None):
         screenshot.add_error(ERR_DEVICE_ID)
     if dev_id is None:
         return None
-    elif len(dev_id) == 16:
+    elif len(dev_id) == 16 or ANDROID.upper() in dev_id:
         return ANDROID
-    elif len(dev_id) == 32:
+    elif len(dev_id) == 32 or IOS.upper() in dev_id:
         return IOS
     else:
         # If the Device ID is a hexadecimal string that is not 16- or 32-digits, we can't guarantee the phone OS.
@@ -932,7 +937,8 @@ def get_dashboard_category(screenshot):
     return category, category_detected
 
 
-def update_eta(most_recent_times):
+def update_eta(ss_start_time, idx):
+
     def convert_seconds_to_hms(sec):
         _hr = int(sec / 3600)
         _min = int((sec / 60) % 60)
@@ -958,18 +964,20 @@ def update_eta(most_recent_times):
         return str_time
 
     elapsed_time_in_seconds = time.time() - start_time
-    while len(most_recent_times) > 20:
-        del most_recent_times[0]
+    ss_time = time.time() - ss_start_time
 
     print(f"\n\nElapsed time:  {convert_seconds_to_hms(elapsed_time_in_seconds)}")
 
-    if len(most_recent_times) > 0:
-        average_time_per_recent_screenshot = sum(most_recent_times) / len(most_recent_times)
-        max_recent_times = max(most_recent_times)
-        estimated_time_per_screenshot = np.average([average_time_per_recent_screenshot, max_recent_times])
-        estimated_time_remaining = estimated_time_per_screenshot * (min([test_upper_bound, num_urls]) - index - 1)
+    all_times.loc[idx, 'time'] = ss_time
+    all_times.loc[idx, 'elapsed_time'] = elapsed_time_in_seconds
+    number_to_average = 20
+    if not all_times.empty:
+        average_time_per_screenshot = sum(all_times['time']) / all_times.shape[0]
+        estimated_time_remaining = (average_time_per_screenshot - 0.2) * (min([test_upper_bound, num_urls]) - index - 1)
+        all_times.loc[idx, 'eta'] = estimated_time_remaining
         if estimated_time_remaining > 0:
             print(f"Estimated time remaining:  {convert_seconds_to_hms(estimated_time_remaining)}")
+
 
     return
 
@@ -1019,6 +1027,7 @@ def add_screenshot_info_to_master_df(screenshot, idx):
 
     all_screenshots_df.loc[idx, 'image_url'] = screenshot.url
     all_screenshots_df.loc[idx, 'participant_id'] = screenshot.user_id
+    all_screenshots_df.loc[idx, 'device_id'] = screenshot.device_id
     all_screenshots_df.loc[idx, 'language'] = screenshot.language
     all_screenshots_df.loc[idx, 'device_os'] = screenshot.device_os_detected
     all_screenshots_df.loc[idx, 'android_version'] = screenshot.android_version
@@ -1086,8 +1095,7 @@ if __name__ == '__main__':
 
     # Time the data extraction process
     start_time = time.time()
-    list_of_recent_times = []
-    # Cycle through the images, creating a screenshot object for each one
+    all_times = pd.DataFrame(columns=['time', 'elapsed_time', 'eta'])
 
     all_screenshots_df = ScreenshotClass.initialize_data_row()
 
@@ -1102,7 +1110,6 @@ if __name__ == '__main__':
         print(f"\n\nFile {index + 1} of {min_url_index}: {url_list[IMG_URL][index]}")
 
         screenshot_time_start = time.time()
-
         device_id = url_list[DEVICE_ID][index]
         # Load the participant for the current screenshot if they already exist, or create a new participant if not
         current_participant = get_or_create_participant(users=participants,
@@ -1111,7 +1118,7 @@ if __name__ == '__main__':
 
         current_screenshot = Screenshot(participant=current_participant,
                                         url=url_list[IMG_URL][index],
-                                        # device_os=get_os(url_list[DEVICE_ID][index]),
+                                        device_id=device_id,
                                         date=url_list[RESPONSE_DATE][index],
                                         category=url_list[IMG_RESPONSE_TYPE][index])
         device_os = get_os(device_id, current_screenshot)
@@ -1138,8 +1145,7 @@ if __name__ == '__main__':
             current_participant.add_screenshot_data(current_screenshot)
 
             add_screenshot_info_to_master_df(current_screenshot, index)
-
-            update_eta(list_of_recent_times)  # Update the ETA without adding the current screenshot's time to the list
+            update_eta(screenshot_time_start, index)  # Update the ETA without adding the current screenshot's time to the list
             continue
 
         is_light_mode = True if np.mean(grey_image) > 170 else False
@@ -1196,7 +1202,7 @@ if __name__ == '__main__':
             current_participant.add_screenshot_data(current_screenshot)
 
             add_screenshot_info_to_master_df(current_screenshot, index)
-            update_eta(list_of_recent_times)  # Update the ETA without adding the current screenshot's time to the list
+            update_eta(screenshot_time_start, index)
             continue
 
         # If there was text found, we can keep going
@@ -1277,7 +1283,7 @@ if __name__ == '__main__':
                 current_participant.add_screenshot_data(current_screenshot)
 
                 add_screenshot_info_to_master_df(current_screenshot, index)
-                update_eta(list_of_recent_times)  # Update the ETA w/o adding the current screenshot's time to the list
+                update_eta(screenshot_time_start, index)  # Update the ETA w/o adding the current screenshot's time to the list
                 continue
 
             if day_type is None and date_in_screenshot is not None:
@@ -1370,8 +1376,8 @@ if __name__ == '__main__':
                 add_screenshot_info_to_master_df(current_screenshot, index)
 
                 screenshot_time = time.time() - screenshot_time_start
-                list_of_recent_times.append(screenshot_time)
-                update_eta(list_of_recent_times)
+
+                update_eta(screenshot_time_start, index)
                 continue
 
             if dashboard_category == UNLOCKS and android_version in [SAMSUNG_2024, SAMSUNG_2021, VERSION_2018]:
@@ -1383,8 +1389,8 @@ if __name__ == '__main__':
                 add_screenshot_info_to_master_df(current_screenshot, index)
 
                 screenshot_time = time.time() - screenshot_time_start
-                list_of_recent_times.append(screenshot_time)
-                update_eta(list_of_recent_times)
+
+                update_eta(screenshot_time_start, index)
                 continue
 
             # Crop the image to the app-specific region
@@ -1407,8 +1413,8 @@ if __name__ == '__main__':
                 add_screenshot_info_to_master_df(current_screenshot, index)
 
                 screenshot_time = time.time() - screenshot_time_start
-                list_of_recent_times.append(screenshot_time)
-                update_eta(list_of_recent_times)
+
+                update_eta(screenshot_time_start, index)
                 continue
 
             app_area_crop_width = app_area_crop_right - app_area_crop_left
@@ -1572,8 +1578,8 @@ if __name__ == '__main__':
                 add_screenshot_info_to_master_df(current_screenshot, index)
 
                 screenshot_time = time.time() - screenshot_time_start
-                list_of_recent_times.append(screenshot_time)
-                update_eta(list_of_recent_times)
+
+                update_eta(screenshot_time_start, index)
                 continue
             # Crop image to app region
             cropped_image, crop_coordinates = iOS.crop_image_to_app_area(current_screenshot, headings_above_applist, heading_below_applist)
@@ -1586,8 +1592,8 @@ if __name__ == '__main__':
                 add_screenshot_info_to_master_df(current_screenshot, index)
 
                 screenshot_time = time.time() - screenshot_time_start
-                list_of_recent_times.append(screenshot_time)
-                update_eta(list_of_recent_times)
+
+                update_eta(screenshot_time_start, index)
                 continue
 
             (app_area_crop_top, app_area_crop_left,
@@ -1630,7 +1636,7 @@ if __name__ == '__main__':
 
                 add_screenshot_info_to_master_df(current_screenshot, index)
 
-                update_eta(list_of_recent_times)
+                update_eta(screenshot_time_start, index)
                 continue
 
             value_format = misread_time_format_iOS if dashboard_category == SCREENTIME else misread_number_format_iOS
@@ -1702,11 +1708,13 @@ if __name__ == '__main__':
         else:
             print("Operating System not detected.")
             current_screenshot.add_error(ERR_OS_NOT_FOUND)
+
+            current_screenshot.set_daily_total(NO_TEXT)
             current_screenshot.set_app_data(empty_app_data)
 
             add_screenshot_info_to_master_df(current_screenshot, index)
 
-            update_eta(list_of_recent_times)  # Update ETA without adding current screenshot's time to the list
+            update_eta(screenshot_time_start, index)
             continue
 
         # Count the number of top-n apps/numbers/times whose confidence is below the confidence threshold
@@ -1719,10 +1727,12 @@ if __name__ == '__main__':
         add_screenshot_info_to_master_df(current_screenshot, index)
 
         screenshot_time = time.time() - screenshot_time_start
-        list_of_recent_times.append(screenshot_time)
-        update_eta(list_of_recent_times)
+
+        update_eta(screenshot_time_start, index)
 
         """ End of the for-loop of all URLs """
+
+    total_elapsed_time = time.time() - start_time
 
     all_screenshots_df.index += 1  # So that the index lines up with the file number
 
@@ -1770,4 +1780,6 @@ if __name__ == '__main__':
     all_pickups_screenshots_df.to_csv(f"{study_to_analyze['Name']}_all_pickups_data.csv")
     all_notifications_screenshots_df.to_csv(f"{study_to_analyze['Name']}_all_notifications_data.csv")
 
+    all_times['actual_time_remaining'] = total_elapsed_time - all_times['elapsed_time']
+    all_times.to_csv(f"{study_to_analyze['Name']}_all_ETAs.csv")  # Mostly for interest's sake
     print("Done.")

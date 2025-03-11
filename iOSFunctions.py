@@ -986,6 +986,7 @@ def get_app_names_and_numbers(screenshot, crop_img, df, category, max_apps):
             #     if app_names.shape[0] <= max_apps:
             #         screenshot.add_error(ERR_MISSING_APP)
             #         num_missed_app_values += 2
+
             row_text = ' '.join(row_text.split()[1:]) if (len(row_text.split()) > 1 and row_left <= 2 and len(row_text.split()[0]) <= 2) else row_text
 
             # row_height > 0.75 * df['height'].mean() and \
