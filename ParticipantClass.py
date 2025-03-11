@@ -131,17 +131,22 @@ class Participant:
                         ss.app_data['number_conf'][i]
 
         else:
-            print(f"\nExisting {ss.category_detected} data found for participant {self.user_id} on {ss.date_detected}. "
+            print(f"\nExisting {category} data found for participant {self.user_id} on {ss.date_detected}. "
                   f"Comparisons must be made.")
             value_format = ss.time_format_long if (category == SCREENTIME and device_os == ANDROID) else None
 
-            (self.usage_data.loc[date_index, f'total_{category}'],
-             self.usage_data_conf.loc[date_index, f'total_{category}']) = (
+            best_total, best_total_conf = (
                 OCRScript_v3.choose_between_two_values(text1=self.usage_data.loc[date_index, f'total_{category}'],
                                                        conf1=self.usage_data_conf.loc[date_index, f'total_{category}'],
                                                        text2=ss.daily_total,
                                                        conf2=ss.daily_total_conf,
                                                        val_fmt=value_format))
+            (self.usage_data.loc[date_index, f'total_{category}'],
+             self.usage_data_conf.loc[date_index, f'total_{category}']) = (best_total, best_total_conf)
+            if category == SCREENTIME and best_total == ss.daily_total and best_total_conf == ss.daily_total_conf:
+                self.usage_data.loc[date_index, f'total_{category}_minutes'] = ss.daily_total_minutes
+                self.usage_data_conf.loc[date_index, f'total_{category}_minutes'] = ss.daily_total_conf
+
             moe = 2
             existing_data_lineup_index = -1
             new_data_lineup_index = -1

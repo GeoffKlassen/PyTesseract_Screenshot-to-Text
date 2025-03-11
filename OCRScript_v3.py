@@ -1754,7 +1754,7 @@ if __name__ == '__main__':
             counts_df = counts.reset_index()
             counts_df.columns = ['participant_id', 'count']
 
-            counts_df.to_csv(f"{study_to_analyze['Name']}_duplicate_screenshot_info.csv")
+            counts_df.to_csv(f"{study_to_analyze['Name']} Duplicate Screenshot Info.csv")
             print("Done.")
 
     print("Exporting CSVs...", end='')
