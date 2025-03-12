@@ -345,7 +345,8 @@ def get_android_version(screenshot):
         return None
     elif not heads_df[heads_df['text'].str.isupper()].empty:
         android_ver = VERSION_2018  # TODO: not sure on the year
-    elif max(abs(heads_df['left'] + 0.5 * heads_df['width'] - (0.5 * screenshot.width))) < (0.11 * screenshot.width):
+    elif max(abs(heads_df['left'] + 0.5 * heads_df['width'] - (0.5 * screenshot.width))) < (0.11 * screenshot.width) and \
+            not heads_df[HEADING_COLUMN].eq(VIEW_MORE_HEADING).any():
         # All the headings found are centred
         android_ver = GOOGLE
     elif not (heads_df['heading'].isin(samsung_2021_headings)).any():
@@ -658,6 +659,9 @@ def get_daily_total_and_confidence(screenshot, image, heading):
         print("Daily total matches heading 'Search apps' (or 'Search categories'). Could not find daily total.")
         return NO_TEXT, NO_CONF
 
+    elif min(OCRScript_v3.levenshtein_distance(total_value, key) for key in GOOGLE_LESS_THAN_1_MINUTE[img_lang]) < moe:
+            return '0 ' + KEYWORDS_FOR_MINUTES[img_lang][0], total_conf
+
     if total_heading == "total " + SCREENTIME and total_value != total_value_filtered:
         print(f"Filtered total: replaced '{total_value}' with '{total_value_filtered}'.")
 
@@ -808,9 +812,11 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
             text_df_below_heading = text_df[(text_df.index > row_above_apps.name) &
                                             (text_df.index != text_df.index[-1]) &
                                             (text_df['left'] > int(0.05 * screenshot.width))]
+
             if not text_df_below_heading.empty:
-                crop_left = max(0, int(np.median(text_df_below_heading['left']) - 0.02 * screenshot.width))
-                crop_right = max(0, screenshot.width - crop_left - int(0.04 * screenshot.width))
+                new_crop_left = max(0, int(np.median(text_df_below_heading['left']) - 0.02 * screenshot.width))
+                crop_left = new_crop_left + int(0.12 * screenshot.width if (
+                        android_version != SAMSUNG_2024 and new_crop_left < int(0.15 * screenshot.width)) else 0)
 
             if not headings_below_apps_df.empty:
                 row_below_apps = headings_below_apps_df.iloc[0]
@@ -1055,7 +1061,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
         if screenshot.android_version == GOOGLE:
             _moe = round(np.log(len(s))) + 1 if len(s) >= 1 else 1
             if min(levenshtein_distance(s, item) for item in GOOGLE_LESS_THAN_1_MINUTE[img_lang]) < _moe:
-                return '', '0 minutes'
+                return '', '0 ' + KEYWORDS_FOR_MINUTES[img_lang][0]
             # Sometimes words like 'minutes' can be misread as something like 'minuies'. These are still time values,
             # so we still want to process them as time values.
             s = replace_misread_time_words(s, KEYWORDS_FOR_MINUTES[img_lang], 2)
