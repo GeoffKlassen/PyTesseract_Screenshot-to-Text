@@ -13,7 +13,7 @@ from LanguageDictionaries import *
 """
 
 
-study_to_analyze = studies[1]
+study_to_analyze = studies[2]
 # Use studies[0] for the HappyB2.0 study (pre-launch prep)
 # Use studies[1] for the HappyB2.0 study (2024 Aug-Dec)
 # Use studies[2] for the BCH study
@@ -43,7 +43,7 @@ else:
     # survey_list = [happyb2_baseline_survey, happyb2_daily_survey]     # For HappyB2.0
     survey_list = [bch_survey]  # For Boston Children's Hospital
     categories_included = [SCREENTIME]
-    max_apps_per_category = 8  # The
+    max_apps_per_category = 8  # The maximum number of apps to retrieve in each screenshot
 
 dir_for_downloaded_images = "Saved Images"  # Where to store downloaded images (a sub-folder within the CWD)
 use_downloaded_images = True  # If False, local copies of images are not used (all images are downloaded at runtime).
@@ -62,7 +62,7 @@ conf_limit = 80
 ERR_CONFIDENCE = f"ERR Values below {int(conf_limit)}% confidence"
 
 test_lower_bound = 1
-test_upper_bound = 19313
+test_upper_bound = 10
 # 553 for HappyB2.0 (pre-launch)
 # 19313 URLs for HappyB2.0 2024 Aug-Dec
 # 452 for BCH study

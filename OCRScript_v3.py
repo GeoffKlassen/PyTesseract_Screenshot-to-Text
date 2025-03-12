@@ -1,10 +1,5 @@
 import hashlib
-from os import truncate
-
-from pandas.core.methods.selectn import SelectNSeries
-
 import AndroidFunctions as Android
-import ConvenienceVariables
 import ScreenshotClass
 import iOSFunctions as iOS
 from RuntimeValues import *
@@ -42,27 +37,27 @@ def compile_list_of_urls(df, url_cols,
     for each usage category, multiple columns for only one category, or multiple columns for all three categories).
     """
     url_df = pd.DataFrame(columns=[PARTICIPANT_ID, DEVICE_ID, IS_RESEARCHER, RESPONSE_DATE, IMG_RESPONSE_TYPE, IMG_URL])
-    for i in df.index:
-        user_id = df[id_col][i]
-        device_id = df[device_id_col][i]
+    for _i in df.index:
+        user_id = df[id_col][_i]
+        dev_id = df[device_id_col][_i]
 
         # Extract the response date from the date column, in date format
         try:
-            response_date = datetime.strptime(str(df[date_col][i])[0:10], "%Y-%m-%d")  # YYYY-MM-DD = 10 chars
+            response_date = datetime.strptime(str(df[date_col][_i])[0:10], "%Y-%m-%d")  # YYYY-MM-DD = 10 chars
         except ValueError:  #
             response_date = datetime.strptime("1999-01-01", "%Y-%m-%d")  # TODO: try None?
 
         for key, col_list in url_cols.items():
             for col_name in col_list:
-                url = str(df[col_name][i])
+                url = str(df[col_name][_i])
                 img_response_type = key
                 if not url.startswith("https://file.avicennaresearch.com"):
                     continue
                 # Note: For the Boston Children's Hospital data, all images are of type SCREENTIME
 
                 new_row = {PARTICIPANT_ID: user_id,
-                           DEVICE_ID: device_id,
-                           IS_RESEARCHER: True if df.loc[i, id_col] == IS_RESEARCHER else False,
+                           DEVICE_ID: dev_id,
+                           IS_RESEARCHER: True if df.loc[_i, id_col] == IS_RESEARCHER else False,
                            RESPONSE_DATE: response_date.date(),
                            IMG_RESPONSE_TYPE: img_response_type,
                            IMG_URL: url}
@@ -250,26 +245,26 @@ def merge_df_rows_by_height(df):
     df['right'] = df['left'] + df['width']
     df = df.sort_values(by=['top', 'left']).reset_index(drop=True)
     rows_to_drop = []
-    for i in df.index:
-        if i == 0:
+    for _i in df.index:
+        if _i == 0:
             continue
-        if abs(df.loc[i]['top'] - df.loc[i - 1]['top']) < 15:  # and (df.loc[i]['text'] != "X"):  # Not sure why I did the "X" check
+        if abs(df.loc[_i]['top'] - df.loc[_i - 1]['top']) < 15:  # and (df.loc[_i]['text'] != "X"):  # Not sure why _i did the "X" check
             # If two rows' heights are within 15 pixels of each other and the current row is not "X" (Twitter)
             # TODO replace 15 with a percentage of the screenshot width (define moe = x% of screenshot width)
-            if df.loc[i]['left'] > df.loc[i - 1]['left']:
-                df.at[i - 1, 'text'] = df.loc[i - 1]['text'] + ' ' + df.loc[i]['text']
-                # df.at[i - 1, 'width'] = max(df.loc[i]['right'], df.loc[i - 1]['right']) - min(df.loc[i]['left'],
-                #                                                                               df.loc[i - 1]['right'])
-                df.at[i - 1, 'width'] = df['right'][i] - df['left'][i - 1]
-                df.at[i - 1, 'conf'] = (df.loc[i - 1]['conf'] + df.loc[i]['conf']) / 2
-                rows_to_drop.append(i)
-            elif df.loc[i - 1]['left'] > df.loc[i]['left']:
-                df.at[i, 'text'] = df.loc[i]['text'] + ' ' + df.loc[i - 1]['text']
-                # df.at[i, 'width'] = max(df.loc[i]['right'], df.loc[i - 1]['right']) - min(df.loc[i]['left'],
-                #                                                                           df.loc[i - 1]['right'])
-                df.at[i, 'width'] = df['right'][i - 1] - df['left'][i]
-                df.at[i, 'conf'] = (df.loc[i]['conf'] + df.loc[i - 1]['conf']) / 2
-                rows_to_drop.append(i - 1)
+            if df.loc[_i]['left'] > df.loc[_i - 1]['left']:
+                df.at[_i - 1, 'text'] = df.loc[_i - 1]['text'] + ' ' + df.loc[_i]['text']
+                # df.at[_i - 1, 'width'] = max(df.loc[_i]['right'], df.loc[_i - 1]['right']) - min(df.loc[_i]['left'],
+                #                                                                               df.loc[_i - 1]['right'])
+                df.at[_i - 1, 'width'] = df['right'][_i] - df['left'][_i - 1]
+                df.at[_i - 1, 'conf'] = (df.loc[_i - 1]['conf'] + df.loc[_i]['conf']) / 2
+                rows_to_drop.append(_i)
+            elif df.loc[_i - 1]['left'] > df.loc[_i]['left']:
+                df.at[_i, 'text'] = df.loc[_i]['text'] + ' ' + df.loc[_i - 1]['text']
+                # df.at[_i, 'width'] = max(df.loc[_i]['right'], df.loc[_i - 1]['right']) - min(df.loc[_i]['left'],
+                #                                                                           df.loc[_i - 1]['right'])
+                df.at[_i, 'width'] = df['right'][_i - 1] - df['left'][_i]
+                df.at[_i, 'conf'] = (df.loc[_i]['conf'] + df.loc[_i - 1]['conf']) / 2
+                rows_to_drop.append(_i - 1)
 
     if 'level' in df.columns:
         df.drop(columns=['level'], inplace=True)
@@ -334,7 +329,7 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+',
             return str(int(number))
         except (ValueError, OverflowError):
             # ValueError in case 'value' is not a number
-            # OverflowError in case 'value' is the word 'Infinity' (in which case, 'number' is now inf)
+            # OverflowError in case 'value' is the word 'Infinity' (in which case, NUMBER is now inf)
             return str(value)
 
     # img = cv2.GaussianBlur(img, (7,7), 0)  # Might help finding the large totals, not sure how it affects headings
@@ -410,15 +405,15 @@ def show_image(df, img, draw_boxes=True):
 
     if draw_boxes:
         m = int(6 / scale)  # A small margin to expand the borders of the boxes away from the text
-        for i in df.index:
-            start_point = (df['left'][i] - m, df['top'][i] - m)
-            end_point = (df['left'][i] + df['width'][i] + m,
-                         df['top'][i] + df['height'][i] + m)
+        for _i in df.index:
+            start_point = (df['left'][_i] - m, df['top'][_i] - m)
+            end_point = (df['left'][_i] + df['width'][_i] + m,
+                         df['top'][_i] + df['height'][_i] + m)
 
-            conf_p = df['conf'][i] / 100  # confidence value for each text item, expressed as a proportion from 0 to 1
+            conf_p = df['conf'][_i] / 100  # confidence value for each text item, expressed as a proportion from 0 to 1
             box_color_to_paint = (int(255 * conf_p), int(127 * conf_p), 255 - int(255 * conf_p))
 
-            thick = int(4 / scale) if df['conf'][i] >= conf_limit else int(2 / scale)
+            thick = int(4 / scale) if df['conf'][_i] >= conf_limit else int(2 / scale)
             cv2.rectangle(img, start_point, end_point, box_color_to_paint, thickness=thick)
             # Border colour indicates confidence level. More blue = more confident; more red = less confident.
 
@@ -505,8 +500,8 @@ def get_date_in_screenshot(screenshot):
 
         # Create a translation dictionary to replace non-English month names with English ones.
         months_to_replace = MONTH_ABBREVIATIONS[lang]
-        for i, abbr in enumerate(months_to_replace):
-            month_detected = month_detected.replace(abbr, english_months[i])
+        for _i, abbr in enumerate(months_to_replace):
+            month_detected = month_detected.replace(abbr, english_months[_i])
         month_detected = month_detected[0:3]  # datetime.strptime (used below) requires month to be 3 characters
 
         try:
@@ -696,7 +691,7 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False,
     if val_fmt is None:
         val_fmt = misread_number_format_iOS if value_is_number else misread_time_format_iOS
 
-    format_name = 'number' if value_is_number else 'time'
+    format_name = NUMBER if value_is_number else 'time'
 
     print(f"Comparing scan 1: {t1} {c1}\n       vs scan 2: {t2} {c2}  ——  ", end='')
     if conf1 != NO_CONF and conf2 != NO_CONF:
@@ -918,7 +913,7 @@ def get_dashboard_category(screenshot):
     if study_category is not None:
         # The category is normally 'None' at this point, but if the current study only requested one category
         # of screenshot, then we don't want to look for data from other categories.
-        print(f"{study_to_analyze['Name']} study only requested screenshots of {study_category} data.  "
+        print(f"{study_to_analyze[NAME]} study only requested screenshots of {study_category} data.  "
               f"Category set to '{study_category}'.")
         category_detected = True
         category = study_category
@@ -992,14 +987,14 @@ def add_screenshot_info_to_master_df(screenshot, idx):
     """
     same_or_other_user, num_duplicates = None, None  # Initialize
     if screenshot.daily_total_conf == NO_CONF and \
-            screenshot.app_data['name_conf'].eq(NO_CONF).all() and \
-            screenshot.app_data['number_conf'].eq(NO_CONF).all():
+            screenshot.app_data[NAME_CONF].eq(NO_CONF).all() and \
+            screenshot.app_data[NUMBER_CONF].eq(NO_CONF).all():
         # Do not hash screenshots that contain no daily total or app-level info.
         current_screenshot_hash = None
     else:
         # Find all other screenshots with the same hash
-        matching_screenshots = all_screenshots_df[(all_screenshots_df['hashed'] == screenshot.text_hash) &
-                                                  (all_screenshots_df['hashed'] is not None)]
+        matching_screenshots = all_screenshots_df[(all_screenshots_df[HASHED] == screenshot.text_hash) &
+                                                  (all_screenshots_df[HASHED] is not None)]
         if not matching_screenshots.empty:
             num_duplicates = len(matching_screenshots) + 1
             # There are other screenshots with the same data
@@ -1009,34 +1004,34 @@ def add_screenshot_info_to_master_df(screenshot, idx):
                 # Make sure the ERR_DUPLICATE_DATA and ERR_DUPLICATE_COUNTS columns exist
                 all_screenshots_df[ERR_DUPLICATE_DATA] = None
                 all_screenshots_df[ERR_DUPLICATE_COUNTS] = None
-            if not (matching_screenshots['participant_id'].eq(screenshot.user_id).all()):
+            if not (matching_screenshots[PARTICIPANT_ID].eq(screenshot.user_id).all()):
                 same_or_other_user = "MULTIPLE USERS"
             else:
                 same_or_other_user = "SAME USER"
             for n in matching_screenshots.index:
                 all_screenshots_df.loc[n, ERR_DUPLICATE_DATA] = same_or_other_user
                 all_screenshots_df.loc[n, ERR_DUPLICATE_COUNTS] = num_duplicates
-                all_screenshots_df.loc[n, 'num_review_reasons'] += 1
+                all_screenshots_df.loc[n, REVIEW_COUNT] += 1
 
-    all_screenshots_df.loc[idx, 'image_url'] = screenshot.url
-    all_screenshots_df.loc[idx, 'participant_id'] = screenshot.user_id
-    all_screenshots_df.loc[idx, 'device_id'] = screenshot.device_id
-    all_screenshots_df.loc[idx, 'language'] = screenshot.language
-    all_screenshots_df.loc[idx, 'device_os'] = screenshot.device_os_detected
-    all_screenshots_df.loc[idx, 'android_version'] = screenshot.android_version
-    all_screenshots_df.loc[idx, 'date_submitted'] = screenshot.date_submitted
-    all_screenshots_df.loc[idx, 'date_detected'] = screenshot.date_detected
-    all_screenshots_df.loc[idx, 'day_type'] = screenshot.time_period
-    all_screenshots_df.loc[idx, 'category_submitted'] = screenshot.category_submitted
-    all_screenshots_df.loc[idx, 'category_detected'] = PICKUPS if (
+    all_screenshots_df.loc[idx, IMAGE_URL] = screenshot.url
+    all_screenshots_df.loc[idx, PARTICIPANT_ID] = screenshot.user_id
+    all_screenshots_df.loc[idx, DEVICE_ID] = screenshot.device_id
+    all_screenshots_df.loc[idx, LANGUAGE] = screenshot.language
+    all_screenshots_df.loc[idx, DEVICE_OS] = screenshot.device_os_detected
+    all_screenshots_df.loc[idx, ANDROID_VERSION] = screenshot.android_version
+    all_screenshots_df.loc[idx, DATE_SUBMITTED] = screenshot.date_submitted
+    all_screenshots_df.loc[idx, DATE_DETECTED] = screenshot.date_detected
+    all_screenshots_df.loc[idx, RELATIVE_DAY] = screenshot.time_period
+    all_screenshots_df.loc[idx, CATEGORY_SUBMITTED] = screenshot.category_submitted
+    all_screenshots_df.loc[idx, CATEGORY_DETECTED] = PICKUPS if (
             screenshot.category_detected == UNLOCKS) else screenshot.category_detected
-    all_screenshots_df.loc[idx, 'daily_total'] = screenshot.daily_total
+    all_screenshots_df.loc[idx, DAILY_TOTAL] = screenshot.daily_total
     for n in range(1, max_apps_per_category + 1):
-        all_screenshots_df.loc[idx, f'app_{n}_name'] = screenshot.app_data['name'][n]
-        all_screenshots_df.loc[idx, f'app_{n}_number'] = screenshot.app_data['number'][n]
+        all_screenshots_df.loc[idx, f'{APP}_{n}_{NAME}'] = screenshot.app_data[NAME][n]
+        all_screenshots_df.loc[idx, f'{APP}_{n}_{NUMBER}'] = screenshot.app_data[NUMBER][n]
 
-    all_screenshots_df.loc[idx, 'hashed'] = screenshot.text_hash
-    all_screenshots_df.loc[idx, 'num_review_reasons'] = len(screenshot.errors)
+    all_screenshots_df.loc[idx, HASHED] = screenshot.text_hash
+    all_screenshots_df.loc[idx, REVIEW_COUNT] = len(screenshot.errors)
     for col in screenshot.data_row.columns:
         if col == ERR_CONFIDENCE:
             all_screenshots_df.loc[idx, col] = screenshot.num_values_low_conf
@@ -1045,7 +1040,7 @@ def add_screenshot_info_to_master_df(screenshot, idx):
         elif col == ERR_DUPLICATE_DATA:
             all_screenshots_df.loc[idx, col] = same_or_other_user
             all_screenshots_df.loc[idx, ERR_DUPLICATE_COUNTS] = num_duplicates
-        elif col.startswith("ERR"):
+        elif col.startswith(ERR):
             all_screenshots_df.loc[idx, col] = True
         else:
             pass
@@ -1078,11 +1073,11 @@ if __name__ == '__main__':
 
     # Initialize an empty dataframe of app data
     empty_app_data = pd.DataFrame({
-        'name': [NO_TEXT] * max_apps_per_category,
-        'name_conf': [NO_CONF] * max_apps_per_category,
-        'number': [NO_TEXT if study_category == SCREENTIME else NO_NUMBER] * max_apps_per_category,
-        'number_conf': [NO_CONF] * max_apps_per_category,
-        'minutes': [NO_TEXT] * max_apps_per_category
+        NAME: [NO_TEXT] * max_apps_per_category,
+        NAME_CONF: [NO_CONF] * max_apps_per_category,
+        NUMBER: [NO_TEXT if study_category == SCREENTIME else NO_NUMBER] * max_apps_per_category,
+        NUMBER_CONF: [NO_CONF] * max_apps_per_category,
+        MINUTES: [NO_TEXT] * max_apps_per_category
     })
     empty_app_data.index = pd.Index([idx + 1 for idx in empty_app_data.index])
     # All app_data should have indexes that start at 1 instead of starting at 0
@@ -1452,29 +1447,29 @@ if __name__ == '__main__':
             if dashboard_category == SCREENTIME:
                 for i in range(1, max_apps_per_category + 1):
                     if i in app_data.index:  # Make sure the index exists
-                        app_data.loc[i, 'minutes'] = Android.convert_string_time_to_minutes(
-                            str_time=app_data.loc[i, 'number'],
+                        app_data.loc[i, MINUTES] = Android.convert_string_time_to_minutes(
+                            str_time=app_data.loc[i, NUMBER],
                             screenshot=current_screenshot)
-                app_data['minutes'] = app_data['minutes'].astype(int)
+                app_data[MINUTES] = app_data[MINUTES].astype(int)
 
                 print("\nApp data found:")
-                print(app_data[['name', 'number', 'minutes']])
+                print(app_data[[NAME, NUMBER, MINUTES]])
                 print(f"Daily total {dashboard_category}: {dt} {dtm}")
                 if current_screenshot.daily_total_minutes is not None and current_screenshot.daily_total_minutes != -1:
-                    sum_app_minutes = app_data[app_data['minutes'] != NO_CONF]['minutes'].astype(int).sum()
+                    sum_app_minutes = app_data[app_data[MINUTES] != NO_CONF][MINUTES].astype(int).sum()
                     if int(current_screenshot.daily_total_minutes) < sum_app_minutes:
                         current_screenshot.add_error(ERR_TOTAL_BELOW_APP_SUM)
 
             else:
                 print("\nApp data found:")
-                print(app_data[['name', 'number']])
+                print(app_data[[NAME, NUMBER]])
                 print(f"Daily total {dashboard_category}: {dt}")
                 if current_screenshot.daily_total is not None and \
                         current_screenshot.daily_total != -1 and \
                         current_screenshot.category_detected != UNLOCKS:
                     # Android does not calculate daily unlocks as the sum of the times each app was opened.
                     # Apps can be opened more than once per unlock.
-                    sum_app_numbers = app_data[app_data['number'] != NO_CONF]['number'].astype(int).sum()
+                    sum_app_numbers = app_data[app_data[NUMBER] != NO_CONF][NUMBER].astype(int).sum()
                     if int(current_screenshot.daily_total) < sum_app_numbers:
                         print(current_screenshot.category_detected)
                         current_screenshot.add_error(ERR_TOTAL_BELOW_APP_SUM)
@@ -1678,22 +1673,22 @@ if __name__ == '__main__':
             if dashboard_category == SCREENTIME:
                 for i in range(1, max_apps_per_category + 1):
                     if i in app_data.index:  # Make sure the index exists
-                        app_data.loc[i, 'minutes'] = Android.convert_string_time_to_minutes(
-                            str_time=app_data.loc[i, 'number'],
+                        app_data.loc[i, MINUTES] = Android.convert_string_time_to_minutes(
+                            str_time=app_data.loc[i, NUMBER],
                             screenshot=current_screenshot)
-                app_data['minutes'] = app_data['minutes'].astype(int)
+                app_data[MINUTES] = app_data[MINUTES].astype(int)
                 print("\nApp data found:")
-                print(app_data[['name', 'number', 'minutes']])
+                print(app_data[[NAME, NUMBER, MINUTES]])
                 print(f"Daily total {dashboard_category}: {dt}{dtm}")
 
                 # iOS Daily screentime can exceed the sum of the app times. Do not flag iOS screentime images.
 
             else:
                 print("\nApp data found:")
-                print(app_data[['name', 'number']])
+                print(app_data[[NAME, NUMBER]])
                 print(f"Daily total {dashboard_category}: {dt}")
                 if current_screenshot.daily_total is not None and current_screenshot.daily_total != -1:
-                    sum_app_numbers = app_data[app_data['number'] != NO_CONF]['number'].astype(int).sum()
+                    sum_app_numbers = app_data[app_data[NUMBER] != NO_CONF][NUMBER].astype(int).sum()
                     if int(current_screenshot.daily_total) < sum_app_numbers:
                         current_screenshot.add_error(ERR_TOTAL_BELOW_APP_SUM)
 
@@ -1715,7 +1710,7 @@ if __name__ == '__main__':
             continue
 
         # Count the number of top-n apps/numbers/times whose confidence is below the confidence threshold
-        count_below_conf_limit = app_data[['name_conf', 'number_conf']].map(
+        count_below_conf_limit = app_data[[NAME_CONF, NUMBER_CONF]].map(
             lambda x: 0 < x < conf_limit).sum().sum() + (1 if daily_total_conf < conf_limit else 0)
 
         if count_below_conf_limit > 0:
@@ -1739,7 +1734,7 @@ if __name__ == '__main__':
         all_usage_dataframes.append(p.usage_data)
 
     all_participants_df = pd.concat(all_usage_dataframes, ignore_index=True)
-    all_participants_df = all_participants_df.sort_values(by=['participant_id', 'date']).reset_index(drop=True)
+    all_participants_df = all_participants_df.sort_values(by=[PARTICIPANT_ID, DATE_DETECTED]).reset_index(drop=True)
 
     print("Done.")
 
@@ -1748,35 +1743,35 @@ if __name__ == '__main__':
         # Count occurrences of each participant_id
         if not duplicate_screenshots_df.empty:
             print("Compiling duplicate screenshot info...", end='')
-            counts = duplicate_screenshots_df['participant_id'].value_counts()
+            counts = duplicate_screenshots_df[PARTICIPANT_ID].value_counts()
 
             # Convert the result to a DataFrame
             counts_df = counts.reset_index()
-            counts_df.columns = ['participant_id', 'count']
+            counts_df.columns = [PARTICIPANT_ID, 'count']
 
-            counts_df.to_csv(f"{study_to_analyze['Name']} Duplicate Screenshot Info.csv")
+            counts_df.to_csv(f"{study_to_analyze[NAME]} Duplicate Screenshot Info.csv")
             print("Done.")
 
     print("Exporting CSVs...", end='')
-    all_screenshots_df.drop(columns=['hashed'], inplace=True)
-    all_ios_screenshots_df = all_screenshots_df[all_screenshots_df['device_os'] == IOS]
-    all_android_screenshots_df = all_screenshots_df[all_screenshots_df['device_os'] == ANDROID]
+    all_screenshots_df.drop(columns=[HASHED], inplace=True)
+    all_ios_screenshots_df = all_screenshots_df[all_screenshots_df[DEVICE_OS] == IOS]
+    all_android_screenshots_df = all_screenshots_df[all_screenshots_df[DEVICE_OS] == ANDROID]
 
-    all_screentime_screenshots_df = all_screenshots_df[all_screenshots_df['category_detected'] == SCREENTIME]
-    all_pickups_screenshots_df = all_screenshots_df[(all_screenshots_df['category_detected'] == PICKUPS) |
-                                                    (all_screenshots_df['category_detected'] == UNLOCKS)]
-    all_notifications_screenshots_df = all_screenshots_df[all_screenshots_df['category_detected'] == NOTIFICATIONS]
+    all_screentime_screenshots_df = all_screenshots_df[all_screenshots_df[CATEGORY_DETECTED] == SCREENTIME]
+    all_pickups_screenshots_df = all_screenshots_df[(all_screenshots_df[CATEGORY_DETECTED] == PICKUPS) |
+                                                    (all_screenshots_df[CATEGORY_DETECTED] == UNLOCKS)]
+    all_notifications_screenshots_df = all_screenshots_df[all_screenshots_df[CATEGORY_DETECTED] == NOTIFICATIONS]
 
-    all_participants_df.to_csv(f"{study_to_analyze['Name']} All Participants Temporal Data.csv")
-    all_screenshots_df.to_csv(f"{study_to_analyze['Name']} All Screenshots.csv")
+    all_participants_df.to_csv(f"{study_to_analyze[NAME]} All Participants Temporal Data.csv")
+    all_screenshots_df.to_csv(f"{study_to_analyze[NAME]} All Screenshots.csv")
 
-    all_ios_screenshots_df.to_csv(f"{study_to_analyze['Name']} iOS Data.csv")
-    all_android_screenshots_df.to_csv(f"{study_to_analyze['Name']} Android Data.csv")
+    all_ios_screenshots_df.to_csv(f"{study_to_analyze[NAME]} iOS Data.csv")
+    all_android_screenshots_df.to_csv(f"{study_to_analyze[NAME]} Android Data.csv")
 
-    all_screentime_screenshots_df.to_csv(f"{study_to_analyze['Name']} Screentime Data.csv")
-    all_pickups_screenshots_df.to_csv(f"{study_to_analyze['Name']} Pickups Data.csv")
-    all_notifications_screenshots_df.to_csv(f"{study_to_analyze['Name']} Notifications Data.csv")
+    all_screentime_screenshots_df.to_csv(f"{study_to_analyze[NAME]} Screentime Data.csv")
+    all_pickups_screenshots_df.to_csv(f"{study_to_analyze[NAME]} Pickups Data.csv")
+    all_notifications_screenshots_df.to_csv(f"{study_to_analyze[NAME]} Notifications Data.csv")
 
     all_times['actual_time_remaining'] = total_elapsed_time - all_times['elapsed_time']
-    all_times.to_csv(f"{study_to_analyze['Name']} ETAs.csv")  # Mostly for interest's sake
+    all_times.to_csv(f"{study_to_analyze[NAME]} ETAs.csv")  # Mostly for interest's sake
     print("Done.")

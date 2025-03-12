@@ -32,7 +32,7 @@ export-env {
       }
     }
 
-    let virtual_env = 'C:\Users\geoff\PycharmProjects\Test pythonProject\.venv'
+    let virtual_env = 'C:\Users\Geoff\OneDrive - University of Saskatchewan\Grad Studies\OCRScript_v3\.venv'
     let bin = 'Scripts'
 
     let is_windows = ($nu.os-info.family) == 'windows'

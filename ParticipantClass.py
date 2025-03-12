@@ -1,22 +1,22 @@
 import pandas as pd
 
-import ConvenienceVariables
+from RuntimeValues import *
 import OCRScript_v3
-import RuntimeValues
 import iOSFunctions
 
-ANDROID = ConvenienceVariables.ANDROID
-SCREENTIME = ConvenienceVariables.SCREENTIME
-PICKUPS = ConvenienceVariables.PICKUPS
-NOTIFICATIONS = ConvenienceVariables.NOTIFICATIONS
-UNLOCKS = ConvenienceVariables.UNLOCKS
-MAX_APPS = RuntimeValues.max_apps_per_category
-NO_TEXT = ConvenienceVariables.NO_TEXT
-NO_NUMBER = ConvenienceVariables.NO_NUMBER
-NO_CONF = ConvenienceVariables.NO_CONF
-ERR_FILE_NOT_FOUND = ConvenienceVariables.ERR_FILE_NOT_FOUND
-ERR_UNREADABLE_DATA = ConvenienceVariables.ERR_UNREADABLE_DATA
-ERR_DUPLICATE_DATA = ConvenienceVariables.ERR_DUPLICATE_DATA
+# ANDROID = ConvenienceVariables.ANDROID
+# SCREENTIME = ConvenienceVariables.SCREENTIME
+# PICKUPS = ConvenienceVariables.PICKUPS
+# NOTIFICATIONS = ConvenienceVariables.NOTIFICATIONS
+# UNLOCKS = ConvenienceVariables.UNLOCKS
+# MAX_APPS = RuntimeValues.max_apps_per_category
+# NO_TEXT = ConvenienceVariables.NO_TEXT
+# NO_NUMBER = ConvenienceVariables.NO_NUMBER
+# NO_CONF = ConvenienceVariables.NO_CONF
+# ERR_FILE_NOT_FOUND = ConvenienceVariables.ERR_FILE_NOT_FOUND
+# ERR_UNREADABLE_DATA = ConvenienceVariables.ERR_UNREADABLE_DATA
+# ERR_DUPLICATE_DATA = ConvenienceVariables.ERR_DUPLICATE_DATA
+# PARTICIPANT_ID = ConvenienceVariables.PARTICIPANT_ID
 
 EMPTY_CELL = ''
 
@@ -47,16 +47,16 @@ def edit_distance(s1, s2):
 
 
 def initialize_usage_df():
-    df = pd.DataFrame(columns=['participant_id', 'language', 'date'])
-    for cat in RuntimeValues.categories_included:
-        df[f'total_{cat}'] = None
+    df = pd.DataFrame(columns=[PARTICIPANT_ID, LANGUAGE, DATE_DETECTED])
+    for cat in categories_included:
+        df[f'{TOTAL}_{cat}'] = None
         if cat == SCREENTIME:
-            df[f'total_{SCREENTIME}_minutes'] = None
-        for i in range(1, RuntimeValues.max_apps_per_category + 1):
-            df[f'{cat}_app_{i}_name'] = None
-            df[f'{cat}_app_{i}_number'] = None
+            df[f'{TOTAL}_{SCREENTIME}_{MINUTES}'] = None
+        for i in range(1, max_apps_per_category + 1):
+            df[f'{cat}_{APP}_{i}_{NAME}'] = None
+            df[f'{cat}_{APP}_{i}_{NUMBER}'] = None
             if cat == SCREENTIME:
-                df[f'{SCREENTIME}_app_{i}_minutes'] = None
+                df[f'{SCREENTIME}_{APP}_{i}_{MINUTES}'] = None
     return df
 
 
@@ -86,7 +86,7 @@ class Participant:
             print("No data to add to participant's temporal data.")
             return
 
-        if ss.time_period not in [ConvenienceVariables.YESTERDAY, ConvenienceVariables.DAY_OF_THE_WEEK]:
+        if ss.time_period not in [YESTERDAY, DAY_OF_THE_WEEK]:
             print("Screenshot does not contain data for a previous day. "
                   "Screenshot data will not be added to participant's temporal data.")
             return
@@ -98,37 +98,37 @@ class Participant:
             return
 
         try:
-            date_index = self.usage_data[self.usage_data['date'] == ss.date_detected].index[0]
+            date_index = self.usage_data[self.usage_data[DATE_DETECTED] == ss.date_detected].index[0]
         except IndexError:
             date_index = len(self.usage_data)
             self.usage_data.loc[date_index] = EMPTY_CELL
 
-        if self.usage_data[f'total_{category}'][date_index] == EMPTY_CELL:
+        if self.usage_data[f'{TOTAL}_{category}'][date_index] == EMPTY_CELL:
             print(f"Data from current screenshot added to participant: {self.user_id}    "
                   f"date: {ss.date_detected}    "
                   f"category: '{category}'")
-            self.usage_data.loc[date_index, 'participant_id'] = self.user_id
-            self.usage_data.loc[date_index, 'language'] = self.language
-            self.usage_data.loc[date_index, 'date'] = ss.date_detected
-            self.usage_data.loc[date_index, f'total_{category}'] = ss.daily_total
+            self.usage_data.loc[date_index, PARTICIPANT_ID] = self.user_id
+            self.usage_data.loc[date_index, LANGUAGE] = self.language
+            self.usage_data.loc[date_index, DATE_DETECTED] = ss.date_detected
+            self.usage_data.loc[date_index, f'{TOTAL}_{category}'] = ss.daily_total
 
-            self.usage_data_conf.loc[date_index, 'participant_id'] = self.user_id
-            self.usage_data_conf.loc[date_index, 'language'] = self.language
-            self.usage_data_conf.loc[date_index, 'date'] = ss.date_detected
-            self.usage_data_conf.loc[date_index, f'total_{category}'] = ss.daily_total_conf
+            self.usage_data_conf.loc[date_index, PARTICIPANT_ID] = self.user_id
+            self.usage_data_conf.loc[date_index, LANGUAGE] = self.language
+            self.usage_data_conf.loc[date_index, DATE_DETECTED] = ss.date_detected
+            self.usage_data_conf.loc[date_index, f'{TOTAL}_{category}'] = ss.daily_total_conf
 
             if category == SCREENTIME:
-                self.usage_data.loc[date_index, f'total_{category}_minutes'] = ss.daily_total_minutes
+                self.usage_data.loc[date_index, f'{TOTAL}_{category}_{MINUTES}'] = ss.daily_total_minutes
 
-            for i in range(1, MAX_APPS + 1):
-                self.usage_data.loc[date_index, f'{category}_app_{i}_name'] = ss.app_data['name'][i]
-                self.usage_data.loc[date_index, f'{category}_app_{i}_number'] = ss.app_data['number'][i]
-                self.usage_data_conf.loc[date_index, f'{category}_app_{i}_name'] = ss.app_data['name_conf'][i]
-                self.usage_data_conf.loc[date_index, f'{category}_app_{i}_number'] = ss.app_data['number_conf'][i]
+            for i in range(1, max_apps_per_category + 1):
+                self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{NAME}'] = ss.app_data[NAME][i]
+                self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{NUMBER}'] = ss.app_data[NUMBER][i]
+                self.usage_data_conf.loc[date_index, f'{category}_{APP}_{i}_{NAME}'] = ss.app_data[NAME_CONF][i]
+                self.usage_data_conf.loc[date_index, f'{category}_{APP}_{i}_{NUMBER}'] = ss.app_data[NUMBER_CONF][i]
                 if category == SCREENTIME:
-                    self.usage_data.loc[date_index, f'{category}_app_{i}_minutes'] = ss.app_data['minutes'][i]
-                    self.usage_data_conf.loc[date_index, f'{category}_app_{i}_minutes'] = \
-                        ss.app_data['number_conf'][i]
+                    self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{MINUTES}'] = ss.app_data[MINUTES][i]
+                    self.usage_data_conf.loc[date_index, f'{category}_{APP}_{i}_{MINUTES}'] = \
+                        ss.app_data[NUMBER_CONF][i]
 
         else:
             print(f"\nExisting {category} data found for participant {self.user_id} on {ss.date_detected}. "
@@ -136,32 +136,32 @@ class Participant:
             value_format = ss.time_format_long if (category == SCREENTIME and device_os == ANDROID) else None
 
             best_total, best_total_conf = (
-                OCRScript_v3.choose_between_two_values(text1=self.usage_data.loc[date_index, f'total_{category}'],
-                                                       conf1=self.usage_data_conf.loc[date_index, f'total_{category}'],
+                OCRScript_v3.choose_between_two_values(text1=self.usage_data.loc[date_index, f'{TOTAL}_{category}'],
+                                                       conf1=self.usage_data_conf.loc[date_index, f'{TOTAL}_{category}'],
                                                        text2=ss.daily_total,
                                                        conf2=ss.daily_total_conf,
                                                        val_fmt=value_format))
-            (self.usage_data.loc[date_index, f'total_{category}'],
-             self.usage_data_conf.loc[date_index, f'total_{category}']) = (best_total, best_total_conf)
+            (self.usage_data.loc[date_index, f'{TOTAL}_{category}'],
+             self.usage_data_conf.loc[date_index, f'{TOTAL}_{category}']) = (best_total, best_total_conf)
             if category == SCREENTIME and best_total == ss.daily_total and best_total_conf == ss.daily_total_conf:
-                self.usage_data.loc[date_index, f'total_{category}_minutes'] = ss.daily_total_minutes
-                self.usage_data_conf.loc[date_index, f'total_{category}_minutes'] = ss.daily_total_conf
+                self.usage_data.loc[date_index, f'{TOTAL}_{category}_{MINUTES}'] = ss.daily_total_minutes
+                self.usage_data_conf.loc[date_index, f'{TOTAL}_{category}_{MINUTES}'] = ss.daily_total_conf
 
             moe = 2
             existing_data_lineup_index = -1
             new_data_lineup_index = -1
             lineup_found = False
             existing_data_contains_apps = False
-            for i in range(1, MAX_APPS + 1):
-                if self.usage_data.loc[date_index, f'{category}_app_{i}_name'] == NO_TEXT:
+            for i in range(1, max_apps_per_category + 1):
+                if self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{NAME}'] == NO_TEXT:
                     continue
                 existing_data_contains_apps = True
-                for j in range(1, MAX_APPS + 1):
+                for j in range(1, max_apps_per_category + 1):
                     # compare app name i (from existing data) to app name j (new screenshot data)
                     # if they're equal (and not NO_TEXT), then this is where the two datasets line up.
-                    if ss.app_data['name'][j] == NO_TEXT:
+                    if ss.app_data[NAME][j] == NO_TEXT:
                         continue
-                    elif edit_distance(self.usage_data.loc[date_index, f'{category}_app_{i}_name'], ss.app_data['name'][j]) <= moe:
+                    elif edit_distance(self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{NAME}'], ss.app_data[NAME][j]) <= moe:
                         existing_data_lineup_index = i
                         new_data_lineup_index = j
                         lineup_found = True
@@ -174,12 +174,12 @@ class Participant:
             if not lineup_found:
                 if category == SCREENTIME:
                     # List of column names
-                    existing_values_columns = [f'screentime_app_{i}_minutes' for i in range(1, MAX_APPS + 1)]
-                    new_values = ss.app_data.loc[:, 'minutes']
+                    existing_values_columns = [f'screentime_app_{i}_{MINUTES}' for i in range(1, max_apps_per_category + 1)]
+                    new_values = ss.app_data.loc[:, MINUTES]
 
                 else:
-                    existing_values_columns = [f'{category}_app_{i}_number' for i in range(1, MAX_APPS + 1)]
-                    new_values = ss.app_data.loc[:, 'number']
+                    existing_values_columns = [f'{category}_{APP}_{i}_{NUMBER}' for i in range(1, max_apps_per_category + 1)]
+                    new_values = ss.app_data.loc[:, NUMBER]
                 # Select the row with index 'date_index' for the specified columns
                 existing_values_row = self.usage_data.loc[date_index, existing_values_columns]
                 existing_values_row = existing_values_row.astype(int)
@@ -197,7 +197,7 @@ class Participant:
 
                 if (not pd.isna(min_existing_value) and not pd.isna(max_new_value) and
                         min_existing_value >= max_new_value):
-                    for i in range(MAX_APPS, 0, -1):
+                    for i in range(max_apps_per_category, 0, -1):
                         if existing_values_row[existing_values_columns[i - 1]] == min_existing_value:
                             existing_data_lineup_index = i
                             break
@@ -217,20 +217,20 @@ class Participant:
             compare_df = pd.DataFrame(columns=['ex_name', 'ex_name_conf', 'ex_number', 'ex_number_conf',
                                                'new_name', 'new_name_conf', 'new_number', 'new_number_conf'])
 
-            for i in range(MAX_APPS + 1):
+            for i in range(max_apps_per_category + 1):
                 ex_index = i + existing_data_lineup_index - max_lineup
                 if ex_index > 0:
                     compare_df.loc[i, 'ex_name'] = self.usage_data[
-                        f'{category}_app_{ex_index}_name'][date_index]
+                        f'{category}_{APP}_{ex_index}_{NAME}'][date_index]
                     compare_df.loc[i, 'ex_name_conf'] = self.usage_data_conf[
-                        f'{category}_app_{ex_index}_name'][date_index]
+                        f'{category}_{APP}_{ex_index}_{NAME}'][date_index]
                     compare_df.loc[i, 'ex_number'] = self.usage_data[
-                        f'{category}_app_{ex_index}_number'][date_index]
+                        f'{category}_{APP}_{ex_index}_{NUMBER}'][date_index]
                     compare_df.loc[i, 'ex_number_conf'] = self.usage_data_conf[
-                        f'{category}_app_{ex_index}_number'][date_index]
+                        f'{category}_{APP}_{ex_index}_{NUMBER}'][date_index]
                     if category == SCREENTIME:
                         compare_df.loc[i, 'ex_minutes'] = self.usage_data[
-                            f'{category}_app_{ex_index}_minutes'][date_index]
+                            f'{category}_{APP}_{ex_index}_{MINUTES}'][date_index]
                 else:
                     compare_df.loc[i, 'ex_name'] = NO_TEXT
                     compare_df.loc[i, 'ex_name_conf'] = NO_CONF
@@ -241,12 +241,12 @@ class Participant:
 
                 new_index = i + new_data_lineup_index - max_lineup
                 if new_index > 0:
-                    compare_df.loc[i, 'new_name'] = ss.app_data.loc[new_index, 'name']
-                    compare_df.loc[i, 'new_name_conf'] = ss.app_data.loc[new_index, 'name_conf']
-                    compare_df.loc[i, 'new_number'] = ss.app_data.loc[new_index, 'number']
-                    compare_df.loc[i, 'new_number_conf'] = ss.app_data.loc[new_index, 'number_conf']
+                    compare_df.loc[i, 'new_name'] = ss.app_data.loc[new_index, NAME]
+                    compare_df.loc[i, 'new_name_conf'] = ss.app_data.loc[new_index, NAME_CONF]
+                    compare_df.loc[i, 'new_number'] = ss.app_data.loc[new_index, NUMBER]
+                    compare_df.loc[i, 'new_number_conf'] = ss.app_data.loc[new_index, NUMBER_CONF]
                     if category == SCREENTIME:
-                        compare_df.loc[i, 'new_minutes'] = ss.app_data.loc[new_index, 'minutes']
+                        compare_df.loc[i, 'new_minutes'] = ss.app_data.loc[new_index, MINUTES]
                 else:
                     compare_df.loc[i, 'new_name'] = NO_TEXT
                     compare_df.loc[i, 'new_name_conf'] = NO_CONF
@@ -263,7 +263,7 @@ class Participant:
             #     print("Note: Current screenshot data matches existing data. Screenshot will be flagged.\n")
             #     ss.add_error(ERR_DUPLICATE_DATA)
 
-            for i in range(1, MAX_APPS + 1):
+            for i in range(1, max_apps_per_category + 1):
                 updated_app_name = False  # Initialize
                 existing_name = compare_df.loc[i, 'ex_name']
                 existing_number = compare_df.loc[i, 'ex_number']
@@ -276,14 +276,14 @@ class Participant:
                 elif existing_name == NO_TEXT and new_name != NO_TEXT:
                     print(f"No existing app name in position {i}. Updating to {new_name}.")
                     updated_app_name = True
-                    (self.usage_data.loc[date_index, f'{category}_app_{i}_name'],
-                     self.usage_data_conf.loc[date_index, f'{category}_app_{i}_name']) = (
+                    (self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{NAME}'],
+                     self.usage_data_conf.loc[date_index, f'{category}_{APP}_{i}_{NAME}']) = (
                         new_name, compare_df.loc[i, 'new_name_conf'])
 
                 elif existing_name != NO_TEXT and new_name == NO_TEXT:
                     print(f"No new app name in position {i}. Keeping {existing_name}.")
-                    (self.usage_data.loc[date_index, f'{category}_app_{i}_name'],
-                     self.usage_data_conf.loc[date_index, f'{category}_app_{i}_name']) = (
+                    (self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{NAME}'],
+                     self.usage_data_conf.loc[date_index, f'{category}_{APP}_{i}_{NAME}']) = (
                         existing_name, compare_df.loc[i, 'ex_name_conf'])
 
                 else:
@@ -294,13 +294,13 @@ class Participant:
                     if best_app_name == new_name != existing_name:
                         updated_app_name = True
 
-                    (self.usage_data.loc[date_index, f'{category}_app_{i}_name'],
-                     self.usage_data_conf.loc[date_index, f'{category}_app_{i}_name']) = (best_app_name, best_app_number)
+                    (self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{NAME}'],
+                     self.usage_data_conf.loc[date_index, f'{category}_{APP}_{i}_{NAME}']) = (best_app_name, best_app_number)
 
                 if updated_app_name:
                     print(f"Existing app number '{existing_number if existing_number != NO_TEXT else 'N/A'}' will also be updated to '{new_number}'.")
-                    (self.usage_data.loc[date_index, f'{category}_app_{i}_number'],
-                     self.usage_data_conf.loc[date_index, f'{category}_app_{i}_number']) = (
+                    (self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{NUMBER}'],
+                     self.usage_data_conf.loc[date_index, f'{category}_{APP}_{i}_{NUMBER}']) = (
                         new_number, compare_df.loc[i, 'new_number_conf'])
 
                 elif str(existing_number) == NO_TEXT and str(new_number) == NO_TEXT:
@@ -308,19 +308,19 @@ class Participant:
 
                 elif str(existing_number) == NO_TEXT and str(new_name) != NO_TEXT:
                     print(f"No existing app number in position {i}. Updating to {new_number}.")
-                    (self.usage_data.loc[date_index, f'{category}_app_{i}_number'],
-                     self.usage_data_conf.loc[date_index, f'{category}_app_{i}_number']) = (
+                    (self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{NUMBER}'],
+                     self.usage_data_conf.loc[date_index, f'{category}_{APP}_{i}_{NUMBER}']) = (
                         new_number, compare_df.loc[i, 'new_number_conf'])
 
                 elif str(existing_number) != NO_TEXT and str(new_number) == NO_TEXT:
                     print(f"No new app number in position {i}. Keeping {existing_number}.")
-                    (self.usage_data.loc[date_index, f'{category}_app_{i}_number'],
-                     self.usage_data_conf.loc[date_index, f'{category}_app_{i}_number']) = (
+                    (self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{NUMBER}'],
+                     self.usage_data_conf.loc[date_index, f'{category}_{APP}_{i}_{NUMBER}']) = (
                         existing_number, compare_df.loc[i, 'ex_number_conf'])
 
                 else:
-                    (self.usage_data.loc[date_index, f'{category}_app_{i}_number'],
-                     self.usage_data_conf.loc[date_index, f'{category}_app_{i}_number']) = (
+                    (self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{NUMBER}'],
+                     self.usage_data_conf.loc[date_index, f'{category}_{APP}_{i}_{NUMBER}']) = (
                         OCRScript_v3.choose_between_two_values(text1=compare_df.loc[i, 'ex_number'],
                                                                conf1=compare_df.loc[i, 'ex_number_conf'],
                                                                text2=compare_df.loc[i, 'new_number'],
@@ -328,8 +328,8 @@ class Participant:
                                                                val_fmt=value_format))
 
                 if category == SCREENTIME:
-                    if self.usage_data.loc[date_index, f'{category}_app_{i}_number'] == compare_df.loc[i, 'new_number']:
-                        self.usage_data.loc[date_index, f'{category}_app_{i}_minutes'] = (
+                    if self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{NUMBER}'] == compare_df.loc[i, 'new_number']:
+                        self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{MINUTES}'] = (
                             compare_df.loc)[i, 'new_minutes']
 
     def add_screentime_data(self):

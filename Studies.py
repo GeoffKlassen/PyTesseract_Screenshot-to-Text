@@ -7,7 +7,7 @@ So far:
 import pytesseract
 from ConvenienceVariables import *
 
-coding_location = 'uni'  # uni or home
+coding_location = 'home'  # uni or home
 
 if coding_location == 'uni':
     pc_user = 'gbk546'
@@ -103,9 +103,9 @@ study_happyb2_0 = {NAME: "HappyB2.0 Prep",
                    DEFAULT_LANGUAGE: ENG,
                    SURVEY_LIST: [happyb2_prep_baseline_survey, happyb2_prep_daily_survey_ios, happyb2_prep_daily_survey_android],
                    CATEGORIES: [SCREENTIME, PICKUPS, NOTIFICATIONS],
-                   'User ID Column Name': 'Participant ID',
-                   'Date Column Name': 'Record Time',
-                   'Device ID Column Name': 'Device ID',
+                   USER_ID_COLUMN: 'Participant ID',
+                   DATE_COLUMN: 'Record Time',
+                   DEVICE_ID_COLUMN: 'Device ID',
                    MAX_APPS: 3}
 
 study_happyb2_0_2024 = {NAME: "HappyB2.0 2024 Aug-Dec",
@@ -113,9 +113,9 @@ study_happyb2_0_2024 = {NAME: "HappyB2.0 2024 Aug-Dec",
                         DEFAULT_LANGUAGE: ENG,
                         SURVEY_LIST: [happyb2_baseline_survey, happyb2_daily_survey_ios, happyb2_daily_survey_android],
                         CATEGORIES: [SCREENTIME, PICKUPS, NOTIFICATIONS],
-                        'User ID Column Name': 'Participant.ID',
-                        'Date Column Name': 'Record.Time',
-                        'Device ID Column Name': 'Device.ID',
+                        USER_ID_COLUMN: 'Participant.ID',
+                        DATE_COLUMN: 'Record.Time',
+                        DEVICE_ID_COLUMN: 'Device.ID',
                         MAX_APPS: 3}
 
 study_bch = {NAME: "BCH",
@@ -123,9 +123,9 @@ study_bch = {NAME: "BCH",
              DEFAULT_LANGUAGE: ENG,
              SURVEY_LIST: [bch_survey],
              CATEGORIES: [SCREENTIME],
-             'User ID Column Name': 'Participant ID',
-             'Date Column Name': 'Record Time',
-             'Device ID Column Name': 'Device ID',
+             USER_ID_COLUMN: 'Participant ID',
+             DATE_COLUMN: 'Record Time',
+             DEVICE_ID_COLUMN: 'Device ID',
              MAX_APPS: 8}
 
 studies = [study_happyb2_0, study_happyb2_0_2024, study_bch]

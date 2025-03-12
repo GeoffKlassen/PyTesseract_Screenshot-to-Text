@@ -944,9 +944,9 @@ def get_app_names_and_numbers(screenshot, crop_img, df, category, max_apps):
     :return: A dataframe of length max_apps, with app names and numbers, and their respective confidence values.
     """
     crop_width = crop_img.shape[1]
-    empty_name_row = pd.DataFrame({'name': [NO_TEXT], 'name_conf': [NO_CONF]})
-    empty_number_row = pd.DataFrame({'number': [NO_TEXT], 'number_conf': [NO_CONF]}) if category == SCREENTIME else (
-                       pd.DataFrame({'number': [NO_NUMBER], 'number_conf': [NO_CONF]}))
+    empty_name_row = pd.DataFrame({NAME: [NO_TEXT], NAME_CONF: [NO_CONF]})
+    empty_number_row = pd.DataFrame({NUMBER: [NO_TEXT], NUMBER_CONF: [NO_CONF]}) if category == SCREENTIME else (
+                       pd.DataFrame({NUMBER: [NO_NUMBER], NUMBER_CONF: [NO_CONF]}))
     app_names = empty_name_row.copy()
     app_numbers = empty_number_row.copy()
     if df.empty:
@@ -1002,7 +1002,7 @@ def get_app_names_and_numbers(screenshot, crop_img, df, category, max_apps):
                     if len(app_names) - 1 <= max_apps:
                         num_missed_app_values += 1
                     app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
-                new_name_row = pd.DataFrame({'name': [row_text], 'name_conf': [row_conf]})
+                new_name_row = pd.DataFrame({NAME: [row_text], NAME_CONF: [row_conf]})
                 app_names = pd.concat([app_names, new_name_row], ignore_index=True)
                 prev_row_type = NAME
                 prev_app_name = row_text
@@ -1027,7 +1027,7 @@ def get_app_names_and_numbers(screenshot, crop_img, df, category, max_apps):
                     if len(app_names) - 1 < max_apps:
                         num_missed_app_values += 1
                     app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
-                new_number_row = pd.DataFrame({'number': [row_text], 'number_conf': [row_conf]})
+                new_number_row = pd.DataFrame({NUMBER: [row_text], NUMBER_CONF: [row_conf]})
                 app_numbers = pd.concat([app_numbers, new_number_row], ignore_index=True)
                 prev_row_type = NUMBER
             else:  # row is neither a valid app name nor a number, so discard it
@@ -1037,10 +1037,10 @@ def get_app_names_and_numbers(screenshot, crop_img, df, category, max_apps):
         if num_missed_app_values > 0:
             screenshot.add_error(ERR_MISSING_VALUE, num_missed_app_values)
 
-    # app_names.loc[app_names['name'] == 'Lite', 'name'] = 'Facebook Lite'  # The app "Facebook Lite" appears as 'Lite'
-    app_names['name'] = app_names['name'].apply(lambda x: re.sub(r'\bAl\b', 'AI', x))  # Replace 'Al' with 'AI'
-    app_names['name'] = app_names['name'].apply(lambda x: re.sub(r'^4$', 'X', x))  # Replace '4' with 'X'
-    app_names['name'] = app_names['name'].apply(lambda x: re.sub(r'\\.$', '', x))  # Replace '4' with 'X'
+    # app_names.loc[app_names[NAME] == 'Lite', NAME] = 'Facebook Lite'  # The app "Facebook Lite" appears as 'Lite'
+    app_names[NAME] = app_names[NAME].apply(lambda x: re.sub(r'\bAl\b', 'AI', x))  # Replace 'Al' with 'AI'
+    app_names[NAME] = app_names[NAME].apply(lambda x: re.sub(r'^4$', 'X', x))  # Replace '4' with 'X'
+    app_names[NAME] = app_names[NAME].apply(lambda x: re.sub(r'\\.$', '', x))  # Replace '4' with 'X'
 
     # Making sure each list is the right length (fill any missing values with NO_TEXT/NO_NUMBER and NO_CONF)
     while app_names.shape[0] < max_apps + 1:
@@ -1048,7 +1048,7 @@ def get_app_names_and_numbers(screenshot, crop_img, df, category, max_apps):
     while app_numbers.shape[0] < max_apps + 1:
         app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
 
-    if category == SCREENTIME and screenshot.daily_total in app_numbers['number'].values and \
+    if category == SCREENTIME and screenshot.daily_total in app_numbers[NUMBER].values and \
             screenshot.daily_total != NO_TEXT:
         print(f"Daily total {category} ({screenshot.daily_total}) matches one of the app usage times.")
         print(f"Resetting daily total {category} to N/A.")

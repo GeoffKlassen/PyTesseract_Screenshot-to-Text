@@ -1,4 +1,4 @@
-@set "VIRTUAL_ENV=C:\Users\geoff\PycharmProjects\Test pythonProject\.venv"
+@set "VIRTUAL_ENV=C:\Users\Geoff\OneDrive - University of Saskatchewan\Grad Studies\OCRScript_v3\.venv"
 
 @set "VIRTUAL_ENV_PROMPT="
 @if NOT DEFINED VIRTUAL_ENV_PROMPT (

@@ -6,16 +6,16 @@ from ConvenienceVariables import *
 
 
 def initialize_data_row():
-    df = pd.DataFrame(columns=['image_url', 'participant_id', 'device_id', 'language',
-                               'device_os', 'android_version',
-                               'date_submitted', 'date_detected', 'day_type',
-                               'category_submitted', 'category_detected'])
-    df[f'daily_total'] = None
+    df = pd.DataFrame(columns=[IMAGE_URL, PARTICIPANT_ID, DEVICE_ID, LANGUAGE,
+                               DEVICE_OS, ANDROID_VERSION,
+                               DATE_SUBMITTED, DATE_DETECTED, RELATIVE_DAY,
+                               CATEGORY_SUBMITTED, CATEGORY_DETECTED])
+    df[DAILY_TOTAL] = None
     for i in range(1, RuntimeValues.max_apps_per_category + 1):
-        df[f'app_{i}_name'] = None
-        df[f'app_{i}_number'] = None
-    df['hashed'] = None
-    df['num_review_reasons'] = None
+        df[f'{APP}_{i}_{NAME}'] = None
+        df[f'{APP}_{i}_{NUMBER}'] = None
+    df[HASHED] = None
+    df[REVIEW_COUNT] = None
     return df
 
 

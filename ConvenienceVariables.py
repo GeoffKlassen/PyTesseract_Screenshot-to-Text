@@ -106,11 +106,14 @@ FRA = 'French'
 """
     Study attributes
 """
-NAME = 'Name'
+NAME = 'name'
 DIRECTORY = 'Directory'
 DEFAULT_LANGUAGE = 'Default Language'
 SURVEY_LIST = 'Survey List'
 CATEGORIES = 'Categories'
+USER_ID_COLUMN = 'User ID Column Name'
+DATE_COLUMN = 'Date Column Name'
+DEVICE_ID_COLUMN = 'Device ID Column Name'
 MAX_APPS = 'Maximum Apps per Category'
 
 """
@@ -124,9 +127,9 @@ URL_COLUMNS = 'urls'
 
 # misread_time_format_iOS = r'^[\d|t]+\s?[hn]$|^[\d|t]+\s?[hn]\s?[\d|tA]+\s?(min|m)$|^.{0,2}\s?[0-9AIt]+\s?(min|m)$|\d+\s?s$'
 misread_time_format_iOS = (r'\b[12T]?[0-9toAQ]\s?[hn]\s?[1-5tA]?[0-9tA]\s?mi?n?\b'
-                       r'|\b[12T]?[0-9toA]\s?[hn]\b'
-                       r'|\b[1-5tA]?[0-9itA]\s?mi?n?\b'
-                       r'|\b[1-5]?[0-9O]\s?s\b')
+                           r'|\b[12T]?[0-9toA]\s?[hn]\b'
+                           r'|\b[1-5tA]?[0-9itA]\s?mi?n?\b'
+                           r'|\b[1-5]?[0-9O]\s?s\b')
 misread_number_format_iOS = r'\b[0-9ASLlTK]+\b'
 misread_time_or_number_format = '|'.join([misread_time_format_iOS, misread_number_format_iOS])
 
@@ -145,11 +148,17 @@ BLACK = (0, 0, 0)
 BROWN = (165, 165, 165)  # Not used as a pixel colour, just used as a shorthand for the colour name
 
 APP = 'app'
+# NAME = 'name'  # Already defined above
 NUMBER = 'number'
+MINUTES = 'minutes'
+NAME_CONF = 'name_conf'
+NUMBER_CONF = 'number_conf'
+TOTAL = 'total'
 
 """
     Error Messages    
 """
+ERR = 'ERR'
 ERR_UNREADABLE_DATA = 'ERR Unreadable data format'
 ERR_APP_AREA = 'ERR App area not detected'
 ERR_FILE_NOT_FOUND = 'ERR File not found'
@@ -171,3 +180,22 @@ ERR_TOTAL_BELOW_APP_SUM = 'ERR Daily total less than app sum'
 ERR_MISREAD_TIME = 'ERR Misread time value'
 ERR_NOT_A_NUMBER = 'ERR Daily total not a number'
 ERR_DUPLICATE_COUNTS = 'ERR Duplicate data occurrences'
+
+"""
+    Column names for all_screenshots_df
+"""
+IMAGE_URL = 'image_url'
+# PARTICIPANT_ID = 'Participant ID'  # Already defined above
+# DEVICE_ID = 'Device ID'  # Already defined above
+LANGUAGE = 'language'
+DEVICE_OS = 'device_os'
+ANDROID_VERSION = 'android_version'
+DATE_SUBMITTED = 'date_submitted'
+DATE_DETECTED = 'date_detected'
+RELATIVE_DAY = 'relative_day'
+CATEGORY_SUBMITTED = 'category_submitted'
+CATEGORY_DETECTED = 'category_detected'
+DAILY_TOTAL = 'daily_total'
+# APP, NAME, NUMBER = 'App', 'Name', 'Number'  # Already defined above
+HASHED = 'hashed'
+REVIEW_COUNT = 'review_count'

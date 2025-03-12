@@ -985,9 +985,9 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
     crop_top, crop_left, crop_bottom, crop_right = coordinates[0], coordinates[1], coordinates[2], coordinates[3]
     crop_width = crop_right - crop_left
     img_lang = get_best_language(screenshot)
-    empty_name_row = pd.DataFrame({'name': [NO_TEXT], 'name_conf': [NO_CONF]})
-    empty_number_row = pd.DataFrame({'number': [NO_TEXT], 'number_conf': [NO_CONF]}) if category == SCREENTIME else (
-                       pd.DataFrame({'number': [NO_NUMBER], 'number_conf': [NO_CONF]}))
+    empty_name_row = pd.DataFrame({NAME: [NO_TEXT], NAME_CONF: [NO_CONF]})
+    empty_number_row = pd.DataFrame({NUMBER: [NO_TEXT], NUMBER_CONF: [NO_CONF]}) if category == SCREENTIME else (
+                       pd.DataFrame({NUMBER: [NO_NUMBER], NUMBER_CONF: [NO_CONF]}))
     app_names = empty_name_row.copy()
     app_numbers = empty_number_row.copy()
 
@@ -999,8 +999,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
 
         if previous_text == NUMBER:
             if app != '' and num != '':  # App and its number in same row)
-                new_name = pd.DataFrame({'name': [app], 'name_conf': [row_conf]})
-                new_number = pd.DataFrame({'number': [num], 'number_conf': [row_conf]})
+                new_name = pd.DataFrame({NAME: [app], NAME_CONF: [row_conf]})
+                new_number = pd.DataFrame({NUMBER: [num], NUMBER_CONF: [row_conf]})
                 app_names = new_name if app_names.empty else pd.concat([app_names, new_name], ignore_index=True)
                 app_numbers = new_number if app_numbers.empty else pd.concat([app_numbers, new_number], ignore_index=True)
 
@@ -1008,28 +1008,28 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                 if len(app_names) - 1 < max_apps:
                     num_missed_app_values += 1
                 app_names = empty_name_row if app_names.empty else pd.concat([app_names, empty_name_row], ignore_index=True)
-                new_number = pd.DataFrame({'number': [num], 'number_conf': [row_conf]})
+                new_number = pd.DataFrame({NUMBER: [num], NUMBER_CONF: [row_conf]})
                 app_numbers = new_number if app_numbers.empty else pd.concat([app_numbers, new_number], ignore_index=True)
 
             elif num == '':  # Only app
-                new_name = pd.DataFrame({'name': [app], 'name_conf': [row_conf]})
+                new_name = pd.DataFrame({NAME: [app], NAME_CONF: [row_conf]})
                 app_names = new_name if app_names.empty else pd.concat([app_names, new_name], ignore_index=True)
-                previous_text = APP
+                previous_text = NAME
 
-        elif previous_text == APP:
+        elif previous_text == NAME:
             if app != '' and num != '':  # App and its number in same row
                 if len(app_names) < max_apps:
                     num_missed_app_values += 1
                 app_numbers = empty_number_row if app_numbers.empty else pd.concat([app_numbers, empty_number_row], ignore_index=True)
 
-                new_name = pd.DataFrame({'name': [app], 'name_conf': [row_conf]})
-                new_number = pd.DataFrame({'number': [num], 'number_conf': [row_conf]})
+                new_name = pd.DataFrame({NAME: [app], NAME_CONF: [row_conf]})
+                new_number = pd.DataFrame({NUMBER: [num], NUMBER_CONF: [row_conf]})
                 app_names = new_name if app_names.empty else pd.concat([app_names, new_name], ignore_index=True)
                 app_numbers = new_number if app_numbers.empty else pd.concat([app_numbers, new_number], ignore_index=True)
                 previous_text = NUMBER
 
             elif app == '':  # Only number
-                new_number = pd.DataFrame({'number': [num], 'number_conf': [row_conf]})
+                new_number = pd.DataFrame({NUMBER: [num], NUMBER_CONF: [row_conf]})
                 app_numbers = new_number if app_numbers.empty else pd.concat([app_numbers, new_number], ignore_index=True)
                 previous_text = NUMBER
 
@@ -1037,7 +1037,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                 if len(app_names) - 1 <= max_apps:
                     num_missed_app_values += 1
                 app_numbers = empty_number_row if app_numbers.empty else pd.concat([app_numbers, empty_number_row], ignore_index=True)
-                new_name = pd.DataFrame({'name': [app], 'name_conf': [row_conf]})
+                new_name = pd.DataFrame({NAME: [app], NAME_CONF: [row_conf]})
                 app_names = new_name if app_names.empty else pd.concat([app_names, new_name], ignore_index=True)
 
         if android_version != GOOGLE and len(app_names) == max_apps and num == '':
@@ -1148,7 +1148,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                 # Sometimes there are 'pill' shapes above the app time; these can be misread as app names.
                 # Ignore such apparent app names whose left edges lie beyond 40% of the screenshot width.
                 continue
-            if android_version == GOOGLE and app_name != '' and previous_text == APP and \
+            if android_version == GOOGLE and app_name != '' and previous_text == NAME and \
                     row_top - prev_row_bottom < row_height and len(app_names) - 1 <= max_apps:
                 num_missed_app_values += 1
                 # Sometimes an app time that appears just below an app name can be interpreted as an app name,
@@ -1188,9 +1188,9 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
             build_app_and_number_dfs(app_name, app_number)
     elif category == UNLOCKS:
         if android_version != GOOGLE:
-            empty_rows = [{'name': NO_TEXT, 'name_conf': NO_CONF}] * max_apps
+            empty_rows = [{NAME: NO_TEXT, NAME_CONF: NO_CONF}] * max_apps
             app_names = pd.concat([app_names, empty_rows], ignore_index=True)
-            empty_rows = [{'number': NO_NUMBER, 'number_conf': NO_CONF}] * max_apps
+            empty_rows = [{NUMBER: NO_NUMBER, NUMBER_CONF: NO_CONF}] * max_apps
             app_numbers = pd.concat([app_numbers, empty_rows], ignore_index=True)
         else:
             # Only the Google Dashboard has app-level unlocks info;
@@ -1221,26 +1221,26 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                             num_missed_app_values += 1
                         app_names = empty_name_row if app_names.empty else (
                             pd.concat([app_names, empty_name_row], ignore_index=True))
-                    new_number_row = pd.DataFrame({'number': [app_number], 'number_conf': [conf]})
+                    new_number_row = pd.DataFrame({NUMBER: [app_number], NUMBER_CONF: [conf]})
                     app_numbers = new_number_row if app_numbers.empty else (
                         pd.concat([app_numbers, new_number_row], ignore_index=True))
                     previous_text = NUMBER
                 else:
                     # Row text contains an app name
-                    if previous_text == APP:
+                    if previous_text == NAME:
                         if len(app_names) < max_apps:
                             num_missed_app_values += 1
                         app_numbers = empty_number_row if app_numbers.empty else (
                             pd.concat([app_numbers, empty_number_row], ignore_index=True))
-                    new_name_row = pd.DataFrame({'name': [row_text], 'name_conf': [row_conf]})
+                    new_name_row = pd.DataFrame({NAME: [row_text], NAME_CONF: [row_conf]})
                     app_names = new_name_row if app_names.empty else (
                         pd.concat([app_names, new_name_row], ignore_index=True))
-                    previous_text = APP
+                    previous_text = NAME
 
     if num_missed_app_values > 0:
         screenshot.add_error(ERR_MISSING_VALUE, num_missed_app_values)
 
-    if (~app_numbers['number_conf'].eq(NO_CONF)).any() and screenshot.category_detected is None:
+    if (~app_numbers[NUMBER_CONF].eq(NO_CONF)).any() and screenshot.category_detected is None:
         # Sometimes the dashboard category is not detected, but app-level data from the correct category is extracted.
         # In this case, we can set the detected category to the same category as the data extracted.
         print(f"Dashboard category not detected, but {category} data extracted. "
@@ -1252,12 +1252,12 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
     while app_numbers.shape[0] < max_apps + 1:
         app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
 
-    app_names['name'] = app_names['name'].apply(lambda x: re.sub(r'\bAl\b', 'AI', x))
-    app_names['name'] = app_names['name'].apply(lambda x: re.sub(r'^4$', 'X', x))
-    app_names['name'] = app_names['name'].apply(lambda x: re.sub(r'\.$', '', x))
+    app_names[NAME] = app_names[NAME].apply(lambda x: re.sub(r'\bAl\b', 'AI', x))
+    app_names[NAME] = app_names[NAME].apply(lambda x: re.sub(r'^4$', 'X', x))
+    app_names[NAME] = app_names[NAME].apply(lambda x: re.sub(r'\.$', '', x))
     app_names, app_numbers = app_names.drop(app_names.index[0]), app_numbers.drop(app_numbers.index[0])
 
-    # app_names.loc[app_names['name'] == 'Lite', 'name'] = 'Facebook Lite'  # The app "Facebook Lite" appears as 'Lite'
+    # app_names.loc[app_names[NAME] == 'Lite', NAME] = 'Facebook Lite'  # The app "Facebook Lite" appears as 'Lite'
 
     # Having initialized app_names and app_numbers with an empty row (at index 0), the indexes of the app rows
     # line up with the app ordinals. (The 1st app in the screenshot is at index 1, etc.)
