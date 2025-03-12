@@ -17,11 +17,12 @@ SCREENTIME = 'screentime'
 PICKUPS = 'pickups'
 NOTIFICATIONS = 'notifications'
 UNLOCKS = 'unlocks'
-# 'PICKUPS' on iOS is similar to 'UNLOCKS' on Android, except that, at the app level,
-# iOS measures the number of times each app was the first app used after pickup, while Android measures the number of
-# times each app was opened overall, regardless of whether it was the first app opened after pickup. As such, on iOS
-# the sum of all app pickups should equal the total pickups on iOS, and on Android the total unlocks is generally lower
-# than the sum of all app unlocks (but technically they are simply correlated, so it's possible for total unlocks to be greater).
+""" 'PICKUPS' on iOS is similar to 'UNLOCKS' on Android, except that, at the app level, iOS measures the number of
+times each app was the first app used after pickup, while Android measures the number of times each app was opened
+overall, regardless of whether it was the first app opened after pickup. As such, on iOS, the sum of all app pickups
+should equal the total pickups, and on Android the total unlocks is generally lower than the sum of all app unlocks
+(but technically they are simply correlated, so it's possible for total unlocks to be greater).
+"""
 
 """
     Heading column names for dataframes
@@ -125,23 +126,16 @@ PICKUP_COLS = 'pickups'
 NOTIFY_COLS = 'notifications'
 URL_COLUMNS = 'urls'
 
-# misread_time_format_iOS = r'^[\d|t]+\s?[hn]$|^[\d|t]+\s?[hn]\s?[\d|tA]+\s?(min|m)$|^.{0,2}\s?[0-9AIt]+\s?(min|m)$|\d+\s?s$'
-misread_time_format_iOS = (r'\b[12T]?[0-9toAQ]\s?[hn]\s?[1-5tA]?[0-9tA]\s?mi?n?\b'
+MISREAD_TIME_FORMAT_IOS = (r'\b[12T]?[0-9toAQ]\s?[hn]\s?[1-5tA]?[0-9tA]\s?mi?n?\b'
                            r'|\b[12T]?[0-9toA]\s?[hn]\b'
                            r'|\b[1-5tA]?[0-9itA]\s?mi?n?\b'
                            r'|\b[1-5]?[0-9O]\s?s\b')
-misread_number_format_iOS = r'\b[0-9ASLlTK]+\b'
-misread_time_or_number_format = '|'.join([misread_time_format_iOS, misread_number_format_iOS])
+MISREAD_NUMBER_FORMAT = r'\b[0-9ASLlTK]+\b'
+MISREAD_TIME_OR_NUMBER_FORMAT = '|'.join([MISREAD_TIME_FORMAT_IOS, MISREAD_NUMBER_FORMAT])
 
-# I don't think these are necessary
-# misread_hr_format = r'\b[0-9to]{1,2}\s?[hn]\b'
-# misread_hrmin_format = r'\b[0-9to]{1,2}\s?[hn]\s?[0-9tA]{1,2}\s?(min|m))\b'
-# misread_min_format = r'\b[0-9AIt]{1,2}\s?mi?n?)\b'
-# misread_sec_format = r'\b\d{1,2}\s?s\b'
-
-time_format = r'^\d+h$|^\d+h\s?\d+(m|min)$|^\d+(m|min)$|^\d+s$'
-number_format = r'^\d+$'
-time_or_number_format = '|'.join([time_format, number_format])
+PROPER_TIME_FORMAT = r'^\d+h$|^\d+h\s?\d+(m|min)$|^\d+(m|min)$|^\d+s$'
+PROPER_NUMBER_FORMAT = r'^\d+$'
+PROPER_TIME_OR_NUMBER_FORMAT = '|'.join([PROPER_TIME_FORMAT, PROPER_NUMBER_FORMAT])
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)

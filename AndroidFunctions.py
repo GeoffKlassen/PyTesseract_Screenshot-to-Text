@@ -389,7 +389,7 @@ def get_dashboard_category(screenshot):
     heads_df = screenshot.headings_df
     text_df = screenshot.text
     text_df_hashes = text_df.copy()
-    text_df_hashes['text'] = text_df_hashes['text'].str.replace(misread_number_format_iOS, '#', regex=True)
+    text_df_hashes['text'] = text_df_hashes['text'].str.replace(MISREAD_NUMBER_FORMAT, '#', regex=True)
 
     category_submitted = screenshot.category_submitted
     categories_found = []
@@ -1097,7 +1097,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
 
     def split_app_name_and_notifications(s):
         # Find all the numbers in the string
-        numbers = re.findall(misread_number_format_iOS, s)
+        numbers = re.findall(MISREAD_NUMBER_FORMAT, s)
         if not numbers and (not s[-1].isdigit() or abs(crop_right - row_right) > 0.2*crop_right):
             # If there are no (misread) numbers, and either
             #     the last character is a non-digit, or

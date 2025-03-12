@@ -691,7 +691,7 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False,
     c2 = f"(conf = {conf2})" if conf2 != NO_CONF else ""
 
     if val_fmt is None:
-        val_fmt = misread_number_format_iOS if value_is_number else misread_time_format_iOS
+        val_fmt = MISREAD_NUMBER_FORMAT if value_is_number else MISREAD_TIME_FORMAT_IOS
 
     format_name = NUMBER if value_is_number else 'time'
 
@@ -766,7 +766,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
     # cropped region to NOT contain app info.
     # if screenshot.device_os_detected == IOS and not app_info_scan_1.empty and \
     #         (app_info_scan_1['top'][0] > 5 * app_info_scan_1['height'][0] or
-    #          not re.fullmatch(misread_time_or_number_format, app_info_scan_1['text'][0]) and (
+    #          not re.fullmatch(MISREAD_TIME_OR_NUMBER_FORMAT, app_info_scan_1['text'][0]) and (
     #                  app_info_scan_1['left'][0] > int(0.25 * image.shape[1]) or
     #                  abs(app_info_scan_1['left'][0] + app_info_scan_1['width'][0]) < int(0.02 * image.shape[1]))):
     #     # First found row of text is more than 5x its own height from the top of the cropped image; or
@@ -791,7 +791,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
                                           (truncated_text_df['top'] < crop_bottom) &
                                           ((truncated_text_df['text'].str.isdigit()) |
                                            (truncated_text_df['text'].str.fullmatch(time_format_long)) |
-                                           (truncated_text_df['text'].str.fullmatch(misread_time_format_iOS))|
+                                           (truncated_text_df['text'].str.fullmatch(MISREAD_TIME_FORMAT_IOS))|
                                            (truncated_text_df['text'] == 'X'))]
     truncated_text_df.loc[truncated_text_df.index, 'left'] = truncated_text_df['left'] - crop_left
     truncated_text_df.loc[truncated_text_df.index, 'top'] = truncated_text_df['top'] - crop_top
@@ -863,7 +863,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
                                    app_info_scan_1['top'][_i] + app_info_scan_1['height'][_i] + 1)
             cv2.rectangle(image_missed_text, upper_left_corner, bottom_right_corner, bg_colour, -1)
 
-        app_info_names_only = app_info_scan_1[~app_info_scan_1['text'].str.fullmatch(misread_time_or_number_format)]
+        app_info_names_only = app_info_scan_1[~app_info_scan_1['text'].str.fullmatch(MISREAD_TIME_OR_NUMBER_FORMAT)]
 
         if not app_info_names_only.empty:
             image_missed_text = cv2.rectangle(image_missed_text, (0, 0),
@@ -1534,7 +1534,7 @@ if __name__ == '__main__':
                 print("Comparing both locations for total pickups:")
                 daily_total, daily_total_conf = choose_between_two_values(daily_total, daily_total_conf,
                                                                           daily_total_2nd_loc, daily_total_2nd_loc_conf,
-                                                                          val_fmt=misread_number_format_iOS)
+                                                                          val_fmt=MISREAD_NUMBER_FORMAT)
                 current_screenshot.set_daily_total(daily_total, daily_total_conf)
                 if daily_total_conf == NO_CONF:
                     if current_screenshot.total_heading_found:
@@ -1630,7 +1630,7 @@ if __name__ == '__main__':
                 update_eta(screenshot_time_start, index)
                 continue
 
-            value_format = misread_time_format_iOS if dashboard_category == SCREENTIME else misread_number_format_iOS
+            value_format = MISREAD_TIME_FORMAT_IOS if dashboard_category == SCREENTIME else MISREAD_NUMBER_FORMAT
             confident_text_from_prescan = \
                 cropped_prescan_df[(cropped_prescan_df['right'] > 0.05 * scaled_cropped_filtered_image.shape[1]) &
                                    ((cropped_prescan_df['conf'] > 80) |
