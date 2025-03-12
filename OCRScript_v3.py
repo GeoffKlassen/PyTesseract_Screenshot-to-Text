@@ -1359,7 +1359,7 @@ if __name__ == '__main__':
                 headings_above_apps = [MOST_NOTIFICATIONS_HEADING, SEARCH_APPS]
                 current_screenshot.set_notifications_subheading_found(False)
             else:  # dashboard_category == UNLOCKS, or no dashboard category
-                headings_above_apps = None
+                headings_above_apps = []
                 current_screenshot.set_pickups_subheading_found(False)
 
             # if the daily total is 0 (and not GOOGLE unlocks version), then there will be no app-level data to extract.
