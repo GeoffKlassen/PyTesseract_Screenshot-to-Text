@@ -321,6 +321,10 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+',
     :param initial_scan:
     :return:
     """
+    # On the initial image scan, we remove characters like periods (.) and commas (,)
+    #     because they are often misreadings of artifacts.
+    # We keep the 'é' character for the existence of app names like 'Pokémon GO'.
+
     def ensure_text_is_string(value):
         try:
             # Try converting the value to a float
@@ -329,7 +333,7 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+',
             return str(int(number))
         except (ValueError, OverflowError):
             # ValueError in case 'value' is not a number
-            # OverflowError in case 'value' is the word 'Infinity' (in which case, NUMBER is now inf)
+            # OverflowError in case 'value' is the word 'Infinity' (in which case, 'number' is now inf)
             return str(value)
 
     # img = cv2.GaussianBlur(img, (7,7), 0)  # Might help finding the large totals, not sure how it affects headings
@@ -970,7 +974,7 @@ def update_eta(ss_start_time, idx):
     all_times.loc[idx, 'elapsed_time'] = elapsed_time_in_seconds
     if not all_times.empty:
         average_time_per_screenshot = np.median(all_times['time'])
-        estimated_time_remaining = (average_time_per_screenshot*0.95) * (min([test_upper_bound, num_urls]) - index - 1)
+        estimated_time_remaining = (average_time_per_screenshot*0.95) * (min([image_upper_bound, num_urls]) - index - 1)
         all_times.loc[idx, 'eta'] = estimated_time_remaining
         if estimated_time_remaining > 0:
             print(f"Estimated time remaining:  {convert_seconds_to_hms(estimated_time_remaining)}")
@@ -1060,8 +1064,8 @@ if __name__ == '__main__':
                                             device_id_col=device_id_col_name)
         print(f"Done.\n{current_list.shape[0]} URLs found.")
         url_list = pd.concat([url_list, current_list], ignore_index=True)
-        if len(url_list) >= test_upper_bound:
-            print(f"URL list now contains at least {test_upper_bound} images. No further URLs needed.")
+        if len(url_list) >= image_upper_bound:
+            print(f"URL list now contains at least {image_upper_bound} images. No further URLs needed.")
             break
 
     num_urls = url_list.shape[0]
@@ -1089,13 +1093,13 @@ if __name__ == '__main__':
     all_screenshots_df = ScreenshotClass.initialize_data_row()
 
     participants = []
-    test_upper_bound = test_lower_bound if test_upper_bound < test_lower_bound else test_upper_bound
+    image_upper_bound = image_lower_bound if image_upper_bound < image_lower_bound else image_upper_bound
     for index in url_list.index:
-        if not (test_lower_bound <= index+1 <= test_upper_bound):
+        if not (image_lower_bound <= index+1 <= image_upper_bound):
             # Only extract data from the images within the bounds specified in RuntimeValues.py
             continue
 
-        min_url_index = min(num_urls, test_upper_bound)
+        min_url_index = min(num_urls, image_upper_bound)
         print(f"\n\nFile {index + 1} of {min_url_index}: {url_list[IMG_URL][index]}")
 
         screenshot_time_start = time.time()

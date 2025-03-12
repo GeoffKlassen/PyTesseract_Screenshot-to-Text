@@ -61,8 +61,8 @@ app_area_scale_factor = 1  # In addition to the screenshot_scale_factor, this is
 conf_limit = 80
 ERR_CONFIDENCE = f"ERR Values below {int(conf_limit)}% confidence"
 
-test_lower_bound = 1
-test_upper_bound = 10
+image_lower_bound = 1
+image_upper_bound = 19313
 # 553 for HappyB2.0 (pre-launch)
 # 19313 URLs for HappyB2.0 2024 Aug-Dec
 # 452 for BCH study
