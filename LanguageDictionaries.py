@@ -102,7 +102,7 @@ KEYWORDS_FOR_WEEK = {ITA: ['Questa settimana', 'Media giornaliera'],
                      FRA: ['TODO FILL THIS IN']}  # TODO Fill this in
 # Keywords used to determine if screenshot contains 'week' data (instead of 'day' data)
 
-KEYWORDS_FOR_DAY_BEFORE_YESTERDAY = {ITA: ['Laltro ieri'],  # Actual phrase is L'altro ieri
+KEYWORDS_FOR_DAY_BEFORE_YESTERDAY = {ITA: ['Laltro ieri'],  # Actual phrase is "L'altro ieri"
                                      ENG: ['English has no word for the day before yesterday'],  # Can't be empty string
                                      GER: ['Vorgestern'],
                                      FRA: ['Avant-hier']}

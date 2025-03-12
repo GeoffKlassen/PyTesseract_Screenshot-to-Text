@@ -1552,11 +1552,11 @@ if __name__ == '__main__':
                 print(f"Daily total {dashboard_category}: {dt}")
 
                 headings_above_applist = [HOURS_AXIS_HEADING]
-                heading_below_applist = ''
+                heading_below_applist = None
 
             else:
                 headings_above_applist = ['']
-                heading_below_applist = ''
+                heading_below_applist = None
                 daily_total = NO_TEXT
                 daily_total_conf = NO_CONF
 

@@ -68,8 +68,9 @@ KEYWORDS_FOR_HOURS_AXIS = ['00 06', '06 12', '12 18',
                            r'^0\s.*12|6\s.*18$']  # TODO This method is a bit messy
 
 # TODO Fill this in and make sure it's all correct, then rewrite the code to check for 2+ occurrences of these strings
-KEYWORDS_FOR_HOURS_AXIS_2 = {ENG: {"00", "06", "12", "18", "0", "6", "42", "48",
-                                   "AM", "PM", "6AM", "12PM", "6PM", "12AM"},
+KEYWORDS_FOR_HOURS_AXIS_2 = {ENG: {"0", "00", "6", "06", "12", "18",  # Number only
+                                   "AM", "PM", "6AM", "12PM", "6PM", "12AM",  # AM/PM specified
+                                   "42", "48", "112", "GAM"},  # Misreadings
                              ITA: {"0", "6", "12", "18", "mele", "112", "118"},
                              GER: {"00", "06", "12", "18",
                                    "Uhr" "00 Uhr", "06 Uhr", "12 Uhr", "18 Uhr"},
@@ -624,7 +625,7 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
     """
     # Determine the region of the screenshot that (likely) contains the list of the top n apps.
     # Initialize the crop region -- the 'for' loop below trims it further
-
+    text = screenshot.text
     headings_df = screenshot.headings_df
     category = screenshot.category_detected if screenshot.category_detected is not None else screenshot.category_submitted
     crop_top = 0
@@ -632,6 +633,19 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
     crop_left = round(0.14 * screenshot.width)  # The app icons are typically within the leftmost 15% of the screenshot
     crop_right = round(
         0.87 * screenshot.width)  # Symbols (arrows, hourglass) typically appear in the rightmost 87% of the screenshot
+
+    headings_above_df = headings_df[headings_df[HEADING_COLUMN].isin(headings_above)]
+    headings_below_df = headings_df[headings_df[HEADING_COLUMN].eq(heading_below)]
+    app_area_text = text
+
+    if headings_above and not headings_above_df.empty:
+        app_area_text = app_area_text[app_area_text.index > headings_above_df.index[-1]]
+    if heading_below is not None and not headings_below_df.empty:
+        app_area_text = app_area_text[app_area_text.index < headings_below_df.index[0]]
+
+    if not app_area_text.empty:
+        print(" HERe's what I found for the app area:")
+        print(app_area_text)
 
     # the crop edge is left of the app names
     if not headings_df.empty and not (headings_df[headings_df['left'] > 0]).empty:
