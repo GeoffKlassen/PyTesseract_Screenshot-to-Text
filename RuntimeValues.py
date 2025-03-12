@@ -53,7 +53,7 @@ save_downloaded_images = True  # If True, images downloaded at runtime are saved
 user = "geoff.klassen@usask.ca"
 passw = "Phi1*618ah"
 
-show_images = False  # If True, images of the screenshots will be shown during runtime (mostly for debugging).
+show_images = True  # If True, images of the screenshots will be shown during runtime (mostly for debugging).
 
 app_area_scale_factor = 1  # In addition to the screenshot_scale_factor, this is how much to scale the cropped image
                               # when searching for app-level data
@@ -61,7 +61,7 @@ app_area_scale_factor = 1  # In addition to the screenshot_scale_factor, this is
 conf_limit = 80
 ERR_CONFIDENCE = f"ERR Values below {int(conf_limit)}% confidence"
 
-test_lower_bound = 1
+test_lower_bound = 267
 test_upper_bound = 19313
 # 553 for HappyB2.0 (pre-launch)
 # 19313 URLs for HappyB2.0 2024 Aug-Dec

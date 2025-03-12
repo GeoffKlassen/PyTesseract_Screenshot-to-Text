@@ -809,20 +809,28 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
             crop_top = row_above_apps['top'] + row_above_apps['height']
             headings_below_apps_df = headings_df[headings_df.index > row_above_apps.name]
 
-            text_df_below_heading = text_df[(text_df.index > row_above_apps.name) &
-                                            (text_df.index != text_df.index[-1]) &
-                                            (text_df['left'] > int(0.05 * screenshot.width))]
-
-            if not text_df_below_heading.empty:
-                new_crop_left = max(0, int(np.median(text_df_below_heading['left']) - 0.02 * screenshot.width))
-                crop_left = new_crop_left + int(0.12 * screenshot.width if (
-                        android_version != SAMSUNG_2024 and new_crop_left < int(0.15 * screenshot.width)) else 0)
+            text_df_app_area = text_df[(text_df.index > row_above_apps.name) &
+                                       (text_df.index != text_df.index[-1]) &
+                                       (text_df['left'] > int(0.05 * screenshot.width))]
 
             if not headings_below_apps_df.empty:
                 row_below_apps = headings_below_apps_df.iloc[0]
+                text_df_app_area = text_df_app_area[text_df_app_area.index < row_below_apps.name]
                 crop_bottom = row_below_apps['top']
             else:
                 crop_bottom = screenshot.height
+
+            if not text_df_app_area.empty and android_version != SAMSUNG_2024:
+                for i, _idx in enumerate(text_df_app_area.index):
+                    if i == 0 or crop_left < text_df_app_area['left'][_idx] < int(0.2 * screenshot.width):
+                        crop_left = text_df_app_area['left'][_idx] - int(0.02 * screenshot.width)
+                if crop_left < int(0.1 * screenshot.width):
+                    crop_left = int(0.15 * screenshot.width)
+
+                # new_crop_left = max(0, int(np.median(text_df_below_heading['left']) - 0.02 * screenshot.width))
+                # crop_left = new_crop_left + int(0.1 * screenshot.width if (
+                #         android_version != SAMSUNG_2024 and new_crop_left < int(0.15 * screenshot.width)) else 0)
+
         else:
             print("Sub-heading above app rows not found. Searching for app rows directly.")
             # If android version is SAMSUNG_2024, then search row by row for a row that matches an app w/ number format.
