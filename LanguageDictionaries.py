@@ -1,4 +1,6 @@
 """This file contains the dictionaries of keywords in various languages, as well as some useful variables for time values.
+There are more dictionaries specific to each device OS (Android, iOS) included in the respective .py files.
+
 The dictionaries are used to determine:
     the language of the image,
     the date (or date range) present in the image,
@@ -39,9 +41,15 @@ LANGUAGE_KEYWORDS = {GER: ['Gestern', 'Heute', 'Benachrichtigungen', 'Entsperrun
                      FRA: ['Applications les plus', 'fois', 'Hier', 'Deverrouillages', 'numerique', 'AUJOURDHUI']
                      # French used to include 'Notifications', but it can cause English images to be misclassified as French
                      }
-# If one of the keywords above is found in a given screenshot, that screenshot is classified as being of the language of
-# that keyword. Otherwise, the screenshot is classified as being of the previously detected language for its participant
-# or, if that's not available, the study's default language as set in RuntimeValues.py.
+""" If one of the keywords above is found in a given screenshot, that screenshot is classified as being of the language
+of that keyword. Otherwise, the screenshot is classified as being of the previously detected language for its participant
+or, if that's not available, the study's default language as set in RuntimeValues.py.
+
+Note: The strings found in the image must match these keywords EXACTLY (no levenshtein_distance applied), which is why
+there are several 'misspellings' included. The reason for the exact match is that some of the keywords are quite short,
+such as 'today', 'volte', 'Oggi', 'fois', and 'Hier', so we don't want any misread words or other strings to give us
+false positives. """
+
 
 """
     Date dictionaries

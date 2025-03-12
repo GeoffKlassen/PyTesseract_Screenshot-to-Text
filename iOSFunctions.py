@@ -29,7 +29,7 @@ KEYWORDS_FOR_LIMITATIONS = {ITA: ['LIMITAZIONI'],
 
 KEYWORDS_FOR_MOST_USED = {ITA: ['PIU UTILIZZATE'],
                           ENG: ['MOST USED'],
-                          FRA: ['LES PLUS UTILISEES'],  # LES PLUS UTILISÉES
+                          FRA: ['LES PLUS UTILISEES'],  # Actual phrase is LES PLUS UTILISÉES with an 'É'
                           GER: ['VERWENDET']}  # Real heading is AM HÄUFIGSTEN VERWENDET but VERWENDET is on its own line
 
 KEYWORDS_FOR_PICKUPS = {ITA: ['ATTIVAZIONI SCHERMO'],
@@ -47,7 +47,7 @@ KEYWORDS_FOR_FIRST_USED_AFTER_PICKUP = {ITA: ['PRIME APP UTILIZZATE DOPO LATTIVA
                                               'PRIME APP UTILIZZATE DOPO', 'LATTIVAZIONE'],  # When on separate lines
                                         ENG: ['FIRST USED AFTER PICKUP', 'FIRST USED AFTER PICK UP',
                                               'USED AFTER PICKUP'],
-                                        FRA: ['PREMIERE APP UTILISEE'],  # PREMIÈRE APP UTILISÉE
+                                        FRA: ['PREMIERE APP UTILISEE'],  # Actual phrase is PREMIÈRE APP UTILISÉE
                                         GER: ['1 NUTZUNG NACH AKTIVIERUNG', 'AKTIVIERUNG']}
 
 KEYWORDS_FOR_NOTIFICATIONS = {ITA: ['NOTIFICHE'],
@@ -66,6 +66,16 @@ KEYWORDS_FOR_HOURS_AXIS = ['00 06', '06 12', '12 18',
                            'mele 12', '112 118', r'0\s+.*\s+12',
                            '00 Uhr 06 Uhr', '06 Uhr 12 Uhr', '12 Uhr 18 Uhr', 'Uhr Uhr',
                            r'^0\s.*12|6\s.*18$']  # TODO This method is a bit messy
+
+# TODO Fill this in and make sure it's all correct, then rewrite the code to check for 2+ occurrences of these strings
+KEYWORDS_FOR_HOURS_AXIS_2 = {ENG: {"00", "06", "12", "18", "0", "6", "42", "48",
+                                   "AM", "PM", "6AM", "12PM", "6PM", "12AM"},
+                             ITA: {"0", "6", "12", "18", "mele", "112", "118"},
+                             GER: {"00", "06", "12", "18",
+                                   "Uhr" "00 Uhr", "06 Uhr", "12 Uhr", "18 Uhr"},
+                             FRA: {"TODO FILL THIS IN"}
+                            }
+
 
 """
     Headings for unrelated screenshots - used to detect OS
