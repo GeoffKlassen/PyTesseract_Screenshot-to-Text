@@ -1023,7 +1023,7 @@ def add_screenshot_info_to_master_df(screenshot, idx):
     all_screenshots_df.loc[idx, ANDROID_VERSION] = screenshot.android_version
     all_screenshots_df.loc[idx, DATE_SUBMITTED] = screenshot.date_submitted
     all_screenshots_df.loc[idx, DATE_DETECTED] = screenshot.date_detected
-    all_screenshots_df.loc[idx, RELATIVE_DAY] = screenshot.time_period
+    all_screenshots_df.loc[idx, RELATIVE_DAY] = screenshot.relative_day
     all_screenshots_df.loc[idx, CATEGORY_SUBMITTED] = screenshot.category_submitted
     all_screenshots_df.loc[idx, CATEGORY_DETECTED] = PICKUPS if (
             screenshot.category_detected == UNLOCKS) else screenshot.category_detected
@@ -1173,7 +1173,7 @@ if __name__ == '__main__':
         if screenshot_scale_factor == 1 and ksize is not None:
             bw_image_scaled = cv2.GaussianBlur(bw_image_scaled, ksize=ksize, sigmaX=0)
 
-        current_screenshot.set_scale_factor(screenshot_scale_factor)
+        # current_screenshot.set_scale_factor(screenshot_scale_factor)
         current_screenshot.set_image(grey_image_scaled)
         current_screenshot.set_dimensions(grey_image_scaled.shape)
 
@@ -1225,7 +1225,7 @@ if __name__ == '__main__':
         # Determine if the screenshot contains 'daily' data ('today', 'yesterday', etc.) or 'weekly' data
         day_type, rows_with_day_type = get_day_type_in_screenshot(current_screenshot)
         if day_type is not None:
-            current_screenshot.set_time_period(day_type)
+            current_screenshot.set_relative_day(day_type)
             current_screenshot.set_rows_with_day_type(rows_with_day_type)
         else:
             current_screenshot.add_error(ERR_DAY_TEXT)
@@ -1292,7 +1292,7 @@ if __name__ == '__main__':
                 elif current_screenshot.date_submitted > date_in_screenshot:
                     day_type = DAY_OF_THE_WEEK
                 print(f"Screenshot set to '{day_type}'.")
-                current_screenshot.set_time_period(day_type)
+                current_screenshot.set_relative_day(day_type)
 
             # Get headings from screenshot text
             headings_df = android_headings_df
@@ -1351,13 +1351,10 @@ if __name__ == '__main__':
                 headings_above_apps = [MOST_USED_APPS_HEADING, SEARCH_APPS]
                 # Determine whether the row of text immediately above the app area is found
                 # (used in ParticipantClass for comparing two screenshots from the same person & day & category)
-                current_screenshot.set_screentime_subheading_found(False)
             elif dashboard_category == NOTIFICATIONS:
                 headings_above_apps = [MOST_NOTIFICATIONS_HEADING, SEARCH_APPS]
-                current_screenshot.set_notifications_subheading_found(False)
             else:  # dashboard_category == UNLOCKS, or no dashboard category
                 headings_above_apps = []
-                current_screenshot.set_pickups_subheading_found(False)
 
             # if the daily total is 0 (and not GOOGLE unlocks version), then there will be no app-level data to extract.
             if daily_total[0] in ['0', 'o', 'O'] and not (android_version == GOOGLE and dashboard_category == UNLOCKS):

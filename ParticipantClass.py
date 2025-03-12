@@ -114,7 +114,7 @@ class Participant:
             print("No data to add to participant's temporal data.")
             return
 
-        if ss.time_period not in [YESTERDAY, DAY_OF_THE_WEEK]:
+        if ss.relative_day not in [YESTERDAY, DAY_OF_THE_WEEK]:
             # If the daily usage data is not for a previous day (i.e. for 'today' or 'week'), then don't add it to the
             # usage data for that participant (since data from 'today' is incomplete and 'week' data is an average/sum
             # of the past week's usage, both of which are biased values).

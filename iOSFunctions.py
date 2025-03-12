@@ -655,7 +655,7 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
 
     if (headings_df.empty or
             headings_df.iloc[-1][HEADING_COLUMN] in [SCREENTIME_HEADING, LIMITS_HEADING] or
-            screenshot.time_period == WEEK or
+            screenshot.relative_day == WEEK or
             crop_top == 0 or
             screenshot.category_submitted == SCREENTIME and ~headings_df[HEADING_COLUMN].str.contains(MOST_USED_HEADING).any() and
             headings_df[HEADING_COLUMN].str.contains(FIRST_USED_AFTER_PICKUP_HEADING).any()):
