@@ -1,12 +1,9 @@
-import hashlib
 import AndroidFunctions as Android
-import ScreenshotClass
 import iOSFunctions as iOS
 from RuntimeValues import *
-from RuntimeValues import app_area_scale_factor
+import ScreenshotClass
 from ScreenshotClass import Screenshot
 from ParticipantClass import Participant
-from ConvenienceVariables import *
 import os
 import re
 import numpy as np
@@ -18,6 +15,7 @@ from PIL import Image
 from io import BytesIO
 import warnings
 from datetime import datetime, timedelta
+import hashlib
 import time
 
 
