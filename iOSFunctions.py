@@ -423,7 +423,7 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
             _, rescan_df = OCRScript_v3.extract_text_from_image(scaled_cropped_image, cmd_config=r'--oem 3 --psm 6 outputbase digits')
 
         # For debugging.
-        if show_images:
+        if show_images_at_runtime:
             OCRScript_v3.show_image(rescan_df, scaled_cropped_image)
 
         # Initialize second scan values
@@ -576,7 +576,7 @@ def get_total_pickups_2nd_location(screenshot, img):
                                       fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_AREA)
     rescan_words, rescan_df = OCRScript_v3.extract_text_from_image(scaled_cropped_image)
 
-    if show_images:
+    if show_images_at_runtime:
         OCRScript_v3.show_image(rescan_words, scaled_cropped_image)
 
     # Initialize the 2nd scan values
@@ -766,7 +766,7 @@ def erase_value_bars_and_icons(screenshot, df, image):
 
         return
 
-    if show_images:
+    if show_images_at_runtime:
         OCRScript_v3.show_image(df, image)
 
     image_height = image.shape[0]

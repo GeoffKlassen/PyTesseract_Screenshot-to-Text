@@ -551,7 +551,7 @@ def get_daily_total_and_confidence(screenshot, image, heading):
                                           fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
         _, rescan_df = OCRScript_v3.extract_text_from_image(scaled_cropped_image)
 
-        if show_images:
+        if show_images_at_runtime:
             OCRScript_v3.show_image(rescan_df, scaled_cropped_image)
 
         return rescan_df

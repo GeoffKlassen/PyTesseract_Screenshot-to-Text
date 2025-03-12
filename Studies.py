@@ -4,11 +4,13 @@ So far:
     HappyB2.0
     BCH
 """
+
 import pytesseract
 from ConvenienceVariables import *
 
-coding_location = 'home'  # uni or home
+coding_location = 'uni'  # uni or home
 
+# Based on the coding location, the directory where pytesseract is installed and the name of the PC will change
 if coding_location == 'uni':
     pc_user = 'gbk546'
     pytesseract.pytesseract.tesseract_cmd = r'C:\Users\gbk546\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'
@@ -55,6 +57,7 @@ happyb2_prep_daily_survey_android = {CSV_FILE: 'OCRScript_Android_v2\\study-3749
                                      # Note: OCRScript_Android_v2\\study-3749-export-175-survey-responses-20977-2024-10-23
                                      # -20-21-05.csv contains ~40,000 URLs. Many of the Android users were found to be
                                      # fraudulent.
+                                     # Because of this, a smaller set of user IDs was created.
                                      URL_COLUMNS: {SCREEN_COLS: ['[2_IMG] AndroidScreentime'],
                                                    PICKUP_COLS: ['[3_IMG] Android unlocks'],
                                                    NOTIFY_COLS: ['[4_IMG] Android notifications']
@@ -94,6 +97,8 @@ bch_survey = {CSV_FILE: 'study-2037-export-3-survey-responses-16872-2024-10-01-1
                             }
               }
 # For the BCH Study, there is only one CSV, in which there are two columns of SCREENTIME screenshots.
+# Also, this study only requested screentime data from its participants, which is why there are no columns for pickups
+# data or notifications data.
 
 """
     Definitions of the studies the code has been used on

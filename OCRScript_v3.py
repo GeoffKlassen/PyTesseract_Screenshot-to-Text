@@ -86,7 +86,7 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
         response = requests.get(test_url, verify=True)
         actual_url = response.url
         if "https" in actual_url:
-            response = requests.get(img_path, verify=True, auth=(user, passw))
+            response = requests.get(img_path, verify=True, auth=(avicenna_user, avicenna_password))
             if response.status_code == 200:
                 img = Image.open(BytesIO(response.content))
                 img = img.convert('RGB')  # We'll standardize the image to RGB format.
@@ -824,7 +824,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
         app_info_scan_1 = app_info_scan_1.iloc[index_of_day_axis + 1: ]
         image = cv2.rectangle(image, (0, 0), (screenshot.width, app_info_scan_1.iloc[0]['top']), bg_colour, -1)
 
-    if show_images:
+    if show_images_at_runtime:
         show_image(app_info_scan_1, image)
 
     if screenshot.device_os_detected == ANDROID:
@@ -875,7 +875,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
         # If both the initial scan and the first cropped scan found the app name 'X', only use the one in the cropped scan
         app_info_scan_1 = app_info_scan_1[~(app_info_scan_1['text'] == "X")]
 
-    if show_images:
+    if show_images_at_runtime:
         show_image(app_info_scan_2, image_missed_text)
 
     app_info = pd.concat([app_info_scan_1, app_info_scan_2], ignore_index=True)
@@ -1180,7 +1180,7 @@ if __name__ == '__main__':
         # Extract the text (if any) that can be found in the image.
         text_df_single_words, text_df = extract_text_from_image(bw_image_scaled, initial_scan=True)
 
-        if show_images:
+        if show_images_at_runtime:
             show_image(text_df, bw_image_scaled, draw_boxes=True)
 
         if text_df.shape[0] == 0:
@@ -1425,7 +1425,7 @@ if __name__ == '__main__':
             if android_version == GOOGLE:
                 app_area_df = app_area_df[app_area_df['left'] < int(0.7 * app_area_crop_width)]
 
-            if show_images:
+            if show_images_at_runtime:
                 show_image(app_area_df, scaled_cropped_image)
             # app_area_df['text'] = app_area_df['text'].apply(lambda x: 'X' if re.match(r'[xX]{2}', x) else x)
 
@@ -1651,7 +1651,7 @@ if __name__ == '__main__':
             app_area_2_df = iOS.consolidate_overlapping_text(
                 pd.concat([app_area_df, confident_text_from_prescan], ignore_index=True))
             # Divide the extracted app info into app names and their numbers
-            if show_images:
+            if show_images_at_runtime:
                 show_image(app_area_2_df, scaled_cropped_image)
 
             # app_area_2_df['text'] = app_area_2_df['text'].apply(lambda x: 'X' if re.match(r'[xX]{2}', x) else x)

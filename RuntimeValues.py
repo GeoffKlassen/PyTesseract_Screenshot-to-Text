@@ -50,10 +50,10 @@ use_downloaded_images = True  # If False, local copies of images are not used (a
 save_downloaded_images = True  # If True, images downloaded at runtime are saved to a local folder for quicker access.
 
 # Login credentials for downloading images from www.avicennaresearch.com
-user = "geoff.klassen@usask.ca"
-passw = "Phi1*618ah"
+avicenna_user = "geoff.klassen@usask.ca"
+avicenna_password = "Phi1*618ah"
 
-show_images = False  # If True, images of the screenshots will be shown during runtime (mostly for debugging).
+show_images_at_runtime = False  # If True, images of the screenshots will be shown during runtime (mostly for debugging).
 
 app_area_scale_factor = 1  # In addition to the screenshot_scale_factor, this is how much to scale the cropped image
                               # when searching for app-level data
