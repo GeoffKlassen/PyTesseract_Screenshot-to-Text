@@ -503,7 +503,7 @@ def get_date_in_screenshot(screenshot):
         # Create a translation dictionary to replace non-English month names with English ones.
         months_to_replace = MONTH_ABBREVIATIONS[lang]
         for _i, abbr in enumerate(months_to_replace):
-            month_detected = month_detected.replace(abbr, english_months[_i])
+            month_detected = month_detected.replace(abbr, ENGLISH_MONTHS[_i])
         month_detected = month_detected[0:3]  # datetime.strptime (used below) requires month to be 3 characters
 
         try:
@@ -512,7 +512,7 @@ def get_date_in_screenshot(screenshot):
             # Note: the 'year' part of the date object will be replaced with the year that the screenshot was submitted
 
             # Get the numeric month value from the mapping
-            month_numeric = month_mapping.get(month_detected)
+            month_numeric = MONTH_MAPPING.get(month_detected)
             if month_numeric:
                 # Construct the complete date with the year
                 complete_date = date_object.replace(year=int(screenshot.date_submitted.year), month=month_numeric)
@@ -540,7 +540,7 @@ def get_day_type_in_screenshot(screenshot):
     lang = get_best_language(screenshot)
     df = screenshot.text.copy()
     date_pattern = get_date_regex(lang)
-    device_os = screenshot.device_os_detected
+    dev_os = screenshot.device_os_detected
 
     moe_yesterday = round(np.log(max((len(key) for key in KEYWORDS_FOR_YESTERDAY[lang]))))
     moe_today = round(np.log(max((len(key) for key in KEYWORDS_FOR_TODAY[lang]))))
@@ -563,7 +563,7 @@ def get_day_type_in_screenshot(screenshot):
             lambda x: min(levenshtein_distance(row_word[:len(key)], key)
                           for row_word in str.split(x)[:2]
                           for key in KEYWORDS_FOR_TODAY[lang])) <= moe_today) &
-                              ((device_os == ANDROID) |
+                              ((dev_os == ANDROID) |
                                (df['text'].str.contains(date_pattern, case=False)) |
                                (df['next_text'].str.contains(date_pattern, case=False))) & (
                                  df['text'].apply(lambda x: min(levenshtein_distance(x, key) for key in Android.KEYWORDS_FOR_REST_OF_THE_DAY[lang])) > moe_today)]
@@ -574,7 +574,7 @@ def get_day_type_in_screenshot(screenshot):
             lambda x: min(levenshtein_distance(row_word[:len(key)], key)
                           for row_word in str.split(x)[0:1]
                           for key in KEYWORDS_FOR_YESTERDAY[lang])) <= moe_yesterday) &
-                                 ((device_os == ANDROID) |
+                                 ((dev_os == ANDROID) |
                                   (df['text'].str.contains(date_pattern, case=False)) |
                                   (df['next_text'].str.contains(date_pattern, case=False)))]
 

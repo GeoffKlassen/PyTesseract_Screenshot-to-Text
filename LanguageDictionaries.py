@@ -15,31 +15,18 @@ Languages to add:
     Portuguese
 
 Dictionaries included:
-    MONTH_ABBREVIATIONS             - used for determining the date (or date range) as it appears in the screenshot
+    MONTH_ABBREVIATIONS             - used for determining the date (or date range) as it appears in the image
     DATE_FORMAT                     - "
 
-    KEYWORDS_FOR_TODAY              - used for determining the date range of the data in a given screenshot
-    KEYWORDS_FOR_YESTERDAY          - "
-    KEYWORDS_FOR_DAYS_OF_THE_WEEK   - "
-    KEYWORDS_FOR_WEEK               - "
+    KEYWORDS_FOR_TODAY                  - used for determining the date range of the data in a given image
+    KEYWORDS_FOR_YESTERDAY              - "
+    KEYWORDS_FOR_DAYS_OF_THE_WEEK       - "
+    KEYWORDS_FOR_WEEK                   - "
+    KEYWORDS_FOR_DAY_BEFORE_YESTERDAY   - "
 
-    KEYWORDS_FOR_SCREEN_TIME                - used for determining the categories of data contained within a screenshot
-    KEYWORDS_FOR_LIMITATIONS                - "
-    KEYWORDS_FOR_MOST_USED                  - "
-    KEYWORDS_FOR_PICKUPS                    - "
-    KEYWORDS_FOR_FIRST_PICKUP               - "
-    KEYWORDS_FOR_FIRST_USED_AFTER_PICKUP    - "
-    KEYWORDS_FOR_NOTIFICATIONS              - "
-    KEYWORDS_FOR_HOURS_AXIS                 - "
-
-Variables included:
-    MIN_KEYWORD                     - a regex for the abbreviations for "minutes" as it appears in time values
-    HOUR_KEYWORD                    - the abbreviation for "hours" as it appears in time values
-    SECONDS_KEYWORD                 - the abbreviation for "seconds" as it appears in time values
-    TIME_FORMAT_STR_FOR_MINUTES     - a regex for the numerical format for a time value in minutes
-    TIME_FORMAT_STR_FOR_HOURS       - a regex for the numerical format for a time value in hours
-    TIME_FORMAT_STR_FOR_SECONDS     - a regex for the numerical format for a time value in seconds
+    DAY_ABBREVIATIONS       - used for finding rows of text in the image that contain a bunch of day names/abbreviations
 """
+
 from ConvenienceVariables import *
 
 LANGUAGE_KEYWORDS = {GER: ['Gestern', 'Heute', 'Benachrichtigungen', 'Entsperrungen'],
@@ -50,7 +37,7 @@ LANGUAGE_KEYWORDS = {GER: ['Gestern', 'Heute', 'Benachrichtigungen', 'Entsperrun
                            'received', 'Unlocks', 'unlocks', 'Digital Wellbeing', 'View all', 'Show sites',
                            'Set limits for', 'Set timers for', 'Activity details', 'Activity history'],
                      FRA: ['Applications les plus', 'fois', 'Hier', 'Deverrouillages', 'numerique', 'AUJOURDHUI']
-                     # French used to include 'Notifications'
+                     # French used to include 'Notifications', but it can cause English images to be misclassified as French
                      }
 # If one of the keywords above is found in a given screenshot, that screenshot is classified as being of the language of
 # that keyword. Otherwise, the screenshot is classified as being of the previously detected language for its participant
@@ -64,9 +51,8 @@ MONTH_ABBREVIATIONS = {ITA: ['gen', 'feb', 'mar', 'apr', 'mag',  'giu',  'lug', 
                        GER: ['jan', 'feb', 'mar', 'apr', 'mai',  'jun',  'jul',  'aug',  'sep', 'okt', 'nov', 'dez'],
                        FRA: ['jan', 'fev', 'mar', 'avr', 'mai', 'juin', 'juil', 'aout', 'sept', 'oct', 'nov', 'dec']}
 # Abbreviations must be in chronological order, from January to December.
-english_months = MONTH_ABBREVIATIONS[ENG]
-month_mapping = {mon: english_months.index(mon) + 1 for mon in english_months}  # 1:January, 2:February, 3:March, etc.
-
+ENGLISH_MONTHS = MONTH_ABBREVIATIONS[ENG]
+MONTH_MAPPING = {mon: ENGLISH_MONTHS.index(mon) + 1 for mon in ENGLISH_MONTHS}  # 1:January, 2:February, 3:March, etc.
 
 DATE_FORMAT = {ITA: [r'\d{1,2}\s?MMM'],
                ENG: [r'\d{1,2}\s?MMM', r'MMM[a-z]*\s?\d{1,2}'],
@@ -82,7 +68,7 @@ DATE_RANGE_FORMAT = {ITA: [r'\d{1,2}-\d{1,2}\s?MMM',
                      FRA: [r'\d{1,2}-\d{1,2}\s?MMM',
                            r'\d{1,2}\s?MMM[a-z]*-\d{1,2}\s?MMM']}
 # MMM stands in for the 3-4 letter abbreviation for each month.
-# The list of abbreviations for the necessary language will be subbed in as needed to create the full regex.
+# The list of abbreviations for the necessary language will be substituted in as needed to create the full regex.
 
 """
     Day/week dictionaries
@@ -120,3 +106,4 @@ DAY_ABBREVIATIONS = {ITA: {"TODO FILL THIS IN"},
                      GER: {"TODO FILL THIS IN"},
                      FRA: {"TODO FILL THIS IN"}
                      }
+# Used to find rows of text that are 'Day' rows (i.e. contain at least 3 of these abbreviation words)
