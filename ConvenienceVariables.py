@@ -173,7 +173,7 @@ TOTAL = 'total'
 """
 ERR = 'ERR'
 ERR_UNREADABLE_DATA = 'ERR Unreadable data format'
-ERR_APP_AREA = 'ERR App area not detected'
+ERR_APP_AREA = 'ERR App area crop failed'
 ERR_FILE_NOT_FOUND = 'ERR File not found'
 ERR_DEVICE_ID = 'ERR Unusual device ID'
 ERR_NO_TEXT = 'ERR No text found'

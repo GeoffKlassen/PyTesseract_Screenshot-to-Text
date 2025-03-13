@@ -192,6 +192,11 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
     return grey_img, bw_img
 
 
+def get_moe(_text):
+    _m = max(0, round(3.5*np.log(max(1.0, 0.4*len(_text) - 0.7))))
+    return _m
+
+
 def levenshtein_distance(s1, s2):
     """
     Determines the number of character insertions/deletions/substitutions required to transform s1 into s2.
@@ -909,31 +914,35 @@ def get_dashboard_category(screenshot):
     :param screenshot:
     :return:
     """
+    if screenshot.category_detected is not None:
+        return screenshot.category_detected, True
+
     dev_os = screenshot.device_os_detected
-    heads_df = screenshot.headings_df
+    # heads_df = screenshot.headings_df
     # Get the category of data that is visible in the screenshot (Screen time, pickups, or notifications)
     if study_category is not None:
         # The category is normally 'None' at this point, but if the current study only requested one category
         # of screenshot, then we don't want to look for data from other categories.
         print(f"{study_to_analyze[NAME]} study only requested screenshots of {study_category} data.  "
               f"Category set to '{study_category}'.")
-        category_detected = True
+        category_was_found = True
         category = study_category
-    elif not heads_df.empty:
+    else:  # elif not heads_df.empty:
         category = iOS.get_dashboard_category(screenshot) if dev_os == IOS else \
             Android.get_dashboard_category(screenshot)
         if category is None:
-            category_detected = False
+            category_was_found = False
+            category = current_screenshot.category_submitted
         else:
-            category_detected = True
+            category_was_found = True
 
-    else:
-        current_screenshot.set_android_version(None)
+    # else:
+    #     # current_screenshot.set_android_version(None)
+    #
+    #     category_detected = False
+    #     category = current_screenshot.category_submitted
 
-        category_detected = False
-        category = current_screenshot.category_submitted
-
-    return category, category_detected
+    return category, category_was_found
 
 
 def update_eta(ss_start_time, idx):
@@ -975,9 +984,9 @@ def update_eta(ss_start_time, idx):
         all_ios_times = all_times.loc[url_list[DEVICE_OS] == IOS]['time']
         all_android_times = all_times.loc[url_list[DEVICE_OS] == ANDROID]['time']
 
-        avg_ios_time = np.median(all_ios_times) if not all_ios_times.empty else 0
-        avg_android_time = np.median(all_android_times) if not all_android_times.empty else avg_ios_time
-        avg_ios_time = np.median(all_ios_times) if not all_ios_times.empty else avg_android_time
+        avg_ios_time = np.mean(all_ios_times) if not all_ios_times.empty else 2.0
+        avg_android_time = np.mean(np.append(all_android_times, all_times['time'].max())) if not all_android_times.empty else avg_ios_time
+        avg_ios_time = np.mean(np.append(all_ios_times, all_times['time'].max())) if not all_ios_times.empty else avg_android_time
         avg_unknown_os_time = np.mean([avg_android_time, avg_ios_time])
 
         num_ios_images_remaining = len(url_list.loc[(idx < url_list.index) &
@@ -1337,8 +1346,8 @@ if __name__ == '__main__':
             android_version = Android.get_android_version(current_screenshot)
             current_screenshot.set_android_version(android_version)
 
-            dashboard_category, dashboard_category_detected = get_dashboard_category(current_screenshot)
-            if dashboard_category_detected:
+            dashboard_category, category_was_detected = get_dashboard_category(current_screenshot)
+            if category_was_detected:
                 current_screenshot.set_category_detected(dashboard_category)
             else:
                 current_screenshot.add_error(ERR_CATEGORY)
@@ -1436,7 +1445,7 @@ if __name__ == '__main__':
                 show_image(app_area_df, scaled_cropped_image)
             # app_area_df['text'] = app_area_df['text'].apply(lambda x: 'X' if re.match(r'[xX]{2}', x) else x)
 
-            print("\nText found in app-area:")
+            print("\nText found in app area:")
             print(app_area_df[['left', 'top', 'width', 'height', 'conf', 'text']])
             # if dashboard_category is None and current_screenshot.category_detected is not None:
             #     # Sometimes there is screentime data in an image but the category is not detected.
@@ -1479,8 +1488,7 @@ if __name__ == '__main__':
                     # Android does not calculate daily unlocks as the sum of the times each app was opened.
                     # Apps can be opened more than once per unlock.
                     sum_app_numbers = app_data[app_data[NUMBER] != NO_CONF][NUMBER].astype(int).sum()
-                    if int(current_screenshot.daily_total) < sum_app_numbers:
-                        print(current_screenshot.category_detected)
+                    if current_screenshot.daily_total != NO_TEXT and int(current_screenshot.daily_total) < sum_app_numbers:
                         current_screenshot.add_error(ERR_TOTAL_BELOW_APP_SUM)
 
             current_screenshot.set_app_data(app_data)
@@ -1506,14 +1514,12 @@ if __name__ == '__main__':
 
             current_screenshot.set_headings(headings_df)
 
-            dashboard_category, dashboard_category_detected = get_dashboard_category(current_screenshot)
-            if dashboard_category_detected:
+            dashboard_category, category_was_detected = get_dashboard_category(current_screenshot)
+            if category_was_detected:
                 current_screenshot.set_category_detected(dashboard_category)
             else:
                 current_screenshot.add_error(ERR_CATEGORY)
 
-            # for category in 'categories to search for' loop with 'category' as the 3rd input to function
-            # if screentime is in the categories to search for ??
             daily_total, daily_total_conf = iOS.get_daily_total_and_confidence(current_screenshot,
                                                                                bw_image_scaled,
                                                                                dashboard_category)

@@ -8,7 +8,8 @@ import re
 import pandas as pd
 
 import OCRScript_v3
-from OCRScript_v3 import get_best_language, levenshtein_distance
+from OCRScript_v3 import get_moe
+
 from RuntimeValues import *
 
 """
@@ -324,6 +325,25 @@ def get_headings(screenshot, time_fmt_short):
     return df
 
 
+def matches_a_value_pattern(text, patterns):
+    for pattern in patterns:
+        if OCRScript_v3.levenshtein_distance(text, pattern) < get_moe(text) and ('#' in text):
+            return True
+    return False
+
+
+def count_matching_rows(df, format_list, ss_width):
+    count = 0
+    for _i in df.index:
+        row_text = df['text_with_digits_replaced'][_i]
+        if row_text[-1] != "#" and matches_a_value_pattern(row_text, format_list) and \
+                df['left'][_i] > int(0.1 * ss_width):
+            # The last character in row_text isn't a digit, and the whole row text is close to a time/number format
+            count += 1
+
+    return count
+
+
 def get_android_version(screenshot):
     """
     As of 2024, there are 4 distinct versions of the Android Dashboard, depending on phone brand and OS version.
@@ -352,7 +372,38 @@ def get_android_version(screenshot):
                                   KEYWORDS_FOR_2018_UNLOCKS[img_lang])
 
     if heads_df.empty:
-        return None
+        # count the number of rows that match a time/notifications/unlocks format
+        text_df = screenshot.text
+        text_df['text_with_digits_replaced'] = text_df['text'].str.replace(r'\d+', '#', regex=True)
+        value_row_formats = (GOOGLE_SCREENTIME_FORMATS[img_lang] +
+                             GOOGLE_NOTIFICATIONS_FORMATS[img_lang] +
+                             GOOGLE_UNLOCKS_FORMATS[img_lang])
+
+        num_rows_with_app_numbers = count_matching_rows(text_df, value_row_formats, screenshot.width)
+        # rows_with_app_numbers = text_df[(text_df['text_with_digits_replaced'].apply(
+        #     lambda x: matches_any_pattern(x, value_row_formats, moe))) &
+        #                                   (text_df['left'] > int(0.1 * screenshot.width))]
+        # rows_with_screentime = text_df[(text_df['text_with_digits_replaced'].apply(
+        #     lambda x: matches_any_pattern(x, GOOGLE_SCREENTIME_FORMATS[img_lang], moe))) &
+        #                                 (text_df['left'] > int(0.1 * screenshot.width))]
+        # rows_with_notifications = text_df[(text_df['text_with_digits_replaced'].apply(
+        #     lambda x: matches_any_pattern(x, GOOGLE_NOTIFICATIONS_FORMATS[img_lang], moe))) &
+        #                                 (text_df['left'] > int(0.1 * screenshot.width))]
+        # rows_with_unlocks = text_df[(text_df['text_with_digits_replaced'].apply(
+        #     lambda x: matches_any_pattern(x, GOOGLE_UNLOCKS_FORMATS[img_lang], moe))) &
+        #                                 (text_df['left'] > int(0.1 * screenshot.width))]
+        # rows_with_app_numbers = pd.concat([rows_with_screentime, rows_with_unlocks, rows_with_notifications], ignore_index=True)
+        if num_rows_with_app_numbers >= 2:
+            android_ver = GOOGLE
+            # if not rows_with_screentime.empty:
+            #     screenshot.set_category_detected(SCREENTIME)
+            # elif not rows_with_notifications.empty:
+            #     screenshot.set_category_detected(NOTIFICATIONS)
+            # elif not rows_with_unlocks.empty:
+            #     screenshot.set_category_detected(UNLOCKS)
+        else:
+            android_ver = None
+
     elif not heads_df[heads_df['text'].str.isupper()].empty:
         android_ver = VERSION_2018  # TODO: not sure on the year
     elif max(abs(heads_df['left'] + 0.5 * heads_df['width'] - (0.5 * screenshot.width))) < (0.11 * screenshot.width) and \
@@ -385,31 +436,31 @@ def get_dashboard_category(screenshot):
     :return:
     """
 
-    def count_matching_rows(df, format_list):
-        count = 0
-        for text in df['text']:
-            for f in format_list:
-                if text[-1] != "#" and OCRScript_v3.levenshtein_distance(text, f) < 4:
-                    # If the last character in the row isn't a digit, and the whole row text is close to a time format
-                    count += 1
-                    break  # Move to the next text after finding a match
-        return count
-
-    lang = get_best_language(screenshot)
+    lang = OCRScript_v3.get_best_language(screenshot)
     heads_df = screenshot.headings_df
     text_df = screenshot.text
-    text_df_hashes = text_df.copy()
-    text_df_hashes['text'] = text_df_hashes['text'].str.replace(MISREAD_NUMBER_FORMAT, '#', regex=True)
+    text_df['text_with_digits_replaced'] = text_df['text'].str.replace(MISREAD_NUMBER_FORMAT, '#', regex=True)
 
     category_submitted = screenshot.category_submitted
     categories_found = []
-    
+
+    # moe = 3
+    # rows_with_screentime = text_df[(text_df['text_with_digits_replaced'].apply(
+    #     lambda x: matches_any_pattern(x, GOOGLE_SCREENTIME_FORMATS[lang], moe))) &
+    #                                (text_df['left'] > int(0.1 * screenshot.width))]
+    # rows_with_notifications = text_df[(text_df['text_with_digits_replaced'].apply(
+    #     lambda x: matches_any_pattern(x, GOOGLE_NOTIFICATIONS_FORMATS[lang], moe))) &
+    #                                   (text_df['left'] > int(0.1 * screenshot.width))]
+    # rows_with_unlocks = text_df[(text_df['text_with_digits_replaced'].apply(
+    #     lambda x: matches_any_pattern(x, GOOGLE_UNLOCKS_FORMATS[lang], moe))) &
+    #                             (text_df['left'] > int(0.1 * screenshot.width))]
+
     if any(heads_df[HEADING_COLUMN].eq(SCREENTIME_HEADING)) or \
             any(heads_df[HEADING_COLUMN].eq(TOTAL_SCREENTIME)) or \
             any(heads_df[HEADING_COLUMN].eq(MOST_USED_HEADING)) and \
             (text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == MOST_USED_HEADING].index[0] + 1 or
              heads_df[heads_df[HEADING_COLUMN] == MOST_USED_HEADING].iloc[-1]['top'] < 0.9 * screenshot.height) or (
-            count_matching_rows(text_df_hashes, GOOGLE_SCREENTIME_FORMATS[lang]) >= 2):
+            count_matching_rows(text_df, GOOGLE_SCREENTIME_FORMATS[lang], screenshot.width) >= 2):
         # Found screentime heading; or
         # Found total screentime; or
         # Found 'most used' heading and either:
@@ -425,7 +476,7 @@ def get_dashboard_category(screenshot):
             (text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == MOST_NOTIFICATIONS_HEADING].index[0] + 1 or
              heads_df[heads_df[HEADING_COLUMN] == MOST_NOTIFICATIONS_HEADING].iloc[-1][
                  'top'] < 0.9 * screenshot.height) or (
-        count_matching_rows(text_df_hashes, GOOGLE_NOTIFICATIONS_FORMATS[lang]) >= 2):
+            count_matching_rows(text_df, GOOGLE_NOTIFICATIONS_FORMATS[lang], screenshot.width) >= 2):
         # Found notifications heading, and either;
         #     text_df has more data below the notifications heading, or
         #     the notifications heading is not too close to the bottom of the screenshot; or
@@ -439,7 +490,7 @@ def get_dashboard_category(screenshot):
             (text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == UNLOCKS_HEADING].index[0] + 1 or
              heads_df[heads_df[HEADING_COLUMN] == UNLOCKS_HEADING].iloc[-1]['top'] < 0.9 * screenshot.height) or \
             heads_df[HEADING_COLUMN].str.contains(TOTAL_UNLOCKS).any() or (
-        count_matching_rows(text_df_hashes, GOOGLE_UNLOCKS_FORMATS[lang]) >= 2):
+            count_matching_rows(text_df, GOOGLE_UNLOCKS_FORMATS[lang], screenshot.width) >= 2):
         # Found unlocks heading, and either:
         #     text_df has more data below the unlocks heading, or
         #     the unlocks heading is not too close to the bottom of the screenshot; or
@@ -659,8 +710,8 @@ def get_daily_total_and_confidence(screenshot, image, heading):
         total_value_filtered, total_conf = filter_time_text(total_value, total_conf,
                                                             hours_format, minutes_format)
 
-    moe = int(np.log(len(total_value))) + 1
-    if min(OCRScript_v3.levenshtein_distance(total_value[-len(key):], key) <= int(np.log(len(key)))
+    moe = get_moe(total_value)
+    if min(OCRScript_v3.levenshtein_distance(total_value[-len(key):], key) <= get_moe(key)
            for key in KEYWORDS_FOR_YESTERDAY[img_lang]):
         print("Daily total found ends in 'yesterday'. Could not find daily total.")
         return NO_TEXT, NO_CONF
@@ -670,7 +721,7 @@ def get_daily_total_and_confidence(screenshot, image, heading):
         return NO_TEXT, NO_CONF
 
     elif min(OCRScript_v3.levenshtein_distance(total_value, key) for key in GOOGLE_LESS_THAN_1_MINUTE[img_lang]) < moe:
-            return '0 ' + KEYWORDS_FOR_MINUTES[img_lang][0], total_conf
+        return '0 ' + KEYWORDS_FOR_MINUTES[img_lang][0], total_conf
 
     if total_heading == "total " + SCREENTIME and total_value != total_value_filtered:
         print(f"Filtered total: replaced '{total_value}' with '{total_value_filtered}'.")
@@ -740,7 +791,7 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
     :param time_format_short:
     :return:
     """
-    lang = get_best_language(screenshot)
+    lang = OCRScript_v3.get_best_language(screenshot)
     android_version = screenshot.android_version
     date_rows = screenshot.rows_with_date
     text_df = screenshot.text
@@ -752,21 +803,15 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
         value_formats = (GOOGLE_SCREENTIME_FORMATS[lang] +
                          GOOGLE_NOTIFICATIONS_FORMATS[lang] +
                          GOOGLE_UNLOCKS_FORMATS[lang])
-        last_index_headings = headings_df.index[-1]
-        moe = 3
-        text_df['filtered_text'] = text_df['text'].str.replace(r'\d+', '#', regex=True)
+        last_index_headings = headings_df.index[-1] if not headings_df.empty else -1
+        text_df['text_with_digits_replaced'] = text_df['text'].str.replace(r'\d+', '#', regex=True)
 
-        def matches_any_pattern(text, patterns, m):
-            for pattern in patterns:
-                if levenshtein_distance(text, pattern) < m and ('#' in text):
-                    return True
-            return False
-
-        filtered_text_df = text_df[(text_df.index > last_index_headings) &
-                                   (text_df['filtered_text'].apply(lambda x: matches_any_pattern(x, value_formats, moe))) &
-                                   (text_df['left'] > int(0.1 * screenshot.width))]
-        if not filtered_text_df.empty:
-            crop_left = max(0, min(filtered_text_df['left']) - int(0.02 * screenshot.width))
+        rows_with_app_numbers = text_df[(text_df.index > last_index_headings) &
+                                        (text_df['text_with_digits_replaced'].apply(
+                                            lambda x: matches_a_value_pattern(x, value_formats))) &
+                                        (text_df['left'] > int(0.1 * screenshot.width))]
+        if not rows_with_app_numbers.empty:
+            crop_left = max(0, min(rows_with_app_numbers['left']) - int(0.02 * screenshot.width))
             crop_right = max(0, screenshot.width - crop_left - int(0.04 * screenshot.width))
         else:
             # Default values for crop_left and crop_right
@@ -783,15 +828,15 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
                     crop_right = max(0, screenshot.width - crop_left - int(0.04 * screenshot.width))
 
         if REST_OF_THE_DAY in headings_df[HEADING_COLUMN].values:
-            row_above_apps = headings_df[headings_df[HEADING_COLUMN] == REST_OF_THE_DAY].iloc[-1]
-            crop_top = min([screenshot.height, row_above_apps['top'] + int(2.5 * row_above_apps['height'])])
+            row_with_rest_of_the_day = headings_df[headings_df[HEADING_COLUMN] == REST_OF_THE_DAY].iloc[-1]
+            crop_top = min(screenshot.height, row_with_rest_of_the_day['top'] + int(2.5 * row_with_rest_of_the_day['height']))
         elif not date_rows.empty:
-            crop_top = min([screenshot.height, date_rows.iloc[-1]['top'] + (2 * date_rows.iloc[-1]['height'])])
-        elif not filtered_text_df.empty:
-            crop_top = max([0, filtered_text_df.iloc[0]['top'] - 3*int(filtered_text_df.iloc[0]['height'])])
+            crop_top = min(screenshot.height, date_rows.iloc[-1]['top'] + (2 * date_rows.iloc[-1]['height']))
+        elif not rows_with_app_numbers.empty:
+            crop_top = max(0, rows_with_app_numbers.iloc[0]['top'] - 3*int(rows_with_app_numbers.iloc[0]['height']))
         elif headings_df[HEADING_COLUMN].eq(DAY_WEEK_MONTH).any():
             row_with_day_week_month = headings_df[headings_df[HEADING_COLUMN] == DAY_WEEK_MONTH].iloc[0]
-            crop_top = row_with_day_week_month['top'] + row_with_day_week_month['height']
+            crop_top = row_with_day_week_month['top'] + 3*row_with_day_week_month['height']
             crop_right = screenshot.width
         else:
             # TODO Leaving this as a catch-all for now -- debug later if this condition is used
@@ -803,7 +848,7 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
             print("Could not find suitable values for top/bottom of app region.")
             screenshot.add_error(ERR_APP_AREA)
 
-        text_df.drop(columns=['filtered_text'], inplace=True)
+        text_df.drop(columns=['text_with_digits_replaced'], inplace=True)
         cropped_image = image[crop_top:crop_bottom, crop_left:crop_right]
 
     elif android_version in [SAMSUNG_2024, SAMSUNG_2021, VERSION_2018]:
@@ -893,13 +938,9 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
 
     if crop_top >= crop_bottom or crop_left >= crop_right:
         # In case the crop region is invalid
+        print("Invalid crop region calculated; image will not be cropped.")
         return image, [None, None, None, None]
     else:
-        # if screenshot.is_light_mode:
-        #     _, cropped_filtered_image = cv2.threshold(cropped_grey_image, 210, 255, cv2.THRESH_BINARY)
-        # else:
-        #     _, cropped_filtered_image = cv2.threshold(cropped_grey_image, 50, 180, cv2.THRESH_BINARY)
-
         return cropped_image, [crop_top, crop_left, crop_bottom, crop_right]
 
 
@@ -995,8 +1036,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
     android_version = screenshot.android_version
     time_short, time_long, time_eol = time_formats[0], time_formats[1], time_formats[2]
     crop_top, crop_left, crop_bottom, crop_right = coordinates[0], coordinates[1], coordinates[2], coordinates[3]
-    crop_width = crop_right - crop_left
-    img_lang = get_best_language(screenshot)
+    # crop_width = crop_right - crop_left
+    img_lang = OCRScript_v3.get_best_language(screenshot)
     empty_name_row = pd.DataFrame({NAME: [NO_TEXT], NAME_CONF: [NO_CONF]})
     empty_number_row = pd.DataFrame({NUMBER: [NO_TEXT], NUMBER_CONF: [NO_CONF]}) if category == SCREENTIME else (
                        pd.DataFrame({NUMBER: [NO_NUMBER], NUMBER_CONF: [NO_CONF]}))
@@ -1079,8 +1120,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
         minutes_format = '|'.join([MIN, '|'.join(KEYWORDS_FOR_MIN[img_lang]), ('|'.join(KEYWORDS_FOR_MINUTES[img_lang]))])
 
         if screenshot.android_version == GOOGLE:
-            _moe = round(np.log(len(s))) + 1 if len(s) >= 1 else 1
-            if min(levenshtein_distance(s, item) for item in GOOGLE_LESS_THAN_1_MINUTE[img_lang]) < _moe:
+            _moe = get_moe(s)
+            if min(OCRScript_v3.levenshtein_distance(s, item) for item in GOOGLE_LESS_THAN_1_MINUTE[img_lang]) < _moe:
                 return '', '0 ' + KEYWORDS_FOR_MINUTES[img_lang][0]
             # Sometimes words like 'minutes' can be misread as something like 'minuies'. These are still time values,
             # so we still want to process them as time values.
@@ -1186,7 +1227,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                 if row_left + crop_left > (0.4 * screenshot.width):
                     # See 'pill' comment in similar line above
                     continue
-                elif min(levenshtein_distance("# " + app_name, key) for key in
+                elif min(OCRScript_v3.levenshtein_distance("# " + app_name, key) for key in
                          GOOGLE_NOTIFICATIONS_FORMATS[img_lang]) <= moe:
                     # plus, sometimes in '## notifications', only 'notifications' is read.
                     num_missed_app_values += 1

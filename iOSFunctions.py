@@ -126,29 +126,37 @@ def get_headings(screenshot):
     # If a row in the screenshot (closely) matches the format of a heading, label that row as that heading type.
     for i in df.index:
         row_text = df['text'][i]
-        error_margin = round(np.log(len(str(row_text))))
+        error_margin = OCRScript_v3.get_moe(row_text)
         if not day_type_rows.empty and i in day_type_rows.index:
             df.loc[i, HEADING_COLUMN] = DAY_OR_WEEK_HEADING
         elif re.match(screenshot.date_format, row_text, re.IGNORECASE):
             df.loc[i, HEADING_COLUMN] = DATE_HEADING
-        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_SCREEN_TIME[lang]) <= error_margin:
+        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
+                 KEYWORDS_FOR_SCREEN_TIME[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = SCREENTIME_HEADING
-        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_LIMITATIONS[lang]) <= error_margin:
+        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
+                 KEYWORDS_FOR_LIMITATIONS[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = LIMITS_HEADING
-        elif min(OCRScript_v3.levenshtein_distance(row_text[:len(keyword)], keyword) for keyword in KEYWORDS_FOR_MOST_USED[lang]) <= error_margin:
+        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
+                 KEYWORDS_FOR_FIRST_USED_AFTER_PICKUP[lang]) <= error_margin:
+            # Need to check for "FIRST USED AFTER PICKUP" before checking for "MOST USED" because the first 9 characters
+            # of "FIRST USED AFTER PICKUP" (i.e. "FIRST USE") are within the error margin for "MOST USED"
+            df.loc[i, HEADING_COLUMN] = FIRST_USED_AFTER_PICKUP_HEADING
+        elif min(OCRScript_v3.levenshtein_distance(row_text[:len(keyword)], keyword) for keyword in
+                 KEYWORDS_FOR_MOST_USED[lang]) <= error_margin:
+            # Only checking a substring of row_text because sometimes the df row with "MOST USED" contains more words,
+            # but we only care about the first two words
             df.loc[i, HEADING_COLUMN] = MOST_USED_HEADING
-        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in KEYWORDS_FOR_PICKUPS[lang]) <= error_margin:
+        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
+                 KEYWORDS_FOR_PICKUPS[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = PICKUPS_HEADING
         elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
                  KEYWORDS_FOR_FIRST_PICKUP[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = FIRST_PICKUP_HEADING
         elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
-                 KEYWORDS_FOR_FIRST_USED_AFTER_PICKUP[lang]) <= error_margin:
-            df.loc[i, HEADING_COLUMN] = FIRST_USED_AFTER_PICKUP_HEADING
-        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
                  KEYWORDS_FOR_NOTIFICATIONS[lang]) <= error_margin:
             df.loc[i, HEADING_COLUMN] = NOTIFICATIONS_HEADING
-        elif re.search('|'.join(KEYWORDS_FOR_HOURS_AXIS), row_text, re.IGNORECASE):  # or re.search(r'^0\s.*12|6\s.*18$', row_text):
+        elif re.search('|'.join(KEYWORDS_FOR_HOURS_AXIS), row_text, re.IGNORECASE):
             df.loc[i, HEADING_COLUMN] = HOURS_AXIS_HEADING
         elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
                  KEYWORDS_FOR_LIMIT_USAGE[lang]) <= error_margin:
@@ -179,6 +187,10 @@ def get_dashboard_category(screenshot):
     heads_df = screenshot.headings_df
     text_df = screenshot.text
     backup_category = screenshot.category_submitted
+
+    if heads_df.empty:
+        print("No headings found; cannot search for dashboard category.")
+        return backup_category
 
     categories_found = []
 
