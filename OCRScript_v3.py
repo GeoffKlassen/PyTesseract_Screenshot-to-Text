@@ -945,6 +945,15 @@ def get_dashboard_category(screenshot):
     return category, category_was_found
 
 
+def filter_common_misread_app_names(df):
+    df[NAME] = df[NAME].apply(lambda x: re.sub(r'\bAl\b', 'AI', x))
+    df[NAME] = df[NAME].apply(lambda x: re.sub(r'^4$', 'X', x))
+    df[NAME] = df[NAME].apply(lambda x: re.sub(r'(?<!BeReal)\.$', '', x))
+    df[NAME] = df[NAME].apply(lambda x: re.sub(r'openal.com$', 'openai.com', x))
+
+    return df
+
+
 def update_eta(ss_start_time, idx):
 
     def convert_seconds_to_hms(sec):
@@ -1445,7 +1454,7 @@ if __name__ == '__main__':
                 show_image(app_area_df, scaled_cropped_image)
             # app_area_df['text'] = app_area_df['text'].apply(lambda x: 'X' if re.match(r'[xX]{2}', x) else x)
 
-            print("\nText found in app area:")
+            print("\nText found in cropped app area:")
             print(app_area_df[['left', 'top', 'width', 'height', 'conf', 'text']])
             # if dashboard_category is None and current_screenshot.category_detected is not None:
             #     # Sometimes there is screentime data in an image but the category is not detected.
@@ -1656,7 +1665,7 @@ if __name__ == '__main__':
 
             # app_area_2_df['text'] = app_area_2_df['text'].apply(lambda x: 'X' if re.match(r'[xX]{2}', x) else x)
 
-            print("\nText found in app-area:")
+            print("\nText found in cropped app area:")
             print(app_area_2_df[['left', 'top', 'width', 'height', 'conf', 'text']])
 
             # if dashboard_category is None and current_screenshot.category_detected is not None:

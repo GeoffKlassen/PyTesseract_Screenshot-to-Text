@@ -279,7 +279,7 @@ class Participant:
                                                'new_name', 'new_name_conf', 'new_number', 'new_number_conf'])
 
             # Build the dataframe of existing apps and new apps, lined up as calculated above, for comparison
-            for i in range(max_apps_per_category + 1):
+            for i in range(max_apps_per_category + abs(new_data_lineup_index - existing_data_lineup_index) + 1):
                 # i will range from 1 to 3, or from 1 to 8, e.g.
                 """
                     Calculate the app index from the existing data that should go at position i in the comparison df.
@@ -305,7 +305,7 @@ class Participant:
                                              8
                 """
                 ex_index = i + existing_data_lineup_index - max_lineup
-                if ex_index > 0:
+                if 0 < ex_index < max_apps_per_category + 1:
                     # Place existing app # 'ex_index' into row 'i' of the comparison dataframe
                     compare_df.loc[i, 'ex_name'] = self.usage_data[f'{category}_{APP}_{ex_index}_{NAME}'][date_index]
                     compare_df.loc[i, 'ex_name_conf'] = self.usage_data_conf[f'{category}_{APP}_{ex_index}_{NAME}'][date_index]
@@ -327,7 +327,7 @@ class Participant:
                     See example above. 
                 """
                 new_index = i + new_data_lineup_index - max_lineup
-                if new_index > 0:
+                if 0 < new_index < max_apps_per_category + 1:
                     # Place new app # 'new_index' into row 'i' of the comparison dataframe
                     compare_df.loc[i, 'new_name'] = ss.app_data.loc[new_index, NAME]
                     compare_df.loc[i, 'new_name_conf'] = ss.app_data.loc[new_index, NAME_CONF]

@@ -1300,14 +1300,13 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
               f"Setting detected category to '{category}'.")
         screenshot.set_category_detected(category)
 
+    app_names = OCRScript_v3.filter_common_misread_app_names(app_names)
+
     while app_names.shape[0] < max_apps + 1:
         app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
     while app_numbers.shape[0] < max_apps + 1:
         app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
 
-    app_names[NAME] = app_names[NAME].apply(lambda x: re.sub(r'\bAl\b', 'AI', x))
-    app_names[NAME] = app_names[NAME].apply(lambda x: re.sub(r'^4$', 'X', x))
-    app_names[NAME] = app_names[NAME].apply(lambda x: re.sub(r'\.$', '', x))
     app_names, app_numbers = app_names.drop(app_names.index[0]), app_numbers.drop(app_numbers.index[0])
 
     # app_names.loc[app_names[NAME] == 'Lite', NAME] = 'Facebook Lite'  # The app "Facebook Lite" appears as 'Lite'
