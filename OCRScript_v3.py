@@ -746,7 +746,9 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False,
         return text2, conf2
     else:
         print("No text found on 1st or 2nd scan.")
-        return NO_NUMBER, NO_CONF
+        if value_is_number:
+            return NO_NUMBER, NO_CONF
+        return NO_TEXT, NO_CONF
 
 
 def extract_app_info(screenshot, image, coordinates, scale):
@@ -1135,7 +1137,7 @@ if __name__ == '__main__':
         NAME_CONF: [NO_CONF] * max_apps_per_category,
         NUMBER: [NO_TEXT if study_category == SCREENTIME else NO_NUMBER] * max_apps_per_category,
         NUMBER_CONF: [NO_CONF] * max_apps_per_category,
-        MINUTES: [NO_TEXT] * max_apps_per_category
+        MINUTES: [NO_NUMBER] * max_apps_per_category
     })
     empty_app_data.index = pd.Index([idx + 1 for idx in empty_app_data.index])
     # All app_data should have indexes that start at 1 instead of starting at 0

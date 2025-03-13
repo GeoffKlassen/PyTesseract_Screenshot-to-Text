@@ -92,7 +92,7 @@ OLD_UNLOCKS_HEADING = '2018 unlocks'
     Values to use when data is missing or not found
 """
 NO_NUMBER = -1
-NO_TEXT = str(NO_NUMBER)
+NO_TEXT = "—"  # str(NO_NUMBER)
 NO_CONF = -1
 
 """

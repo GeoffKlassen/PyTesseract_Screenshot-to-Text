@@ -704,7 +704,8 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
     # Search for crop_left and crop_right
     if not app_area_text.empty:
         for i in app_area_text.index:
-            if app_area_text['left'][i] < int(0.25 * screenshot.width):
+            if app_area_text['left'][i] < int(0.25 * screenshot.width) and \
+                    not bool(re.match(MISREAD_TIME_OR_NUMBER_FORMAT, app_area_text['text'][i])):
                 crop_left = app_area_text['left'][i] - int(0.02 * screenshot.width)
                 print(f"Found an app row: '{app_area_text['text'][i]}'. "
                       f"Setting left edge of crop area to the left of this row.")

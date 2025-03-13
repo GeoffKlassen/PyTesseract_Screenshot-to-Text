@@ -347,7 +347,7 @@ class Participant:
                 if all(comparison_value == NO_TEXT for comparison_value in
                        compare_df.loc[i, ['ex_name', 'ex_number', 'new_name', 'new_number']].tolist()) and \
                         i > max_apps_per_category:
-                    compare_df.drop(compare_df.index[i], inplace=True)
+                    compare_df.drop(compare_df.index[-1], inplace=True)
                     break
 
             print("\nTable of app comparisons to be made:")
