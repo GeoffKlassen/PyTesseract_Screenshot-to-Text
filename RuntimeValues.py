@@ -13,7 +13,7 @@ from LanguageDictionaries import *
 """
 
 
-study_to_analyze = studies[1]
+study_to_analyze = studies[2]
 # Use studies[0] for the HappyB2.0 study (pre-launch prep)
 # Use studies[1] for the HappyB2.0 study (2024 Aug-Dec)
 # Use studies[2] for the BCH study
@@ -53,7 +53,7 @@ save_downloaded_images = True  # If True, images downloaded at runtime are saved
 avicenna_user = "geoff.klassen@usask.ca"
 avicenna_password = "Phi1*618ah"
 
-show_images_at_runtime = True  # If True, images of the screenshots will be shown during runtime (mostly for debugging).
+show_images_at_runtime = False  # If True, images of the screenshots will be shown during runtime (mostly for debugging).
 
 app_area_scale_factor = 1  # In addition to the screenshot_scale_factor, this is how much to scale the cropped image
                               # when searching for app-level data

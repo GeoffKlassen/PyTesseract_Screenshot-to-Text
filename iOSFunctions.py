@@ -658,6 +658,7 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
                 break
 
         if crop_left > round(0.22 * screenshot.width):
+            print("Crop region may be too narrow. Resetting to default.")
             crop_left = round(0.15 * screenshot.width)
             crop_right = round(0.87 * screenshot.width)
         # Reset the left- and right-bounds on the off-chance that the first app found is too far right.
