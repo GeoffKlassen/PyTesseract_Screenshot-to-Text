@@ -68,13 +68,15 @@ DAY_NAME_HEADING = 'day name'
 VIEW_MORE_HEADING = 'view more'
 REST_OF_THE_DAY = 'rest of the day'
 SEARCH_APPS = 'Search apps'
+DAY_WEEK_MONTH = 'Day Week Month'
 
 ANDROID_EXCLUSIVE_HEADINGS = [MOST_USED_APPS_HEADING,
                               MOST_NOTIFICATIONS_HEADING,
                               UNLOCKS_HEADING,
                               VIEW_MORE_HEADING,
                               REST_OF_THE_DAY,
-                              SEARCH_APPS]
+                              SEARCH_APPS,
+                              DAY_WEEK_MONTH]
 
 GOOGLE = 'Google'
 VERSION_2018 = 'Android 2018'

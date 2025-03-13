@@ -1353,13 +1353,13 @@ if __name__ == '__main__':
             # For Samsung_2021 and 2018 versions of the dashboard, the Screentime heading and Notifications heading
             # both have sub-headings ('most used' and 'most notifications', respectively).
             if dashboard_category == SCREENTIME:
-                headings_above_apps = [MOST_USED_APPS_HEADING, SEARCH_APPS]
+                headings_above_apps = [MOST_USED_APPS_HEADING, SEARCH_APPS, DAY_WEEK_MONTH]
                 # Determine whether the row of text immediately above the app area is found
                 # (used in ParticipantClass for comparing two screenshots from the same person & day & category)
             elif dashboard_category == NOTIFICATIONS:
-                headings_above_apps = [MOST_NOTIFICATIONS_HEADING, SEARCH_APPS]
+                headings_above_apps = [MOST_NOTIFICATIONS_HEADING, SEARCH_APPS, DAY_WEEK_MONTH]
             else:  # dashboard_category == UNLOCKS, or no dashboard category
-                headings_above_apps = []
+                headings_above_apps = [SEARCH_APPS, DAY_WEEK_MONTH]
 
             # if the daily total is 0 (and not GOOGLE unlocks version), then there will be no app-level data to extract.
             if daily_total[0] in ['0', 'o', 'O'] and not (android_version == GOOGLE and dashboard_category == UNLOCKS):

@@ -641,30 +641,7 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
     headings_above_df = headings_df[headings_df[HEADING_COLUMN].isin(headings_above)]
     headings_below_df = headings_df[headings_df[HEADING_COLUMN].eq(heading_below)]
 
-    # Look for text in the initial scan that would qualify as an app name
-    app_area_text = text[(text['left'] > int(0.15*screenshot.width)) & (text['height'] > int(0.025 * screenshot.width))]
-    if headings_above and not headings_above_df.empty:
-        app_area_text = app_area_text[app_area_text.index > headings_above_df.index[-1]]
-    if heading_below is not None and not headings_below_df.empty:
-        app_area_text = app_area_text[app_area_text.index < headings_below_df.index[0]]
-
-    if not app_area_text.empty:
-        for i in app_area_text.index:
-            if app_area_text['left'][i] < int(0.25 * screenshot.width):
-                crop_left = app_area_text['left'][i] - int(0.02 * screenshot.width)
-                print(f"Found an app row: '{app_area_text['text'][i]}'. "
-                      f"Setting left edge of crop area to the left of this row.")
-                crop_right = screenshot.width - crop_left + int(0.02 * screenshot.width)
-                break
-
-        if crop_left > round(0.22 * screenshot.width):
-            print("Crop region may be too narrow. Resetting to default.")
-            crop_left = round(0.15 * screenshot.width)
-            crop_right = round(0.87 * screenshot.width)
-        # Reset the left- and right-bounds on the off-chance that the first app found is too far right.
-    else:
-        print("No text found in app area. Using default left-to-right crop bounds.")
-
+    # Search for crop_top and crop_bottom
     if not headings_df.empty and not (headings_df[headings_df['left'] > 0]).empty:
         for i in headings_df.index:
             current_heading = headings_df[HEADING_COLUMN][i]
@@ -702,6 +679,34 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
         return screenshot.grey_image, [None, None, None, None]
         # app_area_heading_not_found = True
         # num_missed_app_values = 0
+
+    # Look for text in the initial scan that would qualify as an app name
+    app_area_text = text[(text['left'] > int(0.15*screenshot.width)) &
+                         (text['height'] > int(0.025 * screenshot.width)) &
+                         (text['top'] > crop_top)]
+    if headings_above and not headings_above_df.empty:
+        app_area_text = app_area_text[app_area_text.index > headings_above_df.index[-1]]
+    if heading_below is not None and not headings_below_df.empty:
+        app_area_text = app_area_text[app_area_text.index < headings_below_df.index[0]]
+
+    # Search for crop_left and crop_right
+    if not app_area_text.empty:
+        for i in app_area_text.index:
+            if app_area_text['left'][i] < int(0.25 * screenshot.width):
+                crop_left = app_area_text['left'][i] - int(0.02 * screenshot.width)
+                print(f"Found an app row: '{app_area_text['text'][i]}'. "
+                      f"Setting left edge of crop area to the left of this row.")
+                crop_right = screenshot.width - crop_left + int(0.02 * screenshot.width)
+                break
+
+        if crop_left > round(0.22 * screenshot.width):
+            print("Crop region may be too narrow. Resetting to default.")
+            crop_left = round(0.15 * screenshot.width)
+            crop_right = round(0.87 * screenshot.width)
+        # Reset the left- and right-bounds on the off-chance that the first app found is too far right.
+    else:
+        print("No text found in app area. Using default left-to-right crop bounds.")
+
 
     # Crop the image and apply a different monochrome threshold (improves chances of catching missed text)
     cropped_grey_image = screenshot.grey_image[crop_top:crop_bottom, crop_left:crop_right]

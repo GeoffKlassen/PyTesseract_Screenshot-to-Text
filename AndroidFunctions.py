@@ -10,7 +10,6 @@ import pandas as pd
 import OCRScript_v3
 from OCRScript_v3 import get_best_language, levenshtein_distance
 from RuntimeValues import *
-from iOSFunctions import filter_time_or_number_text
 
 """
     Android-Specific dictionaries
@@ -109,7 +108,7 @@ GOOGLE_SCREENTIME_FORMATS = {ITA: ['# ora', '# h e # min', '# minuti', '1 minuto
                              GER: ['# Stunde', '# Std # Min', '# Minuten', '1 Minute', 'Weniger als 1 Minute'],
                              FRA: ['# heures', '# h et # min', '# minutes', '1 minute', 'Moins de 1 minute']}
 GOOGLE_LESS_THAN_1_MINUTE = {ITA: ['Meno di 1 minuto'],
-                             ENG: ['Less than 1 minute'],
+                             ENG: ['Less than 1 minute', 'less than 1 min'],
                              GER: ['Weniger als 1 Minute'],
                              FRA: ['Moins de 1 minute']}
 GOOGLE_NOTIFICATIONS_FORMATS = {ITA: ['# notifiche'],
@@ -140,6 +139,11 @@ SAMSUNG_SEARCH_APPS = {ITA: ['TODO FILL THIS IN'],  # TODO Fill this in
 #                             GER: 'Timer fur Apps einrichten',
 #                             FRA: ''}  # TODO Fill this in
 # "You can set daily timers" is a tip box that appears in the Google version of Dashboard, until a user clears it.
+
+KEYWORDS_FOR_DAY_WEEK_MONTH = {ITA: ['TODO FILL THIS IN'],  # TODO Fill this in
+                               ENG: ['Week Month'],
+                               GER: ['TODO FILL THIS IN'],  # TODO Fill this in
+                               FRA: ['TODO FILL THIS IN']}  # TODO Fill this in
 
 KEYWORDS_FOR_REST_OF_THE_DAY = {ITA: ['giornata'],  # full phrase is 'resto della giornata' but 'giornata' is sometimes its own line
                                 ENG: ['rest of the day', 'rest of the', 'of the day', 'the day.'],
@@ -216,6 +220,7 @@ def get_headings(screenshot, time_fmt_short):
     df = screenshot.text
     lang = screenshot.language
     df[HEADING_COLUMN] = None
+    df[OS_COLUMN] = None
 
     if lang is None:
         print("Language not detected; cannot get headings from screenshot.")
@@ -308,6 +313,9 @@ def get_headings(screenshot, time_fmt_short):
 
         elif (min(OCRScript_v3.levenshtein_distance(row_text[-len(key):], key) for key in SAMSUNG_SEARCH_APPS[lang])) < moe:
             df.loc[i, HEADING_COLUMN] = SEARCH_APPS
+
+        elif (min(OCRScript_v3.levenshtein_distance(row_text[-len(key):], key) for key in KEYWORDS_FOR_DAY_WEEK_MONTH[lang])) < moe:
+            df.loc[i, HEADING_COLUMN] = DAY_WEEK_MONTH
         else:
             df = df.drop(i)
 
@@ -348,7 +356,7 @@ def get_android_version(screenshot):
     elif not heads_df[heads_df['text'].str.isupper()].empty:
         android_ver = VERSION_2018  # TODO: not sure on the year
     elif max(abs(heads_df['left'] + 0.5 * heads_df['width'] - (0.5 * screenshot.width))) < (0.11 * screenshot.width) and \
-            not heads_df[HEADING_COLUMN].eq(VIEW_MORE_HEADING).any():
+            not heads_df[HEADING_COLUMN].eq(VIEW_MORE_HEADING).any() or heads_df[HEADING_COLUMN].eq(DAY_WEEK_MONTH).any():
         # All the headings found are centred
         android_ver = GOOGLE
     elif not (heads_df['heading'].isin(samsung_2021_headings)).any():
@@ -777,19 +785,21 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
         if REST_OF_THE_DAY in headings_df[HEADING_COLUMN].values:
             row_above_apps = headings_df[headings_df[HEADING_COLUMN] == REST_OF_THE_DAY].iloc[-1]
             crop_top = min([screenshot.height, row_above_apps['top'] + int(2.5 * row_above_apps['height'])])
-            crop_bottom = screenshot.height
         elif not date_rows.empty:
             crop_top = min([screenshot.height, date_rows.iloc[-1]['top'] + (2 * date_rows.iloc[-1]['height'])])
-            crop_bottom = screenshot.height
         elif not filtered_text_df.empty:
             crop_top = max([0, filtered_text_df.iloc[0]['top'] - 3*int(filtered_text_df.iloc[0]['height'])])
-            crop_bottom = screenshot.height
+        elif headings_df[HEADING_COLUMN].eq(DAY_WEEK_MONTH).any():
+            row_with_day_week_month = headings_df[headings_df[HEADING_COLUMN] == DAY_WEEK_MONTH].iloc[0]
+            crop_top = row_with_day_week_month['top'] + row_with_day_week_month['height']
+            crop_right = screenshot.width
         else:
             # TODO Leaving this as a catch-all for now -- debug later if this condition is used
             crop_top = 0
-            crop_bottom = screenshot.height
 
-        if crop_top == 0 and crop_bottom == screenshot.height:
+        crop_bottom = screenshot.height
+
+        if crop_top == 0:
             print("Could not find suitable values for top/bottom of app region.")
             screenshot.add_error(ERR_APP_AREA)
 
