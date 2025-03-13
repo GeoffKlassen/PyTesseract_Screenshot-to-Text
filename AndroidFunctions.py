@@ -8,7 +8,6 @@ import re
 import pandas as pd
 
 import OCRScript_v3
-from OCRScript_v3 import get_moe
 
 from RuntimeValues import *
 
@@ -239,12 +238,12 @@ def get_headings(screenshot, time_fmt_short):
         # Replace numbers with '#' symbol for matching with total screentime/notifications/unlocks formats
         row_text_filtered = re.sub(r'\d+', '#', row_text).replace(' ', '')
         # debug
-        row_text_contains_digits = bool(re.search(r'\d+', row_text))
+        row_text_has_no_digits = not bool(re.search(r'\d+', row_text))
         centre_of_row = int(df['left'][i] + 0.5 * df['width'][i])
-        moe = round(np.log(len(str(row_text))))
+        # moe = round(np.log(len(str(row_text))))
         # margin of error (number of characters two strings can differ by and still be considered the same text)
 
-        if min(OCRScript_v3.levenshtein_distance(row_text, day) for day in day_types) <= moe:
+        if any(OCRScript_v3.levenshtein_distance(row_text, day) <= OCRScript_v3.error_margin(row_text, day) for day in day_types):
             # Row contains a day name
             df.loc[i, HEADING_COLUMN] = DAY_NAME_HEADING
         elif re.search(screenshot.date_format, row_text, re.IGNORECASE):
@@ -252,71 +251,82 @@ def get_headings(screenshot, time_fmt_short):
             df.loc[i, HEADING_COLUMN] = DATE_HEADING
         elif len(row_words.intersection(DAY_ABBREVIATIONS[lang])) >= 3:
             df.loc[i, HEADING_COLUMN] = DAYS_AXIS_HEADING
-        elif min(OCRScript_v3.levenshtein_distance(row_text, key)
-                 for key in KEYWORDS_FOR_SCREEN_TIME[lang]) <= moe:
+        elif any(OCRScript_v3.levenshtein_distance(row_text, key) <= OCRScript_v3.error_margin(row_text, key)
+                 for key in KEYWORDS_FOR_SCREEN_TIME[lang]):
             # Row contains 'Screen time'
             df.loc[i, HEADING_COLUMN] = SCREENTIME_HEADING
-        elif min(OCRScript_v3.levenshtein_distance(row_text[:len(key)], key)
+        elif any(OCRScript_v3.levenshtein_distance(row_text[:len(key)], key) <= OCRScript_v3.error_margin(key)
+                 for key in KEYWORDS_FOR_MOST_USED_APPS[lang]):
             # Row contains 'Most used'
-                 for key in KEYWORDS_FOR_MOST_USED_APPS[lang]) <= moe:
             df.loc[i, HEADING_COLUMN] = MOST_USED_APPS_HEADING
-        elif min(OCRScript_v3.levenshtein_distance(row_text, key) for key in
-                 KEYWORDS_FOR_NOTIFICATIONS_RECEIVED[lang]) <= moe and not row_text_contains_digits:
+        elif any(OCRScript_v3.levenshtein_distance(row_text, key) <= OCRScript_v3.error_margin(row_text, key)
+                 for key in KEYWORDS_FOR_NOTIFICATIONS_RECEIVED[lang]) and row_text_has_no_digits:
             # Row contains 'Notifications'
             df.loc[i, HEADING_COLUMN] = NOTIFICATIONS_HEADING
-        elif min(OCRScript_v3.levenshtein_distance(row_text, key) for key in
-                 KEYWORDS_FOR_MOST_NOTIFICATIONS[lang]) <= moe and not row_text_contains_digits:
+        elif any(OCRScript_v3.levenshtein_distance(row_text, key) <= OCRScript_v3.error_margin(row_text, key)
+                 for key in KEYWORDS_FOR_MOST_NOTIFICATIONS[lang]) and row_text_has_no_digits:
             # Row contains 'Most Notifications'
             df.loc[i, HEADING_COLUMN] = MOST_NOTIFICATIONS_HEADING
-        elif min(OCRScript_v3.levenshtein_distance(row_text, key) for key in
-                 KEYWORDS_FOR_TIMES_OPENED[lang]) <= moe and not row_text_contains_digits:
+        elif any(OCRScript_v3.levenshtein_distance(row_text, key) <= OCRScript_v3.error_margin(row_text, key)
+                 for key in KEYWORDS_FOR_TIMES_OPENED[lang]) and row_text_has_no_digits:
             # Row contains 'Times Opened'
             df.loc[i, HEADING_COLUMN] = UNLOCKS_HEADING
-        elif min(OCRScript_v3.levenshtein_distance(row_text, key) for key in KEYWORDS_FOR_VIEW_MORE[lang]) <= moe:
+        elif any(OCRScript_v3.levenshtein_distance(row_text, key) <= OCRScript_v3.error_margin(row_text, key)
+                 for key in KEYWORDS_FOR_VIEW_MORE[lang]):
             # Row contains 'View More'
             df.loc[i, HEADING_COLUMN] = VIEW_MORE_HEADING
 
-        elif min(OCRScript_v3.levenshtein_distance(row_text, key) for key in KEYWORDS_FOR_2018_SCREENTIME[lang]) <= moe:
+        elif any(OCRScript_v3.levenshtein_distance(row_text, key) <= OCRScript_v3.error_margin(row_text, key)
+                 for key in KEYWORDS_FOR_2018_SCREENTIME[lang]):
             # Row contains
             df.loc[i, HEADING_COLUMN] = OLD_SCREENTIME_HEADING
-        elif OCRScript_v3.levenshtein_distance(row_text, KEYWORDS_FOR_2018_MOST_USED[lang]) <= moe:
+        elif any(OCRScript_v3.levenshtein_distance(row_text, key) <= OCRScript_v3.error_margin(row_text, key)
+                 for key in KEYWORDS_FOR_2018_MOST_USED[lang]):
             df.loc[i, HEADING_COLUMN] = OLD_MOST_USED_HEADING
-        elif OCRScript_v3.levenshtein_distance(row_text, KEYWORDS_FOR_2018_UNLOCKS[lang]) <= moe:
+        elif any(OCRScript_v3.levenshtein_distance(row_text, key) <= OCRScript_v3.error_margin(row_text, key)
+                 for key in KEYWORDS_FOR_2018_UNLOCKS[lang]):
             df.loc[i, HEADING_COLUMN] = OLD_UNLOCKS_HEADING
 
         elif (bool(re.match(time_fmt_short, row_text)) and df['left'][i] < 0.15 * screenshot.width or
                 (not re.fullmatch(r'#+', row_text_filtered) and
-                 min(OCRScript_v3.levenshtein_distance(row_text_filtered, key.replace(' ', ''))
-                     for key in GOOGLE_SCREENTIME_FORMATS[lang]) <= moe and
+                 any(OCRScript_v3.levenshtein_distance(row_text_filtered, key.replace(' ', '')) <=
+                     OCRScript_v3.error_margin(row_text_filtered, key.replace(' ', ''))
+                     for key in GOOGLE_SCREENTIME_FORMATS[lang]) and
                  abs(centre_of_row - (0.5 * screenshot.width)) < (0.1 * screenshot.width))) and \
-                 not df[HEADING_COLUMN].str.contains(TOTAL_SCREENTIME).any():
+                not df[HEADING_COLUMN].str.contains(TOTAL_SCREENTIME).any():
             # Row text starts with a short-format time length (e.g. 1h5m) and is left-aligned (Samsung style), or
             # Row text matches a long-format time length (e.g. 1 hr 5 min) and is centred (Google style)
             df.loc[i, HEADING_COLUMN] = TOTAL_SCREENTIME
-        elif (min(OCRScript_v3.levenshtein_distance(row_text_filtered, key.replace(' ', '')) for key in
-                  (GOOGLE_NOTIFICATIONS_FORMATS[lang] + SAMSUNG_NOTIFICATIONS_FORMATS[lang])) <= moe and
+        elif (any(OCRScript_v3.levenshtein_distance(row_text_filtered, key.replace(' ', '')) <=
+                  OCRScript_v3.error_margin(row_text_filtered, key.replace(' ', ''))
+                  for key in (GOOGLE_NOTIFICATIONS_FORMATS[lang] + SAMSUNG_NOTIFICATIONS_FORMATS[lang])) and
               (df['left'][i] < 0.15 * screenshot.width or
                abs(centre_of_row - (0.5 * screenshot.width)) < (0.1 * screenshot.width))) and \
                 not row_text_filtered.startswith(('N', 'n')) and \
                 not df[HEADING_COLUMN].str.contains(TOTAL_NOTIFICATIONS).any():
             # Row text matches a 'total notifications' format and is either left-aligned (Samsung) or centred (Google)
             df.loc[i, HEADING_COLUMN] = TOTAL_NOTIFICATIONS
-        elif ((min(OCRScript_v3.levenshtein_distance(row_text_filtered, key.replace(' ', '')) for key in
-                   (GOOGLE_UNLOCKS_FORMATS[lang] + SAMSUNG_UNLOCKS_FORMAT[lang]))) <= moe and
+        elif (any(OCRScript_v3.levenshtein_distance(row_text_filtered, key.replace(' ', '')) <=
+                  OCRScript_v3.error_margin(row_text_filtered, key.replace(' ', ''))
+                  for key in (GOOGLE_UNLOCKS_FORMATS[lang] + SAMSUNG_UNLOCKS_FORMAT[lang])) and
               (df['left'][i] < 0.15 * screenshot.width or abs(centre_of_row - (0.5 * screenshot.width)) < (
                       0.1 * screenshot.width))) and \
                 not df[HEADING_COLUMN].str.contains(TOTAL_UNLOCKS).any():
             # Row text matches a 'total unlocks' format and is either left-aligned (Samsung) or centred (Google)
             df.loc[i, HEADING_COLUMN] = TOTAL_UNLOCKS
 
-        elif (min(OCRScript_v3.levenshtein_distance(row_text[-len(key):], key) for key in KEYWORDS_FOR_REST_OF_THE_DAY[lang])) < moe:
+        elif any(OCRScript_v3.levenshtein_distance(row_text[-len(key):], key) <= OCRScript_v3.error_margin(key)
+                 for key in KEYWORDS_FOR_REST_OF_THE_DAY[lang]):
             df.loc[i, HEADING_COLUMN] = REST_OF_THE_DAY
 
-        elif (min(OCRScript_v3.levenshtein_distance(row_text[-len(key):], key) for key in SAMSUNG_SEARCH_APPS[lang])) < moe:
+        elif any(OCRScript_v3.levenshtein_distance(row_text[-len(key):], key) <= OCRScript_v3.error_margin(key)
+                 for key in SAMSUNG_SEARCH_APPS[lang]):
             df.loc[i, HEADING_COLUMN] = SEARCH_APPS
 
-        elif (min(OCRScript_v3.levenshtein_distance(row_text[-len(key):], key) for key in KEYWORDS_FOR_DAY_WEEK_MONTH[lang])) < moe:
+        elif any(OCRScript_v3.levenshtein_distance(row_text[-len(key):], key) <= OCRScript_v3.error_margin(key)
+                 for key in KEYWORDS_FOR_DAY_WEEK_MONTH[lang]):
             df.loc[i, HEADING_COLUMN] = DAY_WEEK_MONTH
+
         else:
             df = df.drop(i)
 
@@ -327,7 +337,7 @@ def get_headings(screenshot, time_fmt_short):
 
 def matches_a_value_pattern(text, patterns):
     for pattern in patterns:
-        if OCRScript_v3.levenshtein_distance(text, pattern) < get_moe(text) and ('#' in text):
+        if OCRScript_v3.levenshtein_distance(text, pattern) < OCRScript_v3.error_margin(text, pattern) and ('#' in text):
             return True
     return False
 
@@ -710,17 +720,18 @@ def get_daily_total_and_confidence(screenshot, image, heading):
         total_value_filtered, total_conf = filter_time_text(total_value, total_conf,
                                                             hours_format, minutes_format)
 
-    moe = get_moe(total_value)
-    if min(OCRScript_v3.levenshtein_distance(total_value[-len(key):], key) <= get_moe(key)
+    if any(OCRScript_v3.levenshtein_distance(total_value[-len(key):], key) <= OCRScript_v3.error_margin(key)
            for key in KEYWORDS_FOR_YESTERDAY[img_lang]):
         print("Daily total found ends in 'yesterday'. Could not find daily total.")
         return NO_TEXT, NO_CONF
 
-    elif min(OCRScript_v3.levenshtein_distance(total_value, key) for key in SAMSUNG_SEARCH_APPS[img_lang]) <= moe:
+    elif any(OCRScript_v3.levenshtein_distance(total_value, key) <= OCRScript_v3.error_margin(total_value, key)
+             for key in SAMSUNG_SEARCH_APPS[img_lang]):
         print("Daily total matches heading 'Search apps' (or 'Search categories'). Could not find daily total.")
         return NO_TEXT, NO_CONF
 
-    elif min(OCRScript_v3.levenshtein_distance(total_value, key) for key in GOOGLE_LESS_THAN_1_MINUTE[img_lang]) < moe:
+    elif any(OCRScript_v3.levenshtein_distance(total_value, key) <= OCRScript_v3.error_margin(total_value, key)
+             for key in GOOGLE_LESS_THAN_1_MINUTE[img_lang]):
         return '0 ' + KEYWORDS_FOR_MINUTES[img_lang][0], total_conf
 
     if total_heading == "total " + SCREENTIME and total_value != total_value_filtered:
@@ -1120,8 +1131,9 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
         minutes_format = '|'.join([MIN, '|'.join(KEYWORDS_FOR_MIN[img_lang]), ('|'.join(KEYWORDS_FOR_MINUTES[img_lang]))])
 
         if screenshot.android_version == GOOGLE:
-            _moe = get_moe(s)
-            if min(OCRScript_v3.levenshtein_distance(s, item) for item in GOOGLE_LESS_THAN_1_MINUTE[img_lang]) < _moe:
+            _moe = OCRScript_v3.error_margin(s)
+            if any(OCRScript_v3.levenshtein_distance(s, item) <= OCRScript_v3.error_margin(s, item)
+                   for item in GOOGLE_LESS_THAN_1_MINUTE[img_lang]):
                 return '', '0 ' + KEYWORDS_FOR_MINUTES[img_lang][0]
             # Sometimes words like 'minutes' can be misread as something like 'minuies'. These are still time values,
             # so we still want to process them as time values.
@@ -1177,7 +1189,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
 
         return name, number
 
-    moe_show_sites = round(min(np.log(len(key)) for key in KEYWORDS_FOR_SHOW_SITES_YOU_VISIT[img_lang]))
+    # moe_show_sites = round(min(np.log(len(key)) for key in KEYWORDS_FOR_SHOW_SITES_YOU_VISIT[img_lang]))
     previous_text = NUMBER  # initialize to handle the first text beginning with an app name (most likely case)
 
     if category == SCREENTIME:
@@ -1190,8 +1202,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                                                                                 (df['top'] + df['height'])):
             # row_text = re.sub(r'^[xX]{1,2}$', "X", row_text)  # X (Twitter) may show up here as xX
             row_height = row_bottom - row_top
-            if min(OCRScript_v3.levenshtein_distance(row_text, key) for key in
-                   KEYWORDS_FOR_SHOW_SITES_YOU_VISIT[img_lang]) < moe_show_sites:
+            if any(OCRScript_v3.levenshtein_distance(row_text, key) <= OCRScript_v3.error_margin(row_text, key)
+                   for key in KEYWORDS_FOR_SHOW_SITES_YOU_VISIT[img_lang]):
                 # A button saying 'Show sites that you visit' appears below the Google Chrome web browser, which is not
                 # an app name, so it should be ignored
                 continue
@@ -1216,8 +1228,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                                                            df['left'],
                                                            (df['left'] + df['width'])):
             # row_text = re.sub(r'^[xX]{1,2}$', "X", row_text)  # X (Twitter) may show up here as xX
-            if min(OCRScript_v3.levenshtein_distance(row_text, key) for key in
-                   KEYWORDS_FOR_SHOW_SITES_YOU_VISIT[img_lang]) < moe_show_sites:
+            if any(OCRScript_v3.levenshtein_distance(row_text, key) <= OCRScript_v3.error_margin(row_text, key)
+                   for key in KEYWORDS_FOR_SHOW_SITES_YOU_VISIT[img_lang]):
                 # A button saying 'Show sites that you visit' appears below the Google Chrome web browser, which is not
                 # an app name, so it should be ignored
                 continue
@@ -1227,8 +1239,8 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                 if row_left + crop_left > (0.4 * screenshot.width):
                     # See 'pill' comment in similar line above
                     continue
-                elif min(OCRScript_v3.levenshtein_distance("# " + app_name, key) for key in
-                         GOOGLE_NOTIFICATIONS_FORMATS[img_lang]) <= moe:
+                elif any(OCRScript_v3.levenshtein_distance("# " + app_name, key) <= OCRScript_v3.error_margin("# " + app_name, key)
+                         for key in GOOGLE_NOTIFICATIONS_FORMATS[img_lang]):
                     # plus, sometimes in '## notifications', only 'notifications' is read.
                     num_missed_app_values += 1
                     continue
@@ -1250,15 +1262,15 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
             # other Dashboard formats only show total unlocks.
             for row_text, row_conf in zip(df['text'], df['conf']):
                 # row_text = re.sub(r'^[xX]{1,2}$', "X", row_text)  # X (Twitter) may show up here as xX
-                if min(OCRScript_v3.levenshtein_distance(row_text, key) for key in
-                       KEYWORDS_FOR_SHOW_SITES_YOU_VISIT[img_lang]) < moe_show_sites:
+                if any(OCRScript_v3.levenshtein_distance(row_text, key) <= OCRScript_v3.error_margin(row_text, key)
+                       for key in KEYWORDS_FOR_SHOW_SITES_YOU_VISIT[img_lang]):
                     # A button saying 'Show sites that you visit' appears below the Google Chrome web browser, which is
                     # not an app name, so it should be ignored
                     continue
-                moe_unlocks = round(np.log(len(row_text)))
+                # moe_unlocks = round(np.log(len(row_text)))
                 row_text_filtered = re.sub(r'\d+', '#', row_text)
-                if min(OCRScript_v3.levenshtein_distance(row_text_filtered, key) for key in
-                       GOOGLE_UNLOCKS_FORMATS[img_lang]) <= moe_unlocks:
+                if any(OCRScript_v3.levenshtein_distance(row_text_filtered, key) <= OCRScript_v3.error_margin(row_text_filtered, key)
+                       for key in GOOGLE_UNLOCKS_FORMATS[img_lang]):
                     # Row text contains an unlocks value
                     try:
                         app_number = re.findall(r'\d+', row_text)[0]

@@ -192,8 +192,9 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
     return grey_img, bw_img
 
 
-def get_moe(_text):
-    _m = max(0, round(3.5*np.log(max(1.0, 0.4*len(_text) - 0.7))))
+def error_margin(text1, text2=None):
+    t = text1 if text2 is None else min(text1, text2, key=len)
+    _m = max(0, round(3.5*np.log(max(1.0, 0.35*len(t) - 0.7))))
     return _m
 
 
@@ -698,7 +699,7 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False,
     if val_fmt is None:
         val_fmt = MISREAD_NUMBER_FORMAT if value_is_number else MISREAD_TIME_FORMAT_IOS
 
-    format_name = NUMBER if value_is_number else 'time'
+    format_name = NUMBER if value_is_number else TIME
 
     print(f"Comparing scan 1: {t1} {c1}\n       vs scan 2: {t2} {c2}  ——  ", end='')
     if conf1 != NO_CONF and conf2 != NO_CONF:
@@ -986,16 +987,16 @@ def update_eta(ss_start_time, idx):
 
     print(f"\n\nElapsed time:  {convert_seconds_to_hms(elapsed_time_in_seconds)}")
 
-    all_times.loc[idx, 'time'] = ss_time
+    all_times.loc[idx, TIME] = ss_time
     all_times.loc[idx, 'elapsed_time'] = elapsed_time_in_seconds
     all_times.loc[idx, DEVICE_OS] = url_list[DEVICE_OS][idx]
     if not all_times.empty:
-        all_ios_times = all_times.loc[url_list[DEVICE_OS] == IOS]['time']
-        all_android_times = all_times.loc[url_list[DEVICE_OS] == ANDROID]['time']
+        all_ios_times = all_times.loc[url_list[DEVICE_OS] == IOS][TIME]
+        all_android_times = all_times.loc[url_list[DEVICE_OS] == ANDROID][TIME]
 
         avg_ios_time = np.mean(all_ios_times) if not all_ios_times.empty else 2.0
-        avg_android_time = np.mean(np.append(all_android_times, all_times['time'].max())) if not all_android_times.empty else avg_ios_time
-        avg_ios_time = np.mean(np.append(all_ios_times, all_times['time'].max())) if not all_ios_times.empty else avg_android_time
+        avg_android_time = np.mean(np.append(all_android_times, all_times[TIME].max())) if not all_android_times.empty else avg_ios_time
+        avg_ios_time = np.mean(np.append(all_ios_times, all_times[TIME].max())) if not all_ios_times.empty else avg_android_time
         avg_unknown_os_time = np.mean([avg_android_time, avg_ios_time])
 
         num_ios_images_remaining = len(url_list.loc[(idx < url_list.index) &
@@ -1141,7 +1142,7 @@ if __name__ == '__main__':
 
     # Time the data extraction process
     start_time = time.time()
-    all_times = pd.DataFrame(columns=['time', 'elapsed_time', 'eta'])
+    all_times = pd.DataFrame(columns=[TIME, 'elapsed_time', 'eta'])
 
     all_screenshots_df = ScreenshotClass.initialize_data_row()
 
@@ -1598,7 +1599,7 @@ if __name__ == '__main__':
 
             # Crop image to app region
             cropped_image, crop_coordinates = iOS.crop_image_to_app_area(current_screenshot, headings_above_applist, heading_below_applist)
-            if all(crops is None for crops in crop_coordinates):
+            if all(crops is None for crops in crop_coordinates) or cropped_image is None:
                 print(f"Suitable crop region not detected. Setting all app-specific data to N/A.")
                 current_screenshot.add_error(ERR_APP_DATA)
                 set_empty_app_data_and_update(empty_app_data, current_screenshot, index)

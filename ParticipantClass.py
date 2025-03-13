@@ -279,7 +279,7 @@ class Participant:
                                                'new_name', 'new_name_conf', 'new_number', 'new_number_conf'])
 
             # Build the dataframe of existing apps and new apps, lined up as calculated above, for comparison
-            for i in range(max_apps_per_category + abs(new_data_lineup_index - existing_data_lineup_index) + 1):
+            for i in range(1, max_apps_per_category + abs(new_data_lineup_index - existing_data_lineup_index) + 1):
                 # i will range from 1 to 3, or from 1 to 8, e.g.
                 """
                     Calculate the app index from the existing data that should go at position i in the comparison df.
@@ -344,8 +344,14 @@ class Participant:
                     if category == SCREENTIME:
                         compare_df.loc[i, 'new_minutes'] = NO_NUMBER
 
+                if all(comparison_value == NO_TEXT for comparison_value in
+                       compare_df.loc[i, ['ex_name', 'ex_number', 'new_name', 'new_number']].tolist()) and \
+                        i > max_apps_per_category:
+                    compare_df.drop(compare_df.index[i], inplace=True)
+                    break
+
             print("\nTable of app comparisons to be made:")
-            print(compare_df[['ex_name', 'ex_number', 'new_name', 'new_number']][1:])
+            print(compare_df[['ex_name', 'ex_number', 'new_name', 'new_number']])
             print()
 
             for i in range(1, max_apps_per_category + 1):

@@ -163,6 +163,7 @@ BROWN = (165, 165, 165)  # Not used as a pixel colour, just used as a shorthand 
 APP = 'app'
 # NAME = 'name'  # Already defined above
 NUMBER = 'number'
+TIME = 'time'
 MINUTES = 'minutes'
 NAME_CONF = 'name_conf'
 NUMBER_CONF = 'number_conf'

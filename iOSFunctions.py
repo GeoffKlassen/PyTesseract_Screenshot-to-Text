@@ -126,46 +126,46 @@ def get_headings(screenshot):
     # If a row in the screenshot (closely) matches the format of a heading, label that row as that heading type.
     for i in df.index:
         row_text = df['text'][i]
-        error_margin = OCRScript_v3.get_moe(row_text)
         if not day_type_rows.empty and i in day_type_rows.index:
             df.loc[i, HEADING_COLUMN] = DAY_OR_WEEK_HEADING
         elif re.match(screenshot.date_format, row_text, re.IGNORECASE):
             df.loc[i, HEADING_COLUMN] = DATE_HEADING
-        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
-                 KEYWORDS_FOR_SCREEN_TIME[lang]) <= error_margin:
+        elif any(OCRScript_v3.levenshtein_distance(row_text, keyword) <= OCRScript_v3.error_margin(row_text, keyword)
+                 for keyword in KEYWORDS_FOR_SCREEN_TIME[lang]):
             df.loc[i, HEADING_COLUMN] = SCREENTIME_HEADING
-        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
-                 KEYWORDS_FOR_LIMITATIONS[lang]) <= error_margin:
+        elif any(OCRScript_v3.levenshtein_distance(row_text, keyword) <= OCRScript_v3.error_margin(row_text, keyword)
+                 for keyword in KEYWORDS_FOR_LIMITATIONS[lang]):
             df.loc[i, HEADING_COLUMN] = LIMITS_HEADING
-        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
-                 KEYWORDS_FOR_FIRST_USED_AFTER_PICKUP[lang]) <= error_margin:
+        elif any(OCRScript_v3.levenshtein_distance(row_text, keyword) <= OCRScript_v3.error_margin(row_text, keyword)
+                 for keyword in KEYWORDS_FOR_FIRST_USED_AFTER_PICKUP[lang]):
             # Need to check for "FIRST USED AFTER PICKUP" before checking for "MOST USED" because the first 9 characters
             # of "FIRST USED AFTER PICKUP" (i.e. "FIRST USE") are within the error margin for "MOST USED"
             df.loc[i, HEADING_COLUMN] = FIRST_USED_AFTER_PICKUP_HEADING
-        elif min(OCRScript_v3.levenshtein_distance(row_text[:len(keyword)], keyword) for keyword in
-                 KEYWORDS_FOR_MOST_USED[lang]) <= error_margin:
+        elif any(OCRScript_v3.levenshtein_distance(row_text[:len(keyword)], keyword) <=
+                 OCRScript_v3.error_margin(keyword)
+                 for keyword in KEYWORDS_FOR_MOST_USED[lang]):
             # Only checking a substring of row_text because sometimes the df row with "MOST USED" contains more words,
             # but we only care about the first two words
             df.loc[i, HEADING_COLUMN] = MOST_USED_HEADING
-        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
-                 KEYWORDS_FOR_PICKUPS[lang]) <= error_margin:
+        elif any(OCRScript_v3.levenshtein_distance(row_text, keyword) <= OCRScript_v3.error_margin(row_text, keyword)
+                 for keyword in KEYWORDS_FOR_PICKUPS[lang]):
             df.loc[i, HEADING_COLUMN] = PICKUPS_HEADING
-        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
-                 KEYWORDS_FOR_FIRST_PICKUP[lang]) <= error_margin:
+        elif any(OCRScript_v3.levenshtein_distance(row_text, keyword) <= OCRScript_v3.error_margin(row_text, keyword)
+                 for keyword in KEYWORDS_FOR_FIRST_PICKUP[lang]):
             df.loc[i, HEADING_COLUMN] = FIRST_PICKUP_HEADING
-        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
-                 KEYWORDS_FOR_NOTIFICATIONS[lang]) <= error_margin:
+        elif any(OCRScript_v3.levenshtein_distance(row_text, keyword) <= OCRScript_v3.error_margin(row_text, keyword)
+                 for keyword in KEYWORDS_FOR_NOTIFICATIONS[lang]):
             df.loc[i, HEADING_COLUMN] = NOTIFICATIONS_HEADING
         elif re.search('|'.join(KEYWORDS_FOR_HOURS_AXIS), row_text, re.IGNORECASE):
             df.loc[i, HEADING_COLUMN] = HOURS_AXIS_HEADING
-        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
-                 KEYWORDS_FOR_LIMIT_USAGE[lang]) <= error_margin:
+        elif any(OCRScript_v3.levenshtein_distance(row_text, keyword) <= OCRScript_v3.error_margin(row_text, keyword)
+                 for keyword in KEYWORDS_FOR_LIMIT_USAGE[lang]):
             df.loc[i, HEADING_COLUMN] = LIMIT_USAGE_HEADING
-        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
-                 KEYWORDS_FOR_COMMUNICATION[lang]) <= error_margin:
+        elif any(OCRScript_v3.levenshtein_distance(row_text, keyword) <= OCRScript_v3.error_margin(row_text, keyword)
+                 for keyword in KEYWORDS_FOR_COMMUNICATION[lang]):
             df.loc[i, HEADING_COLUMN] = COMMUNICATION_HEADING
-        elif min(OCRScript_v3.levenshtein_distance(row_text, keyword) for keyword in
-                 KEYWORDS_FOR_SEE_ALL_ACTIVITY[lang]) <= error_margin:
+        elif any(OCRScript_v3.levenshtein_distance(row_text, keyword) <= OCRScript_v3.error_margin(row_text, keyword)
+                 for keyword in KEYWORDS_FOR_SEE_ALL_ACTIVITY[lang]):
             df.loc[i, HEADING_COLUMN] = SEE_ALL_ACTIVITY
         else:
             df = df.drop(i)
@@ -647,8 +647,8 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
     # Initialize the crop region
     crop_top = 0
     crop_bottom = screenshot.height
-    crop_left = round(0.15 * screenshot.width) # The app icons are typically within the leftmost 15% of the screenshot
-    crop_right = round(0.87 * screenshot.width) # Symbols (arrows, hourglass) typically appear in the rightmost 87% of the screenshot
+    crop_left = int(0.15 * screenshot.width) # The app icons are typically within the leftmost 15% of the screenshot
+    crop_right = int(0.87 * screenshot.width) # Symbols (arrows, hourglass) typically appear in the rightmost 87% of the screenshot
 
     headings_above_df = headings_df[headings_df[HEADING_COLUMN].isin(headings_above)]
     headings_below_df = headings_df[headings_df[HEADING_COLUMN].eq(heading_below)]
@@ -660,18 +660,18 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
             if current_heading in headings_above or \
                     current_heading in [DAY_OR_WEEK_HEADING, DATE_HEADING, HOURS_AXIS_HEADING] and crop_bottom == screenshot.height:  # include HOURS AXIS?
                 if current_heading == FIRST_PICKUP_HEADING:
-                    crop_top = min(crop_bottom, headings_df['top'][i] + int(2.5 * headings_df['height'][i]))
+                    crop_top = min(crop_bottom, int(headings_df['top'][i] + 2.5 * headings_df['height'][i]))
                 elif current_heading == HOURS_AXIS_HEADING:
                     if category == NOTIFICATIONS:
-                        crop_top = headings_df['top'][i] + headings_df['height'][i]
+                        crop_top = int(headings_df['top'][i] + headings_df['height'][i])
                     elif category == SCREENTIME:
-                        crop_top = min(screenshot.height, headings_df['top'][i] + int(7 * headings_df['height'][i]))
+                        crop_top = min(screenshot.height, int(headings_df['top'][i] + 7 * headings_df['height'][i]))
                     elif category == PICKUPS:
-                        crop_top = min(screenshot.height, headings_df['top'][i] + int(5 * headings_df['height'][i]))
+                        crop_top = min(screenshot.height, int(headings_df['top'][i] + 5 * headings_df['height'][i]))
                     else:
                         pass
                 else:
-                    crop_top = headings_df['top'][i] + headings_df['height'][i]
+                    crop_top = int(headings_df['top'][i] + headings_df['height'][i])
             elif current_heading == heading_below:
                 crop_bottom = headings_df['top'][i]
 
