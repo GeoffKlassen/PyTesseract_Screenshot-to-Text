@@ -970,9 +970,30 @@ def update_eta(ss_start_time, idx):
 
     all_times.loc[idx, 'time'] = ss_time
     all_times.loc[idx, 'elapsed_time'] = elapsed_time_in_seconds
+    all_times.loc[idx, DEVICE_OS] = url_list[DEVICE_OS][idx]
     if not all_times.empty:
-        average_time_per_screenshot = np.median(all_times['time'])
-        estimated_time_remaining = (average_time_per_screenshot*0.95) * (min([image_upper_bound, num_urls]) - index - 1)
+        all_ios_times = all_times.loc[url_list[DEVICE_OS] == IOS]['time']
+        all_android_times = all_times.loc[url_list[DEVICE_OS] == ANDROID]['time']
+
+        avg_ios_time = np.median(all_ios_times) if not all_ios_times.empty else 0
+        avg_android_time = np.median(all_android_times) if not all_android_times.empty else avg_ios_time
+        avg_ios_time = np.median(all_ios_times) if not all_ios_times.empty else avg_android_time
+        avg_unknown_os_time = np.mean([avg_android_time, avg_ios_time])
+
+        num_ios_images_remaining = len(url_list.loc[(idx < url_list.index) &
+                                                    (url_list.index < min(image_upper_bound, num_urls)) &
+                                                    (url_list[DEVICE_OS] == IOS)])
+        num_android_images_remaining = len(url_list.loc[(idx < url_list.index) &
+                                                        (url_list.index < min(image_upper_bound, num_urls)) &
+                                                        (url_list[DEVICE_OS] == ANDROID)])
+        num_unknown_os_images_remaining = len(url_list.loc[(idx < url_list.index) &
+                                                           (url_list.index < min(image_upper_bound, num_urls)) &
+                                                           (url_list[DEVICE_OS] == UNKNOWN)])
+
+        estimated_time_remaining = (avg_ios_time * num_ios_images_remaining +
+                                    avg_android_time + num_android_images_remaining +
+                                    avg_unknown_os_time + num_unknown_os_images_remaining)
+
         all_times.loc[idx, 'eta'] = estimated_time_remaining
         if estimated_time_remaining > 0:
             print(f"Estimated time remaining:  {convert_seconds_to_hms(estimated_time_remaining)}")
@@ -1082,6 +1103,8 @@ if __name__ == '__main__':
 
     num_urls = url_list.shape[0]
     print(f'Total URLs from all surveys: {num_urls}')
+
+    url_list[DEVICE_OS] = url_list[DEVICE_ID].apply(lambda x: get_os(x))
 
     study_category = study_to_analyze[CATEGORIES][0] if study_to_analyze[CATEGORIES].__len__() == 1 else None
     # If the study we're analyzing only asked for one category of screenshot,
