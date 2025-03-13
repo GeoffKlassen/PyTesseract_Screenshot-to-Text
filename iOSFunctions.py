@@ -69,7 +69,8 @@ KEYWORDS_FOR_HOURS_AXIS = ['00 06', '06 12', '12 18',
 
 # TODO Fill this in and make sure it's all correct, then rewrite the code to check for 2+ occurrences of these strings
 KEYWORDS_FOR_HOURS_AXIS_2 = {ENG: {"0", "00", "6", "06", "12", "18",  # Number only
-                                   "AM", "PM", "6AM", "12PM", "6PM", "12AM",  # AM/PM specified
+                                   "AM", "PM", "6AM", "12PM", "6PM", "12AM",  # AM/PM included
+                                   "am", "pm", "6am", "12pm", "6pm", "12am",  # am/pm included
                                    "42", "48", "112", "GAM"},  # Misreadings
                              ITA: {"0", "6", "12", "18", "mele", "112", "118"},
                              GER: {"00", "06", "12", "18",
@@ -120,6 +121,7 @@ def get_headings(screenshot):
     lang = OCRScript_v3.get_best_language(screenshot)
 
     df[HEADING_COLUMN] = None
+    df[OS_COLUMN] = None
 
     # If a row in the screenshot (closely) matches the format of a heading, label that row as that heading type.
     for i in df.index:
@@ -159,6 +161,7 @@ def get_headings(screenshot):
             df.loc[i, HEADING_COLUMN] = SEE_ALL_ACTIVITY
         else:
             df = df.drop(i)
+    df.loc[df[HEADING_COLUMN].isin(IOS_EXCLUSIVE_HEADINGS), OS_COLUMN] = IOS
 
     return df
 
@@ -559,7 +562,7 @@ def get_total_pickups_2nd_location(screenshot, img):
         crop_bottom = crop_top + int(2.5 * row_with_total_pickups['height'])  # Using 2.5 because
         # 2x might crop in the middle of the Daily Total, and 3x might include too much of the heading above it.
     else:
-        print(f"Could not find 2nd location for total pickups.  Returning {NO_NUMBER} (conf = {NO_CONF}).")
+        print(f"Could not find 2nd location for total pickups.")
         return NO_NUMBER, NO_CONF
 
     last_word_in_row = str.split(row_with_total_pickups['text'])[-1]
@@ -628,35 +631,40 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
     text = screenshot.text
     headings_df = screenshot.headings_df
     category = screenshot.category_detected if screenshot.category_detected is not None else screenshot.category_submitted
+
+    # Initialize the crop region
     crop_top = 0
     crop_bottom = screenshot.height
-    crop_left = round(0.14 * screenshot.width)  # The app icons are typically within the leftmost 15% of the screenshot
-    crop_right = round(
-        0.87 * screenshot.width)  # Symbols (arrows, hourglass) typically appear in the rightmost 87% of the screenshot
+    crop_left = round(0.15 * screenshot.width) # The app icons are typically within the leftmost 15% of the screenshot
+    crop_right = round(0.87 * screenshot.width) # Symbols (arrows, hourglass) typically appear in the rightmost 87% of the screenshot
 
     headings_above_df = headings_df[headings_df[HEADING_COLUMN].isin(headings_above)]
     headings_below_df = headings_df[headings_df[HEADING_COLUMN].eq(heading_below)]
-    app_area_text = text
 
+    # Look for text in the initial scan that would qualify as an app name
+    app_area_text = text[(text['left'] > int(0.15*screenshot.width)) & (text['height'] > int(0.025 * screenshot.width))]
     if headings_above and not headings_above_df.empty:
         app_area_text = app_area_text[app_area_text.index > headings_above_df.index[-1]]
     if heading_below is not None and not headings_below_df.empty:
         app_area_text = app_area_text[app_area_text.index < headings_below_df.index[0]]
 
     if not app_area_text.empty:
-        print(" HERe's what I found for the app area:")
-        print(app_area_text)
+        for i in app_area_text.index:
+            if app_area_text['left'][i] < int(0.25 * screenshot.width):
+                crop_left = app_area_text['left'][i] - int(0.02 * screenshot.width)
+                print(f"Found an app row: '{app_area_text['text'][i]}'. "
+                      f"Setting left edge of crop area to the left of this row.")
+                crop_right = screenshot.width - crop_left + int(0.02 * screenshot.width)
+                break
 
-    # the crop edge is left of the app names
+        if crop_left > round(0.22 * screenshot.width):
+            crop_left = round(0.15 * screenshot.width)
+            crop_right = round(0.87 * screenshot.width)
+        # Reset the left- and right-bounds on the off-chance that the first app found is too far right.
+    else:
+        print("No text found in app area. Using default left-to-right crop bounds.")
+
     if not headings_df.empty and not (headings_df[headings_df['left'] > 0]).empty:
-        leftmost_heading_index = headings_df[headings_df['left'] > 0]['left'].idxmin()
-        crop_left = min(headings_df['left']) + round(0.09 * screenshot.width) if headings_df[HEADING_COLUMN][
-                                                                                             leftmost_heading_index] not in [
-                                                                                             DAY_OR_WEEK_HEADING,
-                                                                                             HOURS_AXIS_HEADING] else crop_left
-        crop_left = round(0.15 * screenshot.width) if crop_left > round(0.2 * screenshot.width) else crop_left
-        # The above line corrects for when left-aligned headings are not found (e.g., Date heading, or a partial
-        # 'hours' row (i.e. it thinks the left edge of the 'hours' row is further right than it actually is)).
         for i in headings_df.index:
             current_heading = headings_df[HEADING_COLUMN][i]
             if current_heading in headings_above or \
@@ -679,7 +687,6 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
 
     if (headings_df.empty or
             headings_df.iloc[-1][HEADING_COLUMN] in [SCREENTIME_HEADING, LIMITS_HEADING] or
-            screenshot.relative_day == WEEK or
             crop_top == 0 or
             screenshot.category_submitted == SCREENTIME and ~headings_df[HEADING_COLUMN].str.contains(MOST_USED_HEADING).any() and
             headings_df[HEADING_COLUMN].str.contains(FIRST_USED_AFTER_PICKUP_HEADING).any()):
@@ -747,9 +754,11 @@ def erase_value_bars_and_icons(screenshot, df, image):
         left_of_bar = 0
         right_of_bar = image_width
 
-        if erase_icon and left < 0.10 * image_width:
-            # These values are from the scope of the parent function
-            cv2.rectangle(image, (0, top - int(0.5 * height)), (int(0.7*left), image_height), background_colour, -1)
+        # if erase_icon and left < 0.10 * image_width:
+        #     # These values are from the scope of the parent function
+        #     cv2.rectangle(image, (0, top - int(0.5 * height)), (int(0.7*left), image_height), background_colour, -1)
+        #     print("Debug 1")
+        #     OCRScript_v3.show_image(df, image)
 
         # Find the top of the bar
         for row in range(r, min([image_height, r + h_max])):
@@ -785,6 +794,7 @@ def erase_value_bars_and_icons(screenshot, df, image):
             # Draw a background-coloured rectangle overtop of the value bar
             cv2.rectangle(image, (left_of_bar, top_of_bar), (right_of_bar, bottom_of_bar),
                           background_colour, -1)
+
             # For use in finding missed value bars later
             top_left_coordinates.append([left_of_bar, top_of_bar, bottom_of_bar - top_of_bar])
 
@@ -803,6 +813,7 @@ def erase_value_bars_and_icons(screenshot, df, image):
                 not re.search(MISREAD_TIME_OR_NUMBER_FORMAT, df['text'][1]):
             cv2.rectangle(image, (0, top), (image_width, bottom), background_colour, -1)
             continue
+
         elif i > 0 and (top < prev_bottom + 0.02 * image_height or
                         left > 0.1 * image_width or
                         re.match(PROPER_TIME_OR_NUMBER_FORMAT, row_text)):  # or image_height - (top + df['height'][i]) < 0.02 *
@@ -822,21 +833,14 @@ def erase_value_bars_and_icons(screenshot, df, image):
         # but we'd still like to have that bar erased. This section determines the pixel spacing between two successive
         # bars and, if any of the gaps between found-bars is large enough, it seeks out the missed bar and erases it.
         median_bar_height = int(np.median([coord[2] for coord in top_left_coordinates]))
-        # print("The top left coordinates are")
-        # print(top_left_coordinates)
         average_left = int(np.median([coord[0] for coord in top_left_coordinates]))
         filtered_coordinates = [coord for coord in top_left_coordinates if abs(coord[0] - average_left) <= 0.01*image_width]
         if filtered_coordinates:
-            # print("The filtered left coordinates are:")
-            # print(filtered_coordinates)
             top_coords = [coord[1] for coord in filtered_coordinates]
             differences = [abs(top_coords[i] - top_coords[i - 1]) for i in range(1, len(top_coords))]
             smallest_difference = min(differences)
-            # print(f"of the differences in {differences} the smallest is {smallest_difference}")
             prev_top = -1
             for i, top_left in enumerate(filtered_coordinates):
-                # cv2.rectangle(image, (top_left[0], top_left[1]),  (top_left[0] + 5, top_left[1] + 5), BROWN, -1)
-                # OCRScript_v3.show_image(df, image)
                 if (i == 0 and top_left[1] - smallest_difference > 0) or \
                         (i > 0 and top_left[1] - prev_top > 1.5*smallest_difference):
                     prev_bar_top = top_left[1] - smallest_difference
@@ -986,10 +990,6 @@ def get_app_names_and_numbers(screenshot, crop_img, df, category, max_apps):
         # This section determines whether each row in the final app info df is an app name or a number/time
         # and separates them.
         prev_row_type = ''
-        prev_app_name = ''
-        prev_app_height = -1
-        prev_row_bottom = -1
-        prev_app_left = -1
         num_missed_app_values = 0
         for i in df.index:
             cleaned_text = re.sub(r'\W+', '', df['text'][i])
@@ -1001,15 +1001,6 @@ def get_app_names_and_numbers(screenshot, crop_img, df, category, max_apps):
             row_height = df['height'][i]
             row_top = df['top'][i]
             row_left = df['left'][i]
-            # row_text = re.sub(r'^[xX]{1,2}$', "X", row_text)  # X (Twitter) may show up here as xX
-
-            # if prev_app_height >= 0 and row_top - prev_row_bottom > 4*np.mean([row_height, prev_app_height]):
-            #     print(f"Suspected missing app between '{prev_app_name}' and '{row_text}'. Adding a blank row.")
-            #     app_names = pd.concat([app_names, empty_name_row], ignore_index=True)
-            #     app_numbers = pd.concat([app_numbers, empty_number_row], ignore_index=True)
-            #     if app_names.shape[0] <= max_apps:
-            #         screenshot.add_error(ERR_MISSING_APP)
-            #         num_missed_app_values += 2
 
             row_text = ' '.join(row_text.split()[1:]) if (len(row_text.split()) > 1 and row_left <= 2 and len(row_text.split()[0]) <= 2) else row_text
 
@@ -1029,8 +1020,6 @@ def get_app_names_and_numbers(screenshot, crop_img, df, category, max_apps):
                 new_name_row = pd.DataFrame({NAME: [row_text], NAME_CONF: [row_conf]})
                 app_names = pd.concat([app_names, new_name_row], ignore_index=True)
                 prev_row_type = NAME
-                prev_app_name = row_text
-                prev_app_height = row_height
             elif (category == SCREENTIME and re.search(MISREAD_TIME_FORMAT_IOS, row_text, re.IGNORECASE) or
                   category != SCREENTIME and re.search(MISREAD_NUMBER_FORMAT, row_text, re.IGNORECASE) and
                   len(str(row_text)) < 5):  # or row_left > int(0.2 * crop_img.shape[1]):
@@ -1056,7 +1045,6 @@ def get_app_names_and_numbers(screenshot, crop_img, df, category, max_apps):
                 prev_row_type = NUMBER
             else:  # row is neither a valid app name nor a number, so discard it
                 pass
-            prev_row_bottom = row_top + row_height
 
         if num_missed_app_values > 0:
             screenshot.add_error(ERR_MISSING_VALUE, num_missed_app_values)

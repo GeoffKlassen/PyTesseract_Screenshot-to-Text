@@ -1,6 +1,6 @@
 """This file contains variables used as dictionary keys, dataframe column names, etc.
 They are stored in this one location for consistency."""
-
+from packaging.markers import UndefinedComparison
 
 """
     Operating Systems
@@ -28,36 +28,53 @@ should equal the total pickups, and on Android the total unlocks is generally lo
     Heading column names for dataframes
 """
 HEADING_COLUMN = 'heading'
+OS_COLUMN = 'OS'
 
 DAY_OR_WEEK_HEADING = 'day or week'
 DATE_HEADING = 'date'
-SCREENTIME_HEADING = 'screentime'
-NOTIFICATIONS_HEADING = 'notifications'
+SCREENTIME_HEADING = SCREENTIME
+NOTIFICATIONS_HEADING = NOTIFICATIONS
 
 # The following headings are unique to iOS:
-LIMITS_HEADING = ' '.join(['limits', IOS])
-MOST_USED_HEADING = ' '.join(['most used', IOS])
-PICKUPS_HEADING = ' '.join(['pickups', IOS])
-FIRST_PICKUP_HEADING = ' '.join(['first pickup', IOS])
-FIRST_USED_AFTER_PICKUP_HEADING = ' '.join(['first used after pickup', IOS])
+LIMITS_HEADING = 'limits'
+MOST_USED_HEADING = 'most used'
+PICKUPS_HEADING = PICKUPS
+FIRST_PICKUP_HEADING = 'first pickup'
+FIRST_USED_AFTER_PICKUP_HEADING = 'first used after pickup'
 HOURS_AXIS_HEADING = 'hours row'
 
-LIMIT_USAGE_HEADING = ' '.join(['limit usage', IOS])
-COMMUNICATION_HEADING = ' '.join(['communication', IOS])
-SEE_ALL_ACTIVITY = ' '.join(['see all activity', IOS])
+LIMIT_USAGE_HEADING = 'limit usage'
+COMMUNICATION_HEADING = 'communication'
+SEE_ALL_ACTIVITY = 'see all activity'
+
+IOS_EXCLUSIVE_HEADINGS = [LIMITS_HEADING,
+                          MOST_USED_HEADING,
+                          PICKUPS_HEADING,
+                          FIRST_PICKUP_HEADING,
+                          FIRST_USED_AFTER_PICKUP_HEADING,
+                          LIMIT_USAGE_HEADING,
+                          COMMUNICATION_HEADING,
+                          SEE_ALL_ACTIVITY]
 
 # The following headings are *usually* only found in Android screenshots:
 TOTAL_SCREENTIME = 'total screentime'
-MOST_USED_APPS_HEADING = ' '.join(['most used apps', ANDROID])
+MOST_USED_APPS_HEADING = 'most used apps'
 TOTAL_NOTIFICATIONS = 'total notifications'
-MOST_NOTIFICATIONS_HEADING = ' '.join(['most notifications', ANDROID])
-UNLOCKS_HEADING = ' '.join(['unlocks', ANDROID])
+MOST_NOTIFICATIONS_HEADING = 'most notifications'
+UNLOCKS_HEADING = 'unlocks'
 DAYS_AXIS_HEADING = 'day axis'
 TOTAL_UNLOCKS = 'total unlocks'
 DAY_NAME_HEADING = 'day name'
-VIEW_MORE_HEADING = ' '.join(['view more', ANDROID])
-REST_OF_THE_DAY = ' '.join(['rest of the day', ANDROID])
+VIEW_MORE_HEADING = 'view more'
+REST_OF_THE_DAY = 'rest of the day'
 SEARCH_APPS = 'Search apps'
+
+ANDROID_EXCLUSIVE_HEADINGS = [MOST_USED_APPS_HEADING,
+                              MOST_NOTIFICATIONS_HEADING,
+                              UNLOCKS_HEADING,
+                              VIEW_MORE_HEADING,
+                              REST_OF_THE_DAY,
+                              SEARCH_APPS]
 
 GOOGLE = 'Google'
 VERSION_2018 = 'Android 2018'

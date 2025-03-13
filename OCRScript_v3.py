@@ -1050,6 +1050,20 @@ def add_screenshot_info_to_master_df(screenshot, idx):
     return
 
 
+def set_empty_app_data_and_update(empty_data, screenshot, idx):
+    """
+
+    :param empty_data:
+    :param screenshot:
+    :param idx:
+    :return:
+    """
+    current_screenshot.set_app_data(empty_data)
+    current_participant.add_screenshot_data(screenshot)
+    add_screenshot_info_to_master_df(screenshot, idx)
+    update_eta(screenshot_time_start, idx)
+
+
 if __name__ == '__main__':
     # Read in the list of URLs for the appropriate Study (as specified in RuntimeValues.py)
     url_list = pd.DataFrame()
@@ -1117,8 +1131,8 @@ if __name__ == '__main__':
 
         print(current_screenshot)
 
-        """ FOR ANDROID TESTING: SKIP iOS IMAGES"""
-        # if current_screenshot.device_os == IOS:
+        """ FOR IOS TESTING: SKIP ANDROID IMAGES"""
+        # if current_screenshot.device_os_detected == ANDROID:
         #     continue
 
         # Download the image (if not using local images) or open the local image
@@ -1132,11 +1146,8 @@ if __name__ == '__main__':
             current_screenshot.set_daily_total(NO_TEXT)
             if current_screenshot.category_submitted == SCREENTIME:
                 current_screenshot.set_daily_total_minutes(NO_NUMBER)
-            current_screenshot.set_app_data(empty_app_data)
-            current_participant.add_screenshot_data(current_screenshot)
 
-            add_screenshot_info_to_master_df(current_screenshot, index)
-            update_eta(screenshot_time_start, index)  # Update the ETA without adding the current screenshot's time to the list
+            set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
             continue
 
         is_light_mode = True if np.mean(grey_image) > 170 else False
@@ -1189,11 +1200,7 @@ if __name__ == '__main__':
             current_screenshot.set_daily_total(NO_TEXT)
             if current_screenshot.category_submitted == SCREENTIME:
                 current_screenshot.set_daily_total_minutes(NO_NUMBER)
-            current_screenshot.set_app_data(empty_app_data)
-            current_participant.add_screenshot_data(current_screenshot)
-
-            add_screenshot_info_to_master_df(current_screenshot, index)
-            update_eta(screenshot_time_start, index)
+            set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
             continue
 
         # If there was text found, we can keep going
@@ -1240,15 +1247,16 @@ if __name__ == '__main__':
         iOS_headings_df = iOS.get_headings(current_screenshot)
         android_headings_df = Android.get_headings(current_screenshot, android_short_time_format)
 
-        num_iOS_headings = iOS_headings_df[HEADING_COLUMN].str.contains(IOS, na=False).sum()
-        num_Android_headings = android_headings_df[HEADING_COLUMN].str.contains(ANDROID, na=False).sum()
+        num_iOS_headings = len(iOS_headings_df[iOS_headings_df[OS_COLUMN] == IOS])
+        num_Android_headings = len(android_headings_df[android_headings_df[OS_COLUMN] == ANDROID])
+
         if current_screenshot.device_os_submitted == ANDROID and num_iOS_headings > num_Android_headings:
-            print("Screenshot has Android-style Device ID but contains iOS headings. "
+            print("Screenshot has Android-style Device ID but contains more iOS-specific headings. "
                   f"Setting device OS to '{IOS}'.")
             current_screenshot.set_device_os_detected(IOS)
             current_screenshot.add_error(ERR_DEVICE_OS)
         elif current_screenshot.device_os_submitted == IOS and num_Android_headings > num_iOS_headings:
-            print("Screenshot has iOS-style Device ID but contains Android headings. "
+            print("Screenshot has iOS-style Device ID but contains more Android-specific headings. "
                   f"Setting device OS to '{ANDROID}'.")
             current_screenshot.set_device_os_detected(ANDROID)
             current_screenshot.add_error(ERR_DEVICE_OS)
@@ -1273,11 +1281,8 @@ if __name__ == '__main__':
                 current_screenshot.set_daily_total(NO_TEXT if study_category == SCREENTIME else NO_NUMBER)
                 if study_category == SCREENTIME:
                     current_screenshot.set_daily_total_minutes(NO_NUMBER)
-                current_screenshot.set_app_data(empty_app_data)
-                current_participant.add_screenshot_data(current_screenshot)
 
-                add_screenshot_info_to_master_df(current_screenshot, index)
-                update_eta(screenshot_time_start, index)  # Update the ETA w/o adding the current screenshot's time to the list
+                set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
                 continue
 
             if day_type is None and date_in_screenshot is not None:
@@ -1361,27 +1366,15 @@ if __name__ == '__main__':
                 print(
                     f"No app-level data for {android_version} dashboard when daily total {dashboard_category} = 0. "
                     f"Skipping search for app-level data.")
-                current_screenshot.set_app_data(empty_app_data)
-                current_participant.add_screenshot_data(current_screenshot)
 
-                add_screenshot_info_to_master_df(current_screenshot, index)
-
-                screenshot_time = time.time() - screenshot_time_start
-
-                update_eta(screenshot_time_start, index)
+                set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
                 continue
 
             if dashboard_category == UNLOCKS and android_version in [SAMSUNG_2024, SAMSUNG_2021, VERSION_2018]:
                 print(f"{android_version} Dashboard does not contain app-level {dashboard_category} data. "
                       f"Skipping search for app data.")
-                current_screenshot.set_app_data(empty_app_data)
-                current_participant.add_screenshot_data(current_screenshot)
 
-                add_screenshot_info_to_master_df(current_screenshot, index)
-
-                screenshot_time = time.time() - screenshot_time_start
-
-                update_eta(screenshot_time_start, index)
+                set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
                 continue
 
             # Crop the image to the app-specific region
@@ -1398,14 +1391,8 @@ if __name__ == '__main__':
             if all(crops is None for crops in crop_coordinates) or (not daily_total_heading_row.empty and app_area_crop_top < daily_total_heading_row.iloc[0]['top']):
                 print(f"Crop region not found or includes daily total. Setting all app-specific data to N/A.")
                 current_screenshot.add_error(ERR_APP_DATA)
-                current_screenshot.set_app_data(empty_app_data)
-                current_participant.add_screenshot_data(current_screenshot)
 
-                add_screenshot_info_to_master_df(current_screenshot, index)
-
-                screenshot_time = time.time() - screenshot_time_start
-
-                update_eta(screenshot_time_start, index)
+                set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
                 continue
 
             app_area_crop_width = app_area_crop_right - app_area_crop_left
@@ -1563,28 +1550,20 @@ if __name__ == '__main__':
             if str(daily_total) in ["0", "0s"]:
                 print(f"No app-level data available when daily total {dashboard_category} is {daily_total}.")
                 print(f"Setting all app-specific data to N/A.")
-                current_screenshot.set_app_data(empty_app_data)
-                current_participant.add_screenshot_data(current_screenshot)
-
-                add_screenshot_info_to_master_df(current_screenshot, index)
-
-                screenshot_time = time.time() - screenshot_time_start
-
-                update_eta(screenshot_time_start, index)
+                set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
                 continue
+
+            elif current_screenshot.relative_day == WEEK:
+                print(f"Screenshot contains weekly data. Setting all app-specific data to N/A.")
+                set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
+                continue
+
             # Crop image to app region
             cropped_image, crop_coordinates = iOS.crop_image_to_app_area(current_screenshot, headings_above_applist, heading_below_applist)
             if all(crops is None for crops in crop_coordinates):
                 print(f"Suitable crop region not detected. Setting all app-specific data to N/A.")
                 current_screenshot.add_error(ERR_APP_DATA)
-                current_screenshot.set_app_data(empty_app_data)
-                current_participant.add_screenshot_data(current_screenshot)
-
-                add_screenshot_info_to_master_df(current_screenshot, index)
-
-                screenshot_time = time.time() - screenshot_time_start
-
-                update_eta(screenshot_time_start, index)
+                set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
                 continue
 
             (app_area_crop_top, app_area_crop_left,
@@ -1622,12 +1601,7 @@ if __name__ == '__main__':
             # Extract app info from cropped image
             app_area_df = extract_app_info(current_screenshot, scaled_cropped_filtered_image, crop_coordinates, app_area_scale_factor)
             if ERR_APP_DATA in current_screenshot.errors:
-                current_screenshot.set_app_data(empty_app_data)
-                current_participant.add_screenshot_data(current_screenshot)
-
-                add_screenshot_info_to_master_df(current_screenshot, index)
-
-                update_eta(screenshot_time_start, index)
+                set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
                 continue
 
             value_format = MISREAD_TIME_FORMAT_IOS if dashboard_category == SCREENTIME else MISREAD_NUMBER_FORMAT
@@ -1701,11 +1675,7 @@ if __name__ == '__main__':
             current_screenshot.add_error(ERR_OS_NOT_FOUND)
 
             current_screenshot.set_daily_total(NO_TEXT)
-            current_screenshot.set_app_data(empty_app_data)
-
-            add_screenshot_info_to_master_df(current_screenshot, index)
-
-            update_eta(screenshot_time_start, index)
+            set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
             continue
 
         # Count the number of top-n apps/numbers/times whose confidence is below the confidence threshold
@@ -1716,8 +1686,6 @@ if __name__ == '__main__':
             current_screenshot.add_error(ERR_CONFIDENCE, num=count_below_conf_limit)
 
         add_screenshot_info_to_master_df(current_screenshot, index)
-
-        screenshot_time = time.time() - screenshot_time_start
 
         update_eta(screenshot_time_start, index)
 
@@ -1773,4 +1741,5 @@ if __name__ == '__main__':
 
     all_times['actual_time_remaining'] = total_elapsed_time - all_times['elapsed_time']
     all_times.to_csv(f"{study_to_analyze[NAME]} ETAs.csv")  # Mostly for interest's sake
+
     print("Done.")

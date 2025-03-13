@@ -311,6 +311,8 @@ def get_headings(screenshot, time_fmt_short):
         else:
             df = df.drop(i)
 
+    df.loc[df[HEADING_COLUMN].isin(ANDROID_EXCLUSIVE_HEADINGS), OS_COLUMN] = ANDROID
+
     return df
 
 
