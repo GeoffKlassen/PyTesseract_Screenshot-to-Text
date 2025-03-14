@@ -64,7 +64,7 @@ conf_limit = 80
 ERR_CONFIDENCE = f"ERR Values below {int(conf_limit)}% confidence"
 
 image_lower_bound = 1
-image_upper_bound = 10
+image_upper_bound = 553
 #   553 for HappyB2.0 (pre-launch)
 # 19313 for HappyB2.0 2024 Aug-Dec
 #   452 for BCH study

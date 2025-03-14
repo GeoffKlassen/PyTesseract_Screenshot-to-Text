@@ -852,7 +852,7 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
                                             lambda x: matches_a_value_pattern(x, value_formats))) &
                                         (text_df['left'] > int(0.1 * screenshot.width))]
         if not rows_with_app_numbers.empty:
-            crop_left_text = rows_with_app_numbers.iloc[0]['text']
+            crop_left_text = f"left of '{rows_with_app_numbers.iloc[0]['text']}'"
             crop_right_text = "(symmetrical to left)"
             crop_left = max(0, min(rows_with_app_numbers['left']) - int(0.02 * screenshot.width))
             crop_right = max(0, screenshot.width - crop_left - int(0.04 * screenshot.width))
@@ -969,6 +969,8 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
             # print("Sub-heading above app rows not found. Searching for app rows directly.")
             # If android version is SAMSUNG_2024, then search row by row for a row that matches an app w/ number format.
             crop_top = 0
+            crop_top_text = "(top of screenshot)"
+
             format_for_time_or_number_eol = '|'.join([time_format_short.replace("^", "\\s"), "\\s\\d+"])
 
             headings_above_apps_df = headings_df[headings_df[HEADING_COLUMN].str.contains(dashboard_category)]
@@ -982,19 +984,23 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
                         text_df['height'][i] < 0.08 * screenshot.width:  # 0.08 settled on through trial and error
                     # Row text spans most of the width of the screenshot, and also ends with a time/number, and also
                     # isn't too tall (sometimes a line with a graph bar + a graph axis number is interpreted as text)
-                    print(f"App row found: '{text_df['text'][i]}'. ")
+                    # print(f"App row found: '{text_df['text'][i]}'. ")
+
                     if crop_top == 0:
                         if i > 0 and ((abs(text_df['left'][i-1] - text_df['left'][i]) < int(0.01*screenshot.width) or
                                        abs(text_df['right'][i-1] - text_df['right'][i]) < int(0.01*screenshot.width)) and
                                       abs(text_df['height'][i-1] - text_df['height'][i]) < int(0.02*screenshot.width)):
-                            print(f"Detected possible app row above it: '{text_df['text'][i-1]}'. "
-                                  f"Setting top of crop region to the top of this row.")
+                            # print(f"Detected possible app row above it: '{text_df['text'][i-1]}'. "
+                            #       f"Setting top of crop region to the top of this row.")
                             crop_top = max(0, int(text_df['top'][i-1] - 0.02*screenshot.width))
+                            crop_top_text = f"above '{text_df['text'][i-1]}'"
 
                         else:
                             print(f"Setting top-left of crop region to the top-left of this app row.")
                             crop_top = max(0, int(text_df['top'][i] - 0.02 * screenshot.width))
+                            crop_top_text = f"below '{text_df['text'][i]}'"
                         crop_left = max(0, int(text_df['left'][i] - 0.02 * screenshot.width))
+                        crop_left_text = f"left of '{text_df['text'][i]}'"
                         index_of_first_app = i
 
                     else:
@@ -1002,16 +1008,19 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
                             # Occasionally, the app icon is read as part of the app name, which shouldn't be in the crop.
                             # Look for more app rows, and if one is found that starts further from the left edge of the
                             # screenshot, use that as the crop_left bound.
-                            print(f"Changing left of crop region to the left of this app row.")
+                            # print(f"Changing left of crop region to the left of this app row.")
                             crop_left = max([0, int(text_df['left'][i] - 0.02 * screenshot.width)])
+                            crop_left_text = f"left of '{text_df['text'][i]}'"
                         break
 
             headings_below_apps_df = headings_df[headings_df.index > max(index_of_first_app, index_of_closest_heading)]
             if not headings_below_apps_df.empty:
                 row_below_apps = headings_below_apps_df.iloc[0]
                 crop_bottom = row_below_apps['top']
+                crop_bottom_text = f"above '{row_below_apps['text']}'"
             else:
                 crop_bottom = screenshot.height
+                crop_bottom_text = "(bottom of screenshot)"
 
         if crop_top == 0 and crop_bottom == screenshot.height:
             print("Could not determine suitable crop area; image will not be cropped.")
@@ -1026,7 +1035,12 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
         # In case the crop region is invalid
         print("Invalid crop region calculated; image will not be cropped.")
         return image, [None, None, None, None]
+
     else:
+        print(f"Top of crop region:  {crop_top_text}")
+        print(f"Bottom of crop region:  {crop_bottom_text}")
+        print(f"Left of crop region:  {crop_left_text}")
+        print(f"Right of crop region:  {crop_right_text}")
         return cropped_image, [crop_top, crop_left, crop_bottom, crop_right]
 
 
