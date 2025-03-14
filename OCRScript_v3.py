@@ -52,9 +52,12 @@ def compile_list_of_urls(df, url_cols,
     """Create a DataFrame of URLs from a provided DataFrame of survey responses.
     :param df:             The dataframe with columns that contain URLs
     :param url_cols:       A dictionary of column names for screentime URLs, pickups URLs, and notifications URLs
-    :param date_col:       The name of the column in df that lists the date & time stamp of submission (For Avicenna CSVs, this is usually 'Record Time')
-    :param id_col:         The name of the column in df that contains the Avicenna ID of the user (For Avicenna CSVs, this is usually 'Participant ID')
-    :param device_id_col:  The name of the column in df that contains the ID of the device from which the user responded (For Avicenna CSVs, this is usually 'Device ID')
+    :param date_col:       The name of the column in df that lists the date & time stamp of submission
+    (For Avicenna CSVs, this is usually 'Record Time')
+    :param id_col:         The name of the column in df that contains the Avicenna ID of the user
+    (For Avicenna CSVs, this is usually 'Participant ID')
+    :param device_id_col:  The name of the column in df that contains the ID of the device from which the user responded
+    (For Avicenna CSVs, this is usually 'Device ID')
 
     :return: A DataFrame of image URLs, with user ID, response date, and category the image was submitted in.
 
@@ -120,7 +123,8 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
                 img = img.convert('RGB')  # We'll standardize the image to RGB format.
                 if save_downloaded_images:
                     img.save(img_local_path)
-                    print(f"Image saved to '{dir_for_downloaded_images}\\{screenshot.device_os_submitted}\\{screenshot.filename}'.")
+                    print(f"Image saved to"
+                          f"'{dir_for_downloaded_images}\\{screenshot.device_os_submitted}\\{screenshot.filename}'.")
                     img = Image.open(img_local_path)
                 else:
                     img.save(img_temp_path)
@@ -137,7 +141,8 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
     def remove_color_blocks_from_image(img, lightmode):
         """
             - Code used here is from: https://stackoverflow.com/a/72068384
-            - Finding upper and lower limits HSV values for a given RGB color: https://www.youtube.com/watch?v=x4qPhYamRDI
+            - Finding upper and lower limits HSV values for a given RGB color:
+            https://www.youtube.com/watch?v=x4qPhYamRDI
         """
         # in our IOS image, there are often a few colors in the bar graph. Here, we are defining
         # Lower and upper limits of all colors. Format: {'color': [color_lower_limit, color_upper_limit], ...}
@@ -150,8 +155,8 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
             color_min = color_dict[color][0]
             color_max = color_dict[color][1]
             #  to HSV colourspace and get mask of blue pixels
-            HSV = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-            mask = cv2.inRange(HSV, color_min, color_max)
+            hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+            mask = cv2.inRange(hsv, color_min, color_max)
             # Try dilating (enlarging) the mask.
             # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (4, 4))
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
@@ -172,7 +177,8 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
 
     if use_downloaded_images:
         if os.path.exists(img_local_path):
-            print(f"Opening local image '{dir_for_downloaded_images}\\{screenshot.device_os_submitted}\\{screenshot.filename}'...")
+            print(f"Opening local image"
+                  f"'{dir_for_downloaded_images}\\{screenshot.device_os_submitted}\\{screenshot.filename}'...")
             image = Image.open(img_local_path)
             image = image.convert('RGB')
             image = np.array(image, dtype='uint8')
@@ -185,7 +191,7 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
         # We'll just return the empty array...
         return image, image
     # check if image is in lightmode or dark mode
-    threshold = 127  # Halfway between 0 and 255
+    # threshold = 127  # Halfway between 0 and 255
     brown_bg_threshold = 160
     white_bg_threshold = 170
     average_pixel_colour = np.mean(image)
@@ -222,7 +228,7 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
 
 def error_margin(text1, text2=None):
     t = text1 if text2 is None else min(text1, text2, key=len)
-    _m = max(0, round(3.5*np.log(max(1.0, 0.35*len(t) - 0.7))))
+    _m = max(0, round(3.5 * np.log(max(1.0, 0.35 * len(t) - 0.7))))
     return _m
 
 
@@ -280,7 +286,8 @@ def merge_df_rows_by_height(df):
     for _i in df.index:
         if _i == 0:
             continue
-        if abs(df.loc[_i]['top'] - df.loc[_i - 1]['top']) < 15:  # and (df.loc[_i]['text'] != "X"):  # Not sure why _i did the "X" check
+        if abs(df.loc[_i]['top'] - df.loc[_i - 1]['top']) < 15:  # and (df.loc[_i]['text'] != "X"):
+            # Not sure why I did the "X" check
             # If two rows' heights are within 15 pixels of each other and the current row is not "X" (Twitter)
             # TODO replace 15 with a percentage of the screenshot width (define moe = x% of screenshot width)
             if df.loc[_i]['left'] > df.loc[_i - 1]['left']:
@@ -315,7 +322,6 @@ def merge_df_rows_by_line_num(df):
     """
     df['right'] = df['left'] + df['width']
     df['bottom'] = df['top'] + df['height']
-
 
     if df['text'].eq("X").any():
         df['next_top'] = df['top'].shift(-1)
@@ -353,6 +359,7 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+',
     :param initial_scan:
     :return:
     """
+
     # On the initial image scan, we remove characters like periods (.) and commas (,)
     #     because they are often misreadings of artifacts.
     # We keep the 'é' character for the existence of app names like 'Pokémon GO'.
@@ -472,7 +479,8 @@ def determine_language_of_image(participant, df):
     :return:
     """
     backup_lang = participant.language if participant.language is not None else default_language
-    backup_lang_msg = f"Setting image language to {'study' if participant.language is None else 'user'} default ({backup_lang})."
+    backup_lang_msg = (f"Setting image language to {'study' if participant.language is None else 'user'}"
+                       f"default ({backup_lang}).")
     user_lang_exists = True if participant.language is not None else False
 
     if df.shape[0] <= 1:
@@ -597,10 +605,12 @@ def get_day_type_in_screenshot(screenshot):
             lambda x: min(levenshtein_distance(row_word[:len(key)], key)
                           for row_word in str.split(x)[:2]
                           for key in KEYWORDS_FOR_TODAY[lang])) <= moe_today) &
-                              ((dev_os == ANDROID) |
-                               (df['text'].str.contains(date_pattern, case=False)) |
-                               (df['next_text'].str.contains(date_pattern, case=False))) & (
-                                 df['text'].apply(lambda x: min(levenshtein_distance(x, key) for key in Android.KEYWORDS_FOR_REST_OF_THE_DAY[lang])) > moe_today)]
+                             ((dev_os == ANDROID) |
+                              (df['text'].str.contains(date_pattern, case=False)) |
+                              (df['next_text'].str.contains(date_pattern, case=False))) & (
+                                     df['text'].apply(lambda x: min(levenshtein_distance(x, key) for key in
+                                                                    Android.KEYWORDS_FOR_REST_OF_THE_DAY[lang])) >
+                                     moe_today)]
 
         rows_with_yesterday = df[(df['text'].apply(
             # Row contains yesterday, and (1) also contains date or (2) the next row contains a date, or (3) is Android
@@ -792,7 +802,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
     bg_colour = WHITE if is_light_mode else BLACK
     lang = get_best_language(screenshot)
     crop_top, crop_left, crop_bottom, crop_right = coordinates[0], coordinates[1], coordinates[2], coordinates[3]
-    remove_chars = r"[^a-zA-Z0-9+é:.!,()'&\-]+" if screenshot.device_os_detected == IOS else r"[^a-zA-Z0-9+é.!()'&\-]+"  # r"[^a-zA-Z0-9+()'\-.\<é]+"
+    remove_chars = r"[^a-zA-Z0-9+é:.!,()'&\-]+" if screenshot.device_os_detected == IOS else r"[^a-zA-Z0-9+é.!()'&\-]+"
     # Android needs characters like commas (,) removed because they appear in screentime values
 
     _, app_info_scan_1 = extract_text_from_image(image, remove_chars=remove_chars)
@@ -818,30 +828,26 @@ def extract_app_info(screenshot, image, coordinates, scale):
     # Select only numbers from the initial scan that have high confidence (above conf_limit)
     # and that lie in the 'app info' cropped region
     # text.loc[text['text'].str.match(r'^[xX]+\s?[xX]*$'), 'text'] = 'X'
-
-    truncated_text_df = text[(text['conf'] > 70) | (text['text'] == 'X')]
+    keep_text_conf = 70
+    truncated_text_df = text[(text['conf'] > keep_text_conf) | (text['text'] == 'X')]
     truncated_text_df = truncated_text_df[(truncated_text_df['left'] > crop_left) &
                                           (truncated_text_df['top'] > crop_top) &
                                           (truncated_text_df['left'] < crop_right) &
                                           (truncated_text_df['top'] < crop_bottom) &
                                           ((truncated_text_df['text'].str.isdigit()) |
                                            (truncated_text_df['text'].str.fullmatch(time_format_long)) |
-                                           (truncated_text_df['text'].str.fullmatch(MISREAD_TIME_FORMAT_IOS))|
+                                           (truncated_text_df['text'].str.fullmatch(MISREAD_TIME_FORMAT_IOS)) |
                                            (truncated_text_df['text'] == 'X'))]
     truncated_text_df.loc[truncated_text_df.index, 'left'] = truncated_text_df['left'] - crop_left
     truncated_text_df.loc[truncated_text_df.index, 'top'] = truncated_text_df['top'] - crop_top
 
-    # if screenshot.device_os_detected == ANDROID and screenshot.android_version == GOOGLE:
-    #     truncated_text_df = truncated_text_df[truncated_text_df['left'] + crop_left < int(0.5 * screenshot.width)]
-    # truncated_text_df = OCRScript_v3.merge_df_rows_by_line_num(truncated_text_df)
-    # Keep only the rows that contain only digits (a.k.a. notification counts or pickup counts) or 'X' (Twitter)
-    # truncated_text_df = truncated_text_df[(truncated_text_df['text'].str.isdigit()) | (truncated_text_df['text'].str.match(r'[xX]{1,2}'))]
-
-    print(f"\nApp numbers from initial scan, where conf > 0.5, plus any instances of X (Twitter):")
+    print(f"\nInitial scan's app {'times' if screenshot.category_detected == SCREENTIME else 'numbers'}"
+          f"in crop region, where conf > {keep_text_conf}%, plus any instances of X (Twitter):")
     print(truncated_text_df[['left', 'top', 'width', 'height', 'conf', 'text']])
 
     if app_info_scan_1['text'].eq("X").any() and truncated_text_df['text'].eq("X").any():
-        # If both the initial scan and the first cropped scan found the app name 'X', only use the one in the cropped scan
+        # If both the initial scan and the first cropped scan found the app name 'X',
+        # then only use the one in the cropped scan
         truncated_text_df = truncated_text_df[~(truncated_text_df['text'] == "X")]
 
     cols_to_scale = ['left', 'top', 'width', 'height']
@@ -854,9 +860,9 @@ def extract_app_info(screenshot, image, coordinates, scale):
     index_of_day_axis = next((idx for idx, row in app_info_scan_1.iterrows() if
                               len(set(row['text'].split()).intersection(DAY_ABBREVIATIONS[lang])) >= 3), None)
     if index_of_day_axis is not None:
-        # If the initial scan failed to find the 'DAY AXIS' row but it was found on the cropped region,
+        # If the initial scan failed to find the 'DAY AXIS' row, but it was found on the cropped region,
         # Erase the area above this DAY AXIS and remove any text above it.
-        app_info_scan_1 = app_info_scan_1.iloc[index_of_day_axis + 1: ]
+        app_info_scan_1 = app_info_scan_1.iloc[index_of_day_axis + 1:]
         image = cv2.rectangle(image, (0, 0), (screenshot.width, app_info_scan_1.iloc[0]['top']), bg_colour, -1)
 
     if show_images_at_runtime:
@@ -874,7 +880,8 @@ def extract_app_info(screenshot, image, coordinates, scale):
             max_value = 255
 
         cropped_grey_image = screenshot.grey_image[crop_top:crop_bottom, crop_left:crop_right]
-        _, image_missed_text = cv2.threshold(cropped_grey_image, bw_threshold, max_value, cv2.THRESH_BINARY)  # Initialize
+        # Initialize
+        _, image_missed_text = cv2.threshold(cropped_grey_image, bw_threshold, max_value, cv2.THRESH_BINARY)
         image_missed_text = cv2.GaussianBlur(image_missed_text, ksize=ksize, sigmaX=0)
     else:
         image_missed_text = image.copy()
@@ -902,12 +909,16 @@ def extract_app_info(screenshot, image, coordinates, scale):
 
         if not app_info_names_only.empty:
             image_missed_text = cv2.rectangle(image_missed_text, (0, 0),
-                                              (min(app_info_names_only['left']), image_missed_text.shape[0]), bg_colour, -1)
+                                              (min(app_info_names_only['left']),
+                                               image_missed_text.shape[0]),
+                                              bg_colour,
+                                              -1)
 
     _, app_info_scan_2 = extract_text_from_image(image_missed_text, remove_chars=remove_chars)
 
     if app_info_scan_2['text'].eq("X").any() and app_info_scan_1['text'].eq("X").any():
-        # If both the initial scan and the first cropped scan found the app name 'X', only use the one in the cropped scan
+        # If both the initial scan and the first cropped scan found the app name 'X',
+        # then only use the one in the cropped scan
         app_info_scan_1 = app_info_scan_1[~(app_info_scan_1['text'] == "X")]
 
     if show_images_at_runtime:
@@ -919,8 +930,9 @@ def extract_app_info(screenshot, image, coordinates, scale):
 
     # Sometimes the text for 'rest of the day' isn't found on the initial scan, but it gets found in the app-info scan.
     if screenshot.device_os_detected == ANDROID and screenshot.android_version == GOOGLE:
-        rows_with_rest_of_the_day = app_info[app_info['text'].apply(lambda x: min(levenshtein_distance(x, key) for key in
-                                                                    Android.KEYWORDS_FOR_REST_OF_THE_DAY[lang])) <= 2]
+        rows_with_rest_of_the_day = app_info[
+            app_info['text'].apply(lambda x: min(levenshtein_distance(x, key) for key in
+                                                 Android.KEYWORDS_FOR_REST_OF_THE_DAY[lang])) <= 2]
         if not rows_with_rest_of_the_day.empty:
             app_info = app_info[app_info.index > rows_with_rest_of_the_day.index[0]]
 
@@ -986,7 +998,6 @@ def filter_common_misread_app_names(df):
 
 
 def update_eta(ss_start_time, idx):
-
     def convert_seconds_to_hms(sec):
         _hr = int(sec / 3600)
         _min = int((sec / 60) % 60)
@@ -1030,8 +1041,10 @@ def update_eta(ss_start_time, idx):
         all_android_times = all_times.loc[url_list[DEVICE_OS] == ANDROID][TIME]
 
         avg_ios_time = np.mean(all_ios_times) if not all_ios_times.empty else 2.0
-        avg_android_time = np.mean(np.append(all_android_times, all_times[TIME].max())) if not all_android_times.empty else avg_ios_time
-        avg_ios_time = np.mean(np.append(all_ios_times, all_times[TIME].max())) if not all_ios_times.empty else avg_android_time
+        avg_android_time = np.mean(
+            np.append(all_android_times, all_times[TIME].max())) if not all_android_times.empty else avg_ios_time
+        avg_ios_time = np.mean(
+            np.append(all_ios_times, all_times[TIME].max())) if not all_ios_times.empty else avg_android_time
         avg_unknown_os_time = np.mean([avg_android_time, avg_ios_time])
 
         num_ios_images_remaining = len(url_list.loc[(idx < url_list.index) &
@@ -1071,7 +1084,7 @@ def add_screenshot_info_to_master_df(screenshot, idx):
             screenshot.app_data[NAME_CONF].eq(NO_CONF).all() and \
             screenshot.app_data[NUMBER_CONF].eq(NO_CONF).all():
         # Do not hash screenshots that contain no daily total or app-level info.
-        current_screenshot_hash = None
+        pass
     else:
         # Find all other screenshots with the same hash
         matching_screenshots = all_screenshots_df[(all_screenshots_df[HASHED] == screenshot.text_hash) &
@@ -1188,12 +1201,13 @@ if __name__ == '__main__':
     participants = []
     image_upper_bound = image_lower_bound if image_upper_bound < image_lower_bound else image_upper_bound
     for index in url_list.index:
-        if not (image_lower_bound <= index+1 <= image_upper_bound):
+        if not (image_lower_bound <= index + 1 <= image_upper_bound):
             # Only extract data from the images within the bounds specified in RuntimeValues.py
             continue
 
         min_url_index = min(num_urls, image_upper_bound)
-        print("\n==============================================================================================================\n")
+        print("\n======================================================"
+              "========================================================\n")
         print(f"File {index + 1} of {min_url_index}: {url_list[IMG_URL][index]}")
 
         screenshot_time_start = time.time()
@@ -1410,7 +1424,9 @@ if __name__ == '__main__':
                 try:
                     daily_total = str(int(daily_total))
                 except ValueError:
-                    print(f"Daily total {dashboard_category} '{daily_total}' is not a number. Resetting to N/A (confidence = {NO_CONF}).")
+                    print(
+                        f"Daily total {dashboard_category} '{daily_total}' is not a number."
+                        f"Resetting to N/A (confidence = {NO_CONF}).")
                     current_screenshot.add_error(ERR_NOT_A_NUMBER)
                     daily_total = NO_TEXT
                     daily_total_conf = NO_CONF
@@ -1433,7 +1449,7 @@ if __name__ == '__main__':
                 print(f"Daily total {dashboard_category}: {dt}\n")
 
             # For Samsung_2021 and 2018 versions of the dashboard, the Screentime heading and Notifications heading
-            # both have sub-headings ('most used' and 'most notifications', respectively).
+            # both have subheadings ('most used' and 'most notifications', respectively).
             if dashboard_category == SCREENTIME:
                 headings_above_apps = [MOST_USED_APPS_HEADING, SEARCH_APPS, DAY_WEEK_MONTH]
                 # Determine whether the row of text immediately above the app area is found
@@ -1469,8 +1485,10 @@ if __name__ == '__main__':
              app_area_crop_bottom, app_area_crop_right) = (crop_coordinates[0], crop_coordinates[1],
                                                            crop_coordinates[2], crop_coordinates[3])
 
-            daily_total_heading_row = headings_df[headings_df[HEADING_COLUMN].str.fullmatch(f"total " + dashboard_category)]
-            if all(crops is None for crops in crop_coordinates) or (not daily_total_heading_row.empty and app_area_crop_top < daily_total_heading_row.iloc[0]['top']):
+            daily_total_heading_row = headings_df[
+                headings_df[HEADING_COLUMN].str.fullmatch(f"total " + dashboard_category)]
+            if all(crops is None for crops in crop_coordinates) or (
+                    not daily_total_heading_row.empty and app_area_crop_top < daily_total_heading_row.iloc[0]['top']):
                 print(f"Crop region not found or includes daily total. Setting all app-specific data to N/A.")
                 current_screenshot.add_error(ERR_APP_DATA)
 
@@ -1487,7 +1505,8 @@ if __name__ == '__main__':
                                               interpolation=cv2.INTER_AREA)
 
             # Extract app info from cropped image
-            app_area_df = extract_app_info(current_screenshot, scaled_cropped_image, crop_coordinates, app_area_scale_factor)
+            app_area_df = extract_app_info(current_screenshot, scaled_cropped_image, crop_coordinates,
+                                           app_area_scale_factor)
             if android_version == GOOGLE:
                 app_area_df = app_area_df[app_area_df['left'] < int(0.7 * app_area_crop_width)]
 
@@ -1499,8 +1518,8 @@ if __name__ == '__main__':
             print(app_area_df[['left', 'top', 'width', 'height', 'conf', 'text']])
             # if dashboard_category is None and current_screenshot.category_detected is not None:
             #     # Sometimes there is screentime data in an image but the category is not detected.
-            #     # If the cropped df contains enough rows that match a (misread) time format, set the dashboard category
-            #     # to 'screentime'.
+            #     # If the cropped df contains enough rows that match a (misread) time format,
+            #           then set the dashboard category to 'screentime'.
             #     dashboard_category = current_screenshot.category_detected
 
             # Sort the app-specific data into app names and app usage numbers
@@ -1538,7 +1557,8 @@ if __name__ == '__main__':
                     # Android does not calculate daily unlocks as the sum of the times each app was opened.
                     # Apps can be opened more than once per unlock.
                     sum_app_numbers = app_data[app_data[NUMBER] != NO_CONF][NUMBER].astype(int).sum()
-                    if current_screenshot.daily_total != NO_TEXT and int(current_screenshot.daily_total) < sum_app_numbers:
+                    if current_screenshot.daily_total != NO_TEXT and int(
+                            current_screenshot.daily_total) < sum_app_numbers:
                         current_screenshot.add_error(ERR_TOTAL_BELOW_APP_SUM)
 
             current_screenshot.set_app_data(app_data)
@@ -1638,7 +1658,8 @@ if __name__ == '__main__':
                 continue
 
             # Crop image to app region
-            cropped_image, crop_coordinates = iOS.crop_image_to_app_area(current_screenshot, headings_above_applist, heading_below_applist)
+            cropped_image, crop_coordinates = iOS.crop_image_to_app_area(current_screenshot, headings_above_applist,
+                                                                         heading_below_applist)
             if all(crops is None for crops in crop_coordinates) or cropped_image is None:
                 print(f"Suitable crop region not detected. Setting all app-specific data to N/A.")
                 current_screenshot.add_error(ERR_APP_DATA)
@@ -1661,10 +1682,13 @@ if __name__ == '__main__':
                                                                                 remove_chars="[^a-zA-Z0-9+é:.!,()'&-]+")
             cropped_prescan_words['text'] = cropped_prescan_words['text'].astype(str)
             cropped_prescan_df['text'] = cropped_prescan_df['text'].astype(str)
-            cropped_prescan_words = cropped_prescan_words[cropped_prescan_words['text'].str.fullmatch(r'[a-zA-Z0-9]+', na=False)]
+            cropped_prescan_words = cropped_prescan_words[
+                cropped_prescan_words['text'].str.fullmatch(r'[a-zA-Z0-9]+', na=False)]
             cropped_prescan_words = cropped_prescan_words[~((cropped_prescan_words['text'] == '2') &
-                                                            ((cropped_prescan_words['left'] < int(0.1 * cropped_image.shape[1])) |
-                                                             (cropped_prescan_words['width'] > cropped_prescan_words['height'])))]
+                                                            ((cropped_prescan_words['left'] < int(
+                                                                0.1 * cropped_image.shape[1])) |
+                                                             (cropped_prescan_words['width'] > cropped_prescan_words[
+                                                                 'height'])))]
             cropped_prescan_words = cropped_prescan_words.reset_index(drop=True)
 
             cropped_filtered_image = iOS.erase_value_bars_and_icons(screenshot=current_screenshot,
@@ -1678,7 +1702,8 @@ if __name__ == '__main__':
                                                        interpolation=cv2.INTER_AREA)
 
             # Extract app info from cropped image
-            app_area_df = extract_app_info(current_screenshot, scaled_cropped_filtered_image, crop_coordinates, app_area_scale_factor)
+            app_area_df = extract_app_info(current_screenshot, scaled_cropped_filtered_image, crop_coordinates,
+                                           app_area_scale_factor)
             if ERR_APP_DATA in current_screenshot.errors:
                 set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
                 continue
@@ -1687,7 +1712,8 @@ if __name__ == '__main__':
             confident_text_from_prescan = \
                 cropped_prescan_df[(cropped_prescan_df['right'] > 0.05 * scaled_cropped_filtered_image.shape[1]) &
                                    ((cropped_prescan_df['conf'] > 80) |
-                                    ((cropped_prescan_df['text'].str.fullmatch(value_format)) & (cropped_prescan_df['conf'] > 50))) |
+                                    ((cropped_prescan_df['text'].str.fullmatch(value_format)) & (
+                                            cropped_prescan_df['conf'] > 50))) |
                                    (cropped_prescan_df['text'].str.fullmatch('X'))]
 
             if app_area_df['text'].eq("X").any() and confident_text_from_prescan['text'].eq("X").any():
@@ -1697,7 +1723,8 @@ if __name__ == '__main__':
 
             columns_to_scale = ['left', 'top', 'width', 'height']
             confident_text_from_prescan.loc[:, columns_to_scale] = \
-                confident_text_from_prescan.loc[:, columns_to_scale].apply(lambda x: x * app_area_scale_factor).astype(int)
+                confident_text_from_prescan.loc[:, columns_to_scale].apply(lambda x: x * app_area_scale_factor).astype(
+                    int)
             app_area_2_df = iOS.consolidate_overlapping_text(
                 pd.concat([app_area_df, confident_text_from_prescan], ignore_index=True))
             # Divide the extracted app info into app names and their numbers
@@ -1711,8 +1738,8 @@ if __name__ == '__main__':
 
             # if dashboard_category is None and current_screenshot.category_detected is not None:
             #     # Sometimes there is screentime data in an image but the category is not detected.
-            #     # If the cropped df contains enough rows that match a (misread) time format, set the dashboard category
-            #     # to 'screentime'.
+            #     # If the cropped df contains enough rows that match a (misread) time format,
+            #          then set the dashboard category to 'screentime'.
             #     dashboard_category = current_screenshot.category_detected
 
             app_data = iOS.get_app_names_and_numbers(screenshot=current_screenshot,
@@ -1721,7 +1748,8 @@ if __name__ == '__main__':
                                                      category=dashboard_category,
                                                      max_apps=max_apps_per_category)
             dt = current_screenshot.daily_total if current_screenshot.daily_total_conf != NO_CONF else "N/A"
-            dtm = f"{' (' + str(current_screenshot.daily_total_minutes) + " minutes)" if current_screenshot.daily_total_conf != NO_CONF else ''}"
+            dtm = f"{' (' + str(current_screenshot.daily_total_minutes) + 
+                     " minutes)" if current_screenshot.daily_total_conf != NO_CONF else ''}"
             if dashboard_category == SCREENTIME:
                 for i in range(1, max_apps_per_category + 1):
                     if i in app_data.index:  # Make sure the index exists
@@ -1746,8 +1774,6 @@ if __name__ == '__main__':
 
             current_screenshot.set_app_data(app_data)
             current_participant.add_screenshot_data(current_screenshot)
-            # And also give it to the Participant object, checking to see if data already exists for that day & category
-            #   (if it does, run the function (within Participant?) to determine how to merge the two sets of data together)
 
         else:
             print("Operating System not detected.")
