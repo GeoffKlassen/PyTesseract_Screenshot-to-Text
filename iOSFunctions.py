@@ -266,11 +266,11 @@ def get_dashboard_category(screenshot):
         print(f"Category submitted: {screenshot.category_submitted}    ", end='')
         print(f"Categories detected: {categories_found}")
         if backup_category in categories_found:
-            print(f"Setting category to: {backup_category}")
+            print(f"Setting category to '{backup_category}'.\n")
             return backup_category
         else:
             print(f"Screenshot submitted under {backup_category} category, but found {categories_found[0]} instead. "
-                  f"Setting category to {categories_found[0]}.")
+                  f"Setting category to '{categories_found[0]}'.\n")
             return categories_found[0]
 
 

@@ -545,7 +545,7 @@ def get_dashboard_category(screenshot):
             category_found = categories_found[0]
             print(f"Screenshot submitted under '{category_submitted}' category, but found '{category_found}' instead.")
 
-    print(f"Setting category to '{category_found}'.")
+    print(f"Setting category to '{category_found}'.\n")
 
     return category_found
 

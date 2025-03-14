@@ -13,7 +13,7 @@ from LanguageDictionaries import *
 """
 
 
-study_to_analyze = studies[0]
+study_to_analyze = studies[1]
 # Use studies[0] for the HappyB2.0 study (pre-launch prep)
 # Use studies[1] for the HappyB2.0 study (2024 Aug-Dec)
 # Use studies[2] for the BCH study
@@ -64,7 +64,7 @@ conf_limit = 80
 ERR_CONFIDENCE = f"ERR Values below {int(conf_limit)}% confidence"
 
 image_lower_bound = 1
-image_upper_bound = 553
+image_upper_bound = 19313
 #   553 for HappyB2.0 (pre-launch)
 # 19313 for HappyB2.0 2024 Aug-Dec
 #   452 for BCH study

@@ -527,48 +527,51 @@ def get_date_in_screenshot(screenshot):
     date_pattern = get_date_regex(lang)
     week_pattern = get_date_regex(lang, fmt=DATE_RANGE_FORMAT)
 
+    # Pull out the first row of df where the text contains the date regex
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+
+        dates_df = df[df['text'].str.contains(date_pattern, regex=True, case=False)]
+        if dates_df.empty:
+            print("No date text detected.")
+            return None, empty_df
+
+    date_row_text = dates_df['text'].iloc[0]
+
+    if bool(re.search(week_pattern, date_row_text)):
+        print("Screenshot contains week info.")
+        return None, empty_df
+
+    # Extract the date, month, and day from that row of text, as strings
+    date_detected = re.search(date_pattern, date_row_text, flags=re.IGNORECASE).group()
+    month_detected = re.search(r'[a-zA-Z]+', date_detected).group().lower()
+    day_detected = re.search(r'\d+', date_detected).group()
+
+    # Create a translation dictionary to replace non-English month names with English ones.
+    months_to_replace = MONTH_ABBREVIATIONS[lang]
+    for _i, abbr in enumerate(months_to_replace):
+        month_detected = month_detected.replace(abbr, ENGLISH_MONTHS[_i])
+    month_detected = month_detected[0:3]  # datetime.strptime (used below) requires month to be 3 characters
+
     try:
-        # Pull out the first row of df where the text contains the date regex
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
-            dates_df = df[df['text'].str.contains(date_pattern, regex=True, case=False)]
-            date_row_text = dates_df['text'].iloc[0]
-            if bool(re.search(week_pattern, date_row_text)):
-                print("Screenshot contains week info.")
-                return None, empty_df
+        # Convert the string date to a date object
+        date_object = datetime.strptime(f"{day_detected} {month_detected} {datetime.now().year}", "%d %b %Y")
+        # Note: the 'year' part of the date object will be replaced with the year that the screenshot was submitted
 
-        # Extract the date, month, and day from that row of text, as strings
-        date_detected = re.search(date_pattern, date_row_text, flags=re.IGNORECASE).group()
-        month_detected = re.search(r'[a-zA-Z]+', date_detected).group().lower()
-        day_detected = re.search(r'\d+', date_detected).group()
-
-        # Create a translation dictionary to replace non-English month names with English ones.
-        months_to_replace = MONTH_ABBREVIATIONS[lang]
-        for _i, abbr in enumerate(months_to_replace):
-            month_detected = month_detected.replace(abbr, ENGLISH_MONTHS[_i])
-        month_detected = month_detected[0:3]  # datetime.strptime (used below) requires month to be 3 characters
-
-        try:
-            # Convert the string date to a date object
-            date_object = datetime.strptime(f"{day_detected} {month_detected} {datetime.now().year}", "%d %b %Y")
-            # Note: the 'year' part of the date object will be replaced with the year that the screenshot was submitted
-
-            # Get the numeric month value from the mapping
-            month_numeric = MONTH_MAPPING.get(month_detected)
-            if month_numeric:
-                # Construct the complete date with the year
-                complete_date = date_object.replace(year=int(screenshot.date_submitted.year), month=month_numeric)
-                if (screenshot.date_submitted - complete_date.date()).days < 0:
-                    # In case a screenshot of a previous year is submitted after the new year, correct the year.
-                    complete_date = date_object.replace(year=(int(screenshot.date_submitted.year) - 1))
-                print(f"Date text detected: \"{date_row_text}\".  Setting date to {complete_date.date()}.")
-                return complete_date.date(), dates_df
-            else:
-                print("Invalid month abbreviation.")
-        except ValueError:
-            print("Invalid date format.")
-    except:
-        print("No date text detected.")
+        # Get the numeric month value from the mapping
+        month_numeric = MONTH_MAPPING.get(month_detected)
+        if month_numeric:
+            # Construct the complete date with the year
+            complete_date = date_object.replace(year=int(screenshot.date_submitted.year), month=month_numeric)
+            if (screenshot.date_submitted - complete_date.date()).days < 0:
+                # In case a screenshot of a previous year is submitted after the new year, correct the year.
+                complete_date = date_object.replace(year=(int(screenshot.date_submitted.year) - 1))
+            print(f"Date text detected: \"{date_row_text}\".  Setting date to {complete_date.date()}.")
+            return complete_date.date(), dates_df
+        else:
+            print("Invalid month abbreviation.")
+    except ValueError:
+        print("Invalid date format.")
 
     return None, empty_df
 
@@ -1029,7 +1032,7 @@ def update_eta(ss_start_time, idx):
     elapsed_time_in_seconds = current_time - start_time
     ss_time = current_time - ss_start_time
 
-    print(f"\nElapsed time:  {convert_seconds_to_hms(elapsed_time_in_seconds)}")
+    print(f"\n\nElapsed time:  {convert_seconds_to_hms(elapsed_time_in_seconds)}")
 
     all_times.loc[idx, TIME] = ss_time
     all_times.loc[idx, 'elapsed_time'] = elapsed_time_in_seconds
@@ -1425,7 +1428,7 @@ if __name__ == '__main__':
                     daily_total = str(int(daily_total))
                 except ValueError:
                     print(
-                        f"Daily total {dashboard_category} '{daily_total}' is not a number."
+                        f"Daily total {dashboard_category} '{daily_total}' is not a number. "
                         f"Resetting to N/A (confidence = {NO_CONF}).")
                     current_screenshot.add_error(ERR_NOT_A_NUMBER)
                     daily_total = NO_TEXT
@@ -1463,14 +1466,14 @@ if __name__ == '__main__':
             if daily_total[0] in ['0', 'o', 'O'] and not (android_version == GOOGLE and dashboard_category == UNLOCKS):
                 print(
                     f"No app-level data for {android_version} dashboard when daily total {dashboard_category} = 0. "
-                    f"Skipping search for app-level data.")
+                    f"Skipping search for app data.\n")
 
                 set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
                 continue
 
             if dashboard_category == UNLOCKS and android_version in [SAMSUNG_2024, SAMSUNG_2021, VERSION_2018]:
                 print(f"{android_version} Dashboard does not contain app-level {dashboard_category} data. "
-                      f"Skipping search for app data.")
+                      f"Skipping search for app data.\n")
 
                 set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
                 continue
@@ -1648,12 +1651,12 @@ if __name__ == '__main__':
 
             if str(daily_total) in ["0", "0s"]:
                 print(f"No app-level data available when daily total {dashboard_category} is {daily_total}.")
-                print(f"Setting all app-specific data to N/A.")
+                print(f"Setting all app-specific data to N/A.\n")
                 set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
                 continue
 
             elif current_screenshot.relative_day == WEEK:
-                print(f"Screenshot contains weekly data. Setting all app-specific data to N/A.")
+                print(f"Screenshot contains weekly data. Setting all app-specific data to N/A.\n")
                 set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
                 continue
 
@@ -1661,7 +1664,7 @@ if __name__ == '__main__':
             cropped_image, crop_coordinates = iOS.crop_image_to_app_area(current_screenshot, headings_above_applist,
                                                                          heading_below_applist)
             if all(crops is None for crops in crop_coordinates) or cropped_image is None:
-                print(f"Suitable crop region not detected. Setting all app-specific data to N/A.")
+                print(f"Suitable crop region not detected. Setting all app-specific data to N/A.\n")
                 current_screenshot.add_error(ERR_APP_DATA)
                 set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
                 continue

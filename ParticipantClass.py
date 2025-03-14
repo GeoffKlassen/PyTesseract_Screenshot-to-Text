@@ -173,8 +173,8 @@ class Participant:
             # If data already exists in usage_data at the same place as the data from the given Screenshot, then
             # the two sets of data must be lined up and compared to determine which datum is the best to keep for each
             # column.
-            print(f"\nExisting {category} data found for participant {self.user_id} on {ss.date_detected}. "
-                  f"Comparisons must be made.")
+            print(f"Existing {category} data found for participant {self.user_id} on {ss.date_detected}. "
+                  f"Data will be compared.\n")
             value_format = ss.time_format_long if (category == SCREENTIME and device_os == ANDROID) else None
 
             # Choose between the existing daily total and the new daily total, and place it in the usage_data.
