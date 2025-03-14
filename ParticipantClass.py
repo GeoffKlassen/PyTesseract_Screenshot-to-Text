@@ -186,9 +186,18 @@ class Participant:
                                                        val_fmt=value_format))
             (self.usage_data.loc[date_index, f'{TOTAL}_{category}'],
              self.usage_data_conf.loc[date_index, f'{TOTAL}_{category}']) = (best_total, best_total_conf)
-            if category == SCREENTIME and best_total == ss.daily_total and best_total_conf == ss.daily_total_conf:
-                self.usage_data.loc[date_index, f'{TOTAL}_{category}_{MINUTES}'] = ss.daily_total_minutes
-                self.usage_data_conf.loc[date_index, f'{TOTAL}_{category}_{MINUTES}'] = ss.daily_total_conf
+            dt = "N/A" if best_total_conf == NO_CONF else best_total
+
+            if category == SCREENTIME:
+                if best_total == ss.daily_total and best_total_conf == ss.daily_total_conf:
+                    self.usage_data.loc[date_index, f'{TOTAL}_{category}_{MINUTES}'] = ss.daily_total_minutes
+                    self.usage_data_conf.loc[date_index, f'{TOTAL}_{category}_{MINUTES}'] = ss.daily_total_conf
+                    dtm = '' if best_total_conf == NO_CONF else ("(" + str(ss.daily_total_minutes) + " minutes)")
+                    dt += dtm
+                else:
+                    dtm = '' if best_total_conf == NO_CONF else (
+                            " (" + str(self.usage_data.loc[date_index, f'{TOTAL}_{category}_{MINUTES}']) + " minutes)")
+                    dt += dtm
 
             moe = 2  # A margin of error (moe) for use with edit_distance, to determine if an app name from the existing
                      # data and an app name from the new data should be considered the same app name (and be compared).
@@ -354,10 +363,14 @@ class Participant:
             print(compare_df[['ex_name', 'ex_number', 'new_name', 'new_number']])
             print()
 
+            updated_df = pd.DataFrame({'name': [None], 'number': [None]})
+            if category == SCREENTIME:
+                updated_df['minutes'] = None
+
             for i in range(1, max_apps_per_category + 1):
                 # Loop through the rows of the comparison dataframe and make comparisons of each row.
 
-                updated_app_name = False  # Initialize
+                app_name_was_updated = False  # Initialize
                 existing_name = compare_df.loc[i, 'ex_name']
                 existing_number = compare_df.loc[i, 'ex_number']
                 new_name = compare_df.loc[i, 'new_name']
@@ -369,14 +382,19 @@ class Participant:
                 if existing_name == NO_TEXT and new_name == NO_TEXT:
                     # Neither the existing data nor the new data have an app in position i
                     print(f"No existing app name or new app name in position {i}. App name remains N/A.")
+                    updated_df.loc[i, 'name'] = NO_TEXT
+                    updated_df.loc[i, 'number'] = NO_NUMBER
+                    if category == SCREENTIME:
+                        updated_df.loc[i, 'minutes'] = NO_NUMBER
 
                 elif existing_name == NO_TEXT and new_name != NO_TEXT:
                     # Only the new data has an app in position i
                     print(f"No existing app name in position {i}. Updating to {new_name}.")
-                    updated_app_name = True
+                    app_name_was_updated = True
                     (self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{NAME}'],
                      self.usage_data_conf.loc[date_index, f'{category}_{APP}_{i}_{NAME}']) = (
                         new_name, compare_df.loc[i, 'new_name_conf'])
+                    updated_df.loc[i, 'name'] = new_name
 
                 elif existing_name != NO_TEXT and new_name == NO_TEXT:
                     # Only the existing data has an app in position i
@@ -384,6 +402,7 @@ class Participant:
                     (self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{NAME}'],
                      self.usage_data_conf.loc[date_index, f'{category}_{APP}_{i}_{NAME}']) = (
                         existing_name, compare_df.loc[i, 'ex_name_conf'])
+                    updated_df.loc[i, 'name'] = existing_name
 
                 else:
                     # Both the existing data and new data have an app in position i; compare the two
@@ -392,15 +411,16 @@ class Participant:
                                                                                          text2=compare_df.loc[i, 'new_name'],
                                                                                          conf2=compare_df.loc[i, 'new_name_conf'])
                     if best_name == new_name != existing_name:
-                        updated_app_name = True
+                        app_name_was_updated = True
 
                     (self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{NAME}'],
                      self.usage_data_conf.loc[date_index, f'{category}_{APP}_{i}_{NAME}']) = (best_name, best_name_conf)
+                    updated_df.loc[i, 'name'] = best_name
 
                 """
                     Compare and update the app number in position i
                 """
-                if updated_app_name:
+                if app_name_was_updated:
                     # When replacing an existing app name with a new app name, the new app's number must also
                     # replace the existing app's number.
                     # If the existing app name and the new app name are the same, then their numbers will still be compared.
@@ -408,24 +428,30 @@ class Participant:
                     (self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{NUMBER}'],
                      self.usage_data_conf.loc[date_index, f'{category}_{APP}_{i}_{NUMBER}']) = (
                         new_number, compare_df.loc[i, 'new_number_conf'])
+                    updated_df.loc[i, 'number'] = new_number
+                    if category == SCREENTIME:
+                        updated_df.loc[i, 'minutes'] = int(compare_df.loc[i, 'new_minutes'])
 
-                elif str(existing_number) == NO_TEXT and str(new_number) == NO_TEXT:
+                elif existing_number == NO_NUMBER and new_number == NO_NUMBER:
                     # Neither the existing data nor the new data have a number in position i
                     print(f"No existing app number or new app number in position {i}. App number remains N/A.")
+                    updated_df.loc[i, 'number'] = NO_NUMBER
 
-                elif str(existing_number) == NO_TEXT and str(new_name) != NO_TEXT:
+                elif existing_number == NO_NUMBER and new_number != NO_NUMBER:
                     # Only the new data has a number in position i
                     print(f"No existing app number in position {i}. Updating to {new_number}.")
                     (self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{NUMBER}'],
                      self.usage_data_conf.loc[date_index, f'{category}_{APP}_{i}_{NUMBER}']) = (
                         new_number, compare_df.loc[i, 'new_number_conf'])
+                    updated_df.loc[i, 'number'] = new_number
 
-                elif str(existing_number) != NO_TEXT and str(new_number) == NO_TEXT:
+                elif existing_number != NO_NUMBER and new_number == NO_NUMBER:
                     # Only the existing data has a number in position i
                     print(f"No new app number in position {i}. Keeping {existing_number}.")
                     (self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{NUMBER}'],
                      self.usage_data_conf.loc[date_index, f'{category}_{APP}_{i}_{NUMBER}']) = (
                         existing_number, compare_df.loc[i, 'ex_number_conf'])
+                    updated_df.loc[i, 'number'] = existing_number
 
                 else:
                     # Both the existing data and new data have a number in position i; compare the two
@@ -436,11 +462,19 @@ class Participant:
                                                                                              val_fmt=value_format)
                     (self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{NUMBER}'],
                      self.usage_data_conf.loc[date_index, f'{category}_{APP}_{i}_{NUMBER}']) = (best_number, best_number_conf)
+                    updated_df.loc[i, 'number'] = best_number
 
                     if category == SCREENTIME:
                         # Update the minutes as well (for screentime data)
                         if best_number == compare_df.loc[i, 'new_number']:
                             self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{MINUTES}'] = compare_df.loc[i, 'new_minutes']
+                            updated_df.loc[i, 'minutes'] = int(compare_df.loc[i, 'new_minutes'])
+                        else:
+                            updated_df.loc[i, 'minutes'] = int(compare_df.loc[i, 'ex_minutes'])
+
+            print(f"\nUpdated {category} data for participant {self.user_id} on {ss.date_detected}:")
+            print(updated_df[1:])
+            print(f"Daily total {category}: {dt}")
 
         return
 

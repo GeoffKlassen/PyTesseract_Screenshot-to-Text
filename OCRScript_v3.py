@@ -492,7 +492,7 @@ def determine_language_of_image(participant, df):
     :return:
     """
     backup_lang = participant.language if participant.language is not None else default_language
-    backup_lang_msg = (f"Setting image language to {'study' if participant.language is None else 'user'}"
+    backup_lang_msg = (f"Setting image language to {'study' if participant.language is None else 'user'} "
                        f"default ({backup_lang}).")
     user_lang_exists = True if participant.language is not None else False
 
