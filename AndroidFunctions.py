@@ -11,6 +11,7 @@ import OCRScript_v3
 
 from RuntimeValues import *
 
+
 """
     Android-Specific dictionaries
 
@@ -247,7 +248,8 @@ def get_headings(screenshot, time_fmt_short):
 
         row_text = re.sub(r'(?<=\d)n', 'h', row_text) # Occasionally 'h' gets read as 'n'
         # Replace numbers with '#' symbol for matching with total screentime/notifications/unlocks formats
-        row_text_filtered = re.sub(r'\d+', '#', row_text).replace(' ', '')
+        row_text_hashed_digits = re.sub(r'\d+', '#', row_text)
+        row_text_hash_digits_no_spaces = row_text_hashed_digits.replace(' ', '')
         # debug
         row_text_has_no_digits = not bool(re.search(r'\d+', row_text))
         centre_of_row = int(df['left'][i] + 0.5 * df['width'][i])
@@ -299,26 +301,28 @@ def get_headings(screenshot, time_fmt_short):
             df.loc[i, HEADING_COLUMN] = OLD_UNLOCKS_HEADING
 
         elif (bool(re.match(time_fmt_short, row_text)) and df['left'][i] < 0.15 * screenshot.width or
-                (not re.fullmatch(r'#+', row_text_filtered) and
-                 any(OCRScript_v3.levenshtein_distance(row_text_filtered, key.replace(' ', '')) <=
-                     OCRScript_v3.error_margin(row_text_filtered, key.replace(' ', ''))
+                (not re.fullmatch(r'#+', row_text_hash_digits_no_spaces) and
+                 any(OCRScript_v3.levenshtein_distance(row_text_hash_digits_no_spaces, key.replace(' ', '')) <=
+                     OCRScript_v3.error_margin(row_text_hash_digits_no_spaces, key.replace(' ', ''))
                      for key in GOOGLE_SCREENTIME_FORMATS[lang]) and
                  abs(centre_of_row - (0.5 * screenshot.width)) < (0.1 * screenshot.width))) and \
                 not df[HEADING_COLUMN].str.contains(TOTAL_SCREENTIME).any():
             # Row text starts with a short-format time length (e.g. 1h5m) and is left-aligned (Samsung style), or
             # Row text matches a long-format time length (e.g. 1 hr 5 min) and is centred (Google style)
             df.loc[i, HEADING_COLUMN] = TOTAL_SCREENTIME
-        elif (any(OCRScript_v3.levenshtein_distance(row_text_filtered, key.replace(' ', '')) <=
-                  OCRScript_v3.error_margin(row_text_filtered, key.replace(' ', ''))
+
+        elif (any(OCRScript_v3.levenshtein_distance(row_text_hash_digits_no_spaces, key.replace(' ', '')) <=
+                  OCRScript_v3.error_margin(row_text_hash_digits_no_spaces, key.replace(' ', ''))
                   for key in (GOOGLE_NOTIFICATIONS_FORMATS[lang] + SAMSUNG_NOTIFICATIONS_FORMATS[lang])) and
               (df['left'][i] < 0.15 * screenshot.width or
                abs(centre_of_row - (0.5 * screenshot.width)) < (0.1 * screenshot.width))) and \
-                not row_text_filtered.startswith(('N', 'n')) and \
+                not row_text.startswith(('N', 'n')) and \
                 not df[HEADING_COLUMN].str.contains(TOTAL_NOTIFICATIONS).any():
             # Row text matches a 'total notifications' format and is either left-aligned (Samsung) or centred (Google)
             df.loc[i, HEADING_COLUMN] = TOTAL_NOTIFICATIONS
-        elif (any(OCRScript_v3.levenshtein_distance(row_text_filtered, key.replace(' ', '')) <=
-                  OCRScript_v3.error_margin(row_text_filtered, key.replace(' ', ''))
+
+        elif (any(OCRScript_v3.levenshtein_distance(row_text_hash_digits_no_spaces, key.replace(' ', '')) <=
+                  OCRScript_v3.error_margin(row_text_hash_digits_no_spaces, key.replace(' ', ''))
                   for key in (GOOGLE_UNLOCKS_FORMATS[lang] + SAMSUNG_UNLOCKS_FORMAT[lang])) and
               (df['left'][i] < 0.15 * screenshot.width or abs(centre_of_row - (0.5 * screenshot.width)) < (
                       0.1 * screenshot.width))) and \
@@ -338,7 +342,7 @@ def get_headings(screenshot, time_fmt_short):
                  for key in KEYWORDS_FOR_DAY_WEEK_MONTH[lang]):
             df.loc[i, HEADING_COLUMN] = DAY_WEEK_MONTH
 
-        elif any(OCRScript_v3.levenshtein_distance(row_text_filtered, key) <= OCRScript_v3.error_margin(row_text_filtered, key)
+        elif any(OCRScript_v3.levenshtein_distance(row_text_hashed_digits[-len(key):], key) <= OCRScript_v3.error_margin(row_text_hashed_digits, key)
                  for key in GOOGLE_SEE_ALL_N_APPS[lang]):
             df.loc[i, HEADING_COLUMN] = SEE_ALL_N_APPS
 

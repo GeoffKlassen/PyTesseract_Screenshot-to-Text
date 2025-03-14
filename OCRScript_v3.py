@@ -242,7 +242,7 @@ def error_margin(text1, text2=None):
         if len(t) <= key:
             return MARGIN_OF_ERROR[key]
     # _m = max(0, round(3.5 * np.log(max(1.0, 0.35 * len(t) - 0.7))))
-    return 0
+    return 7
 
 
 def levenshtein_distance(s1, s2):
@@ -456,7 +456,7 @@ def show_image(df, img, draw_boxes=True):
     img_height, img_width = img.shape
 
     img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-    scale = 1080 / img_height if img_height > 1080 else 1  # Ensures the image fits on a 1920x1080 screen
+    scale = min(2, 0.85 * screen_height / img_height)  # Ensures the image fits on the screen
     df[['left', 'width', 'top', 'height']] = df[['left', 'width', 'top', 'height']].astype(int)
 
     if draw_boxes:
@@ -1077,7 +1077,7 @@ def update_eta(ss_start_time, idx):
                                     avg_android_time * num_android_images_remaining +
                                     avg_unknown_os_time * num_unknown_os_images_remaining)
 
-        all_times.loc[idx, 'eta'] = estimated_time_remaining
+        all_times.loc[idx, 'ETA'] = estimated_time_remaining
 
         if len(all_times) < 8 and image_limit >= 30:
             print(f"Estimated time remaining:  Calculating...")
@@ -1115,45 +1115,47 @@ def add_screenshot_info_to_master_df(screenshot, idx):
                 all_screenshots_df[ERR_DUPLICATE_DATA] = None
                 all_screenshots_df[ERR_DUPLICATE_COUNTS] = None
             if not (matching_screenshots[PARTICIPANT_ID].eq(screenshot.user_id).all()):
-                same_or_other_user = "MULTIPLE USERS"
+                same_or_other_user = MULTIPLE_USERS
             else:
-                same_or_other_user = "SAME USER"
+                same_or_other_user = SAME_USER
             for n in matching_screenshots.index:
                 all_screenshots_df.loc[n, ERR_DUPLICATE_DATA] = same_or_other_user
                 all_screenshots_df.loc[n, ERR_DUPLICATE_COUNTS] = num_duplicates
                 all_screenshots_df.loc[n, REVIEW_COUNT] += 1
 
-    all_screenshots_df.loc[idx, IMAGE_URL] = screenshot.url
-    all_screenshots_df.loc[idx, PARTICIPANT_ID] = screenshot.user_id
-    all_screenshots_df.loc[idx, DEVICE_ID] = screenshot.device_id
-    all_screenshots_df.loc[idx, LANGUAGE] = screenshot.language
-    all_screenshots_df.loc[idx, DEVICE_OS] = screenshot.device_os_detected
-    all_screenshots_df.loc[idx, ANDROID_VERSION] = screenshot.android_version
-    all_screenshots_df.loc[idx, DATE_SUBMITTED] = screenshot.date_submitted
-    all_screenshots_df.loc[idx, DATE_DETECTED] = screenshot.date_detected
-    all_screenshots_df.loc[idx, RELATIVE_DAY] = screenshot.relative_day
-    all_screenshots_df.loc[idx, CATEGORY_SUBMITTED] = screenshot.category_submitted
-    all_screenshots_df.loc[idx, CATEGORY_DETECTED] = PICKUPS if (
-            screenshot.category_detected == UNLOCKS) else screenshot.category_detected
-    all_screenshots_df.loc[idx, DAILY_TOTAL] = screenshot.daily_total
-    for n in range(1, max_apps_per_category + 1):
-        all_screenshots_df.loc[idx, f'{APP}_{n}_{NAME}'] = screenshot.app_data[NAME][n]
-        all_screenshots_df.loc[idx, f'{APP}_{n}_{NUMBER}'] = screenshot.app_data[NUMBER][n]
+    for df, col_name in zip([all_screenshots_df, all_screenshots_df_conf], [[NAME, NUMBER], [NAME_CONF, NUMBER_CONF]]):
 
-    all_screenshots_df.loc[idx, HASHED] = screenshot.text_hash
-    all_screenshots_df.loc[idx, REVIEW_COUNT] = len(screenshot.errors)
-    for col in screenshot.data_row.columns:
-        if col == ERR_CONFIDENCE:
-            all_screenshots_df.loc[idx, col] = screenshot.num_values_low_conf
-        elif col == ERR_MISSING_VALUE:
-            all_screenshots_df.loc[idx, col] = screenshot.num_missed_values
-        elif col == ERR_DUPLICATE_DATA:
-            all_screenshots_df.loc[idx, col] = same_or_other_user
-            all_screenshots_df.loc[idx, ERR_DUPLICATE_COUNTS] = num_duplicates
-        elif col.startswith(ERR):
-            all_screenshots_df.loc[idx, col] = True
-        else:
-            pass
+        df.loc[idx, IMAGE_URL] = screenshot.url
+        df.loc[idx, PARTICIPANT_ID] = screenshot.user_id
+        df.loc[idx, DEVICE_ID] = screenshot.device_id
+        df.loc[idx, LANGUAGE] = screenshot.language
+        df.loc[idx, DEVICE_OS] = screenshot.device_os_detected
+        df.loc[idx, ANDROID_VERSION] = screenshot.android_version
+        df.loc[idx, DATE_SUBMITTED] = screenshot.date_submitted
+        df.loc[idx, DATE_DETECTED] = screenshot.date_detected
+        df.loc[idx, RELATIVE_DAY] = screenshot.relative_day
+        df.loc[idx, CATEGORY_SUBMITTED] = screenshot.category_submitted
+        df.loc[idx, CATEGORY_DETECTED] = PICKUPS if (
+                screenshot.category_detected == UNLOCKS) else screenshot.category_detected
+        df.loc[idx, DAILY_TOTAL] = screenshot.daily_total if col_name == [NAME, NUMBER] else screenshot.daily_total_conf
+        for n in range(1, max_apps_per_category + 1):
+            df.loc[idx, f'{APP}_{n}_{NAME}'] = screenshot.app_data[col_name[0]][n]
+            df.loc[idx, f'{APP}_{n}_{NUMBER}'] = screenshot.app_data[col_name[1]][n]
+
+        df.loc[idx, HASHED] = screenshot.text_hash
+        df.loc[idx, REVIEW_COUNT] = len(screenshot.errors)
+        for col in screenshot.data_row.columns:
+            if col == ERR_CONFIDENCE:
+                df.loc[idx, col] = screenshot.num_values_low_conf
+            elif col == ERR_MISSING_VALUE:
+                df.loc[idx, col] = screenshot.num_missed_values
+            elif col == ERR_DUPLICATE_DATA:
+                df.loc[idx, col] = same_or_other_user
+                df.loc[idx, ERR_DUPLICATE_COUNTS] = num_duplicates
+            elif col.startswith(ERR):
+                df.loc[idx, col] = True
+            else:
+                pass
 
     return
 
@@ -1173,6 +1175,7 @@ def set_empty_app_data_and_update(empty_data, screenshot, idx):
 
 
 if __name__ == '__main__':
+
     # Read in the list of URLs for the appropriate Study (as specified in RuntimeValues.py)
     url_list = pd.DataFrame()
     for survey in survey_list:
@@ -1210,11 +1213,12 @@ if __name__ == '__main__':
 
     # Time the data extraction process
     start_time = time.time()
-    all_times = pd.DataFrame(columns=[TIME, 'elapsed_time', 'eta'])
+    all_times = pd.DataFrame(columns=[DEVICE_OS, TIME, 'elapsed_time', 'ETA'])
 
     all_screenshots_df = ScreenshotClass.initialize_data_row()
-
+    all_screenshots_df_conf = ScreenshotClass.initialize_data_row()
     participants = []
+
     image_upper_bound = image_lower_bound if image_upper_bound < image_lower_bound else image_upper_bound
     for index in url_list.index:
         if not (image_lower_bound <= index + 1 <= image_upper_bound):
@@ -1833,16 +1837,40 @@ if __name__ == '__main__':
         if not duplicate_screenshots_df.empty:
             print("Compiling duplicate screenshot info...", end='')
             counts = duplicate_screenshots_df[PARTICIPANT_ID].value_counts()
+            # Filter rows where ERR_DUPLICATE_DATA equals "SAME USER" and count per PARTICIPANT_ID
+            same_user_counts = duplicate_screenshots_df[
+                duplicate_screenshots_df[ERR_DUPLICATE_DATA] == SAME_USER
+                ][PARTICIPANT_ID].value_counts()
 
-            # Convert the result to a DataFrame
-            counts_df = counts.reset_index()
-            counts_df.columns = [PARTICIPANT_ID, 'count']
+            # Filter rows where ERR_DUPLICATE_DATA equals "MULTIPLE USERS" and count per PARTICIPANT_ID
+            multiple_users_counts = duplicate_screenshots_df[
+                duplicate_screenshots_df[ERR_DUPLICATE_DATA] == MULTIPLE_USERS
+                ][PARTICIPANT_ID].value_counts()
+
+            # Combine the counts into a new DataFrame
+            counts_df = counts.to_frame(name='Total Duplicates')  # Convert the original counts into a DataFrame
+            counts_df[SAME_USER] = same_user_counts  # Add the "SAME USER" counts as a new column
+            counts_df[MULTIPLE_USERS] = multiple_users_counts  # Add the "MULTIPLE USERS" counts as a new column
+
+            # Replace NaN with 0 for cases where there were no rows for a specific condition
+            counts_df = counts_df.fillna(0)
+
+            # Ensure the columns are integers (optional, for cleaner display)
+            counts_df = counts_df.astype(int)
+
+            # print(counts_df)
+            #
+            # # Convert the result to a DataFrame
+            # counts_df = counts.reset_index()
+            # counts_df.columns = [PARTICIPANT_ID, 'count']
 
             counts_df.to_csv(f"{study_to_analyze[NAME]} Duplicate Screenshot Info.csv")
             print("Done.")
 
     print("Exporting CSVs...", end='')
     all_screenshots_df.drop(columns=[HASHED], inplace=True)
+    all_screenshots_df_conf.drop(columns=[HASHED], inplace=True)
+
     all_ios_screenshots_df = all_screenshots_df[all_screenshots_df[DEVICE_OS] == IOS]
     all_android_screenshots_df = all_screenshots_df[all_screenshots_df[DEVICE_OS] == ANDROID]
 
@@ -1853,6 +1881,7 @@ if __name__ == '__main__':
 
     all_participants_df.to_csv(f"{study_to_analyze[NAME]} All Participants Temporal Data.csv")
     all_screenshots_df.to_csv(f"{study_to_analyze[NAME]} All Screenshots.csv")
+    all_screenshots_df_conf.to_csv(f"{study_to_analyze[NAME]} All Confidence Values.csv")
 
     all_ios_screenshots_df.to_csv(f"{study_to_analyze[NAME]} iOS Data.csv")
     all_android_screenshots_df.to_csv(f"{study_to_analyze[NAME]} Android Data.csv")
@@ -1862,6 +1891,7 @@ if __name__ == '__main__':
     all_notifications_screenshots_df.to_csv(f"{study_to_analyze[NAME]} Notifications Data.csv")
 
     all_times['actual_time_remaining'] = total_elapsed_time - all_times['elapsed_time']
+    all_times['relative_difference'] = all_times['ETA'] / all_times['actual_time_remaining'] * 100
     all_times.to_csv(f"{study_to_analyze[NAME]} ETAs.csv")  # Mostly for interest's sake
 
     print("Done.")

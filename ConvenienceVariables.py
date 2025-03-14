@@ -1,6 +1,7 @@
 """This file contains variables used as dictionary keys, dataframe column names, etc.
 They are stored in this one location for consistency."""
-from packaging.markers import UndefinedComparison
+from win32api import GetSystemMetrics
+screen_height = GetSystemMetrics(1)
 
 """
     Operating Systems
@@ -198,6 +199,8 @@ ERR_TOTAL_BELOW_APP_SUM = 'ERR Daily total less than app sum'
 ERR_MISREAD_TIME = 'ERR Misread time value'
 ERR_NOT_A_NUMBER = 'ERR Daily total not a number'
 ERR_DUPLICATE_COUNTS = 'ERR Duplicate data occurrences'
+SAME_USER = 'SAME USER'
+MULTIPLE_USERS = 'MULTIPLE USERS'
 
 """
     Column names for all_screenshots_df
