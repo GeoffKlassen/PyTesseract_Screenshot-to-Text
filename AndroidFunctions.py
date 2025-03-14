@@ -74,7 +74,7 @@ KEYWORDS_FOR_2018_UNLOCKS = {ITA: ['SBLOCCHI'],
                              FRA: ['TODO FILL THIS IN']}
 
 KEYWORDS_FOR_SCREEN_TIME = {ITA: ['Tempo di utilizzo', 'Tempo di utilizzo dello schermo',
-                                    'DURATA SCHERMO', 'DURATA SCHERMO Altro'],
+                                  'DURATA SCHERMO', 'DURATA SCHERMO Altro'],
                             ENG: ['Screen time'],
                             GER: ['TODO: FILL THIS IN'],  # TODO Fill this in
                             FRA: ['Temps dutilisation des écrans', 'Temps decran']}
@@ -119,6 +119,7 @@ GOOGLE_UNLOCKS_FORMATS = {ITA: ['# sblocchi', '# aperture'],
                           ENG: ['# unlocks', 'Opened # times'],
                           GER: ['# Entsperrungen', '# Mal geoffnet'],
                           FRA: ['Déverrouillé # fois', 'Ouverte # fois']}
+
 SAMSUNG_NOTIFICATIONS_FORMATS = {ITA: ['# notifiche ricevute', "# ricevute"],
                                  ENG: ['# notifications', '# notification', '# received'],
                                  # TODO Should this include '# notifications received'?
@@ -319,7 +320,7 @@ def get_headings(screenshot, time_fmt_short):
                  for key in KEYWORDS_FOR_REST_OF_THE_DAY[lang]):
             df.loc[i, HEADING_COLUMN] = REST_OF_THE_DAY
 
-        elif any(OCRScript_v3.levenshtein_distance(row_text[-len(key):], key) <= OCRScript_v3.error_margin(key)
+        elif any(OCRScript_v3.levenshtein_distance(row_text[:len(key)], key) <= OCRScript_v3.error_margin(key)
                  for key in SAMSUNG_SEARCH_APPS[lang]):
             df.loc[i, HEADING_COLUMN] = SEARCH_APPS
 
@@ -337,7 +338,7 @@ def get_headings(screenshot, time_fmt_short):
 
 def matches_a_value_pattern(text, patterns):
     for pattern in patterns:
-        if OCRScript_v3.levenshtein_distance(text, pattern) < OCRScript_v3.error_margin(text, pattern) and ('#' in text):
+        if OCRScript_v3.levenshtein_distance(text, pattern) <= OCRScript_v3.error_margin(text, pattern) and ('#' in text):
             return True
     return False
 
@@ -417,8 +418,10 @@ def get_android_version(screenshot):
     elif not heads_df[heads_df['text'].str.isupper()].empty:
         android_ver = VERSION_2018  # TODO: not sure on the year
     elif max(abs(heads_df['left'] + 0.5 * heads_df['width'] - (0.5 * screenshot.width))) < (0.11 * screenshot.width) and \
-            not heads_df[HEADING_COLUMN].eq(VIEW_MORE_HEADING).any() or heads_df[HEADING_COLUMN].eq(DAY_WEEK_MONTH).any():
-        # All the headings found are centred
+            not heads_df[HEADING_COLUMN].eq(VIEW_MORE_HEADING).any() or heads_df[HEADING_COLUMN].eq(DAY_WEEK_MONTH).any() or \
+            heads_df[HEADING_COLUMN].eq(SEARCH_APPS).any():
+        # All the headings found are centred; or
+        # One of the headings "Day Week Month" or "Search apps" / "Search for categories" was detected
         android_ver = GOOGLE
     elif not (heads_df['heading'].isin(samsung_2021_headings)).any():
         # None of the Samsung 2021 headings are found
@@ -813,7 +816,10 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
     if android_version == GOOGLE:
         value_formats = (GOOGLE_SCREENTIME_FORMATS[lang] +
                          GOOGLE_NOTIFICATIONS_FORMATS[lang] +
-                         GOOGLE_UNLOCKS_FORMATS[lang])
+                         GOOGLE_UNLOCKS_FORMATS[lang] +
+                         ["#" + KEYWORDS_FOR_HR[lang][-1] + "#" + KEYWORDS_FOR_MIN[lang][-1]] +
+                         ["#" + KEYWORDS_FOR_MIN[lang][-1]])
+
         last_index_headings = headings_df.index[-1] if not headings_df.empty else -1
         text_df['text_with_digits_replaced'] = text_df['text'].str.replace(r'\d+', '#', regex=True)
 
@@ -822,10 +828,12 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
                                             lambda x: matches_a_value_pattern(x, value_formats))) &
                                         (text_df['left'] > int(0.1 * screenshot.width))]
         if not rows_with_app_numbers.empty:
+            print(f"Found app number: '{rows_with_app_numbers.iloc[0]['text']}'. Cropping to the left of this row.")
             crop_left = max(0, min(rows_with_app_numbers['left']) - int(0.02 * screenshot.width))
             crop_right = max(0, screenshot.width - crop_left - int(0.04 * screenshot.width))
         else:
             # Default values for crop_left and crop_right
+            print("Using default values for left & right crop.")
             crop_left = int(0.15 * screenshot.width)  # Crop out the app icon area (first 15% of screenshot.width)
             crop_right = int(0.79 * screenshot.width)  # Crop out the hourglass area (last 79% of screenshot.width)
 
@@ -847,8 +855,11 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
             crop_top = max(0, rows_with_app_numbers.iloc[0]['top'] - 3*int(rows_with_app_numbers.iloc[0]['height']))
         elif headings_df[HEADING_COLUMN].eq(DAY_WEEK_MONTH).any():
             row_with_day_week_month = headings_df[headings_df[HEADING_COLUMN] == DAY_WEEK_MONTH].iloc[0]
-            crop_top = row_with_day_week_month['top'] + 3*row_with_day_week_month['height']
+            crop_top = int(row_with_day_week_month['top'] + 3*row_with_day_week_month['height'])
             crop_right = screenshot.width
+        elif headings_df[HEADING_COLUMN].eq(SEARCH_APPS).any():
+            row_with_search_apps = headings_df[headings_df[HEADING_COLUMN] == SEARCH_APPS].iloc[0]
+            crop_top = int(row_with_search_apps['top'] + row_with_search_apps['height'])
         else:
             # TODO Leaving this as a catch-all for now -- debug later if this condition is used
             crop_top = 0
