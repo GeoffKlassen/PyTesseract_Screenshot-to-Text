@@ -1546,7 +1546,7 @@ if __name__ == '__main__':
                                                          time_formats=time_formats,
                                                          coordinates=crop_coordinates)
 
-            dt = current_screenshot.daily_total if str(current_screenshot.daily_total) != NO_TEXT else "N/A"
+            dt = current_screenshot.daily_total if current_screenshot.daily_total != NO_TEXT else "N/A"
             if dashboard_category == SCREENTIME:
                 for i in range(1, max_apps_per_category + 1):
                     if i in app_data.index:  # Make sure the index exists
@@ -1558,7 +1558,8 @@ if __name__ == '__main__':
                 print("\nApp data found:")
                 print(app_data[[NAME, NUMBER, MINUTES]])
                 print(f"Daily total {dashboard_category}: {dt} {dtm}\n")
-                if current_screenshot.daily_total_minutes is not None and current_screenshot.daily_total_minutes != -1:
+                if current_screenshot.daily_total_minutes is not None and \
+                        current_screenshot.daily_total_minutes != NO_NUMBER:
                     sum_app_minutes = app_data[app_data[MINUTES] != NO_CONF][MINUTES].astype(int).sum()
                     if int(current_screenshot.daily_total_minutes) < sum_app_minutes:
                         current_screenshot.add_error(ERR_TOTAL_BELOW_APP_SUM)
@@ -1568,7 +1569,7 @@ if __name__ == '__main__':
                 print(app_data[[NAME, NUMBER]])
                 print(f"Daily total {dashboard_category}: {dt}\n")
                 if current_screenshot.daily_total is not None and \
-                        current_screenshot.daily_total != -1 and \
+                        current_screenshot.daily_total != NO_TEXT and \
                         current_screenshot.category_detected != UNLOCKS:
                     # Android does not calculate daily unlocks as the sum of the times each app was opened.
                     # Apps can be opened more than once per unlock.
@@ -1763,9 +1764,9 @@ if __name__ == '__main__':
                                                      df=app_area_2_df,
                                                      category=dashboard_category,
                                                      max_apps=max_apps_per_category)
-            dt = current_screenshot.daily_total if current_screenshot.daily_total_conf != NO_CONF else "N/A"
+            dt = current_screenshot.daily_total if current_screenshot.daily_total != NO_TEXT else "N/A"
             dtm = f"{' (' + str(current_screenshot.daily_total_minutes) + 
-                     " minutes)" if current_screenshot.daily_total_conf != NO_CONF else ''}"
+                     " minutes)" if current_screenshot.daily_total_minutes != NO_NUMBER else ''}"
             if dashboard_category == SCREENTIME:
                 for i in range(1, max_apps_per_category + 1):
                     if i in app_data.index:  # Make sure the index exists
@@ -1783,7 +1784,7 @@ if __name__ == '__main__':
                 print("\nApp data found:")
                 print(app_data[[NAME, NUMBER]])
                 print(f"Daily total {dashboard_category}: {dt}\n")
-                if current_screenshot.daily_total is not None and current_screenshot.daily_total != -1:
+                if current_screenshot.daily_total is not None and current_screenshot.daily_total != NO_TEXT:
                     sum_app_numbers = app_data[app_data[NUMBER] != NO_CONF][NUMBER].astype(int).sum()
                     if int(current_screenshot.daily_total) < sum_app_numbers:
                         current_screenshot.add_error(ERR_TOTAL_BELOW_APP_SUM)
