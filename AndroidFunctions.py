@@ -437,12 +437,14 @@ def get_android_version(screenshot):
         android_ver = VERSION_2018  # TODO: not sure on the year
     elif max(abs(heads_df['left'] + 0.5 * heads_df['width'] - (0.5 * screenshot.width))) < (0.11 * screenshot.width) and \
             not heads_df[HEADING_COLUMN].eq(VIEW_MORE_HEADING).any() or\
-            heads_df[HEADING_COLUMN].isin([DAY_WEEK_MONTH, SEARCH_APPS, SEE_ALL_N_APPS]).any():
+            heads_df[HEADING_COLUMN].isin([DAY_WEEK_MONTH, SEE_ALL_N_APPS]).any():
         # All the headings found are centred; or
         # One of the headings "Day Week Month" or "Search apps"/"Search for categories" or "See all N apps" was detected
         android_ver = GOOGLE
-    elif not (heads_df['heading'].isin(samsung_2021_headings)).any():
-        # None of the Samsung 2021 headings are found
+    elif not (heads_df['heading'].isin(samsung_2021_headings)).any() or heads_df[HEADING_COLUMN].eq(SEARCH_APPS).any():
+        # None of the Samsung 2021 headings are found, or
+        # Found the "Search apps"/"Search for cataegories" heading (this heading appears on Samsung 2024 Dashboards
+        #     when the user selects "View all")
         android_ver = SAMSUNG_2024
     elif (heads_df['heading'][1:].isin(samsung_2021_headings)).any() or \
         (not heads_df[~heads_df[HEADING_COLUMN].str.contains('total')].empty and
@@ -831,7 +833,10 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
     dashboard_category = screenshot.category_detected if screenshot.category_detected is not None else (
         screenshot.category_submitted)
 
-    if android_version == GOOGLE:
+    if android_version == GOOGLE or (android_version == SAMSUNG_2024 and
+                                     headings_df[HEADING_COLUMN].eq(SEARCH_APPS).any()):
+        # Both GOOGLE Dashboard and the "View all" screen of SAMSUNG_2024 Dasnboard show app names and app times/numbers
+        # on different rows, aligned to the left.
         value_formats = (GOOGLE_SCREENTIME_FORMATS[lang] +
                          GOOGLE_NOTIFICATIONS_FORMATS[lang] +
                          GOOGLE_UNLOCKS_FORMATS[lang] +
@@ -958,12 +963,21 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
                         text_df['height'][i] < 0.08 * screenshot.width:  # 0.08 settled on through trial and error
                     # Row text spans most of the width of the screenshot, and also ends with a time/number, and also
                     # isn't too tall (sometimes a line with a graph bar + a graph axis number is interpreted as text)
-                    print(f"App row found: '{text_df['text'][i]}'. ", end='')
+                    print(f"App row found: '{text_df['text'][i]}'. ")
                     if crop_top == 0:
-                        print(f"Setting top-left of crop region to the top-left of this app row.")
-                        crop_top = max([0, int(text_df['top'][i] - 0.01 * screenshot.width)])
-                        crop_left = max([0, int(text_df['left'][i] - 0.02 * screenshot.width)])
+                        if i > 0 and ((abs(text_df['left'][i-1] - text_df['left'][i]) < int(0.01*screenshot.width) or
+                                       abs(text_df['right'][i-1] - text_df['right'][i]) < int(0.01*screenshot.width)) and
+                                      abs(text_df['height'][i-1] - text_df['height'][i]) < int(0.02*screenshot.width)):
+                            print(f"Detected possible app row above it: '{text_df['text'][i-1]}'. "
+                                  f"Setting top of crop region to the top of this row.")
+                            crop_top = max(0, int(text_df['top'][i-1] - 0.02*screenshot.width))
+
+                        else:
+                            print(f"Setting top-left of crop region to the top-left of this app row.")
+                            crop_top = max(0, int(text_df['top'][i] - 0.02 * screenshot.width))
+                        crop_left = max(0, int(text_df['left'][i] - 0.02 * screenshot.width))
                         index_of_first_app = i
+
                     else:
                         if crop_left < int(0.05 * screenshot.width) and text_df['left'][i] < int(0.25 * screenshot.width):
                             # Occasionally, the app icon is read as part of the app name, which shouldn't be in the crop.
