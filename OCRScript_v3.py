@@ -1011,16 +1011,21 @@ def update_eta(ss_start_time, idx):
         str_time = str_hr + str_min + str_sec
         return str_time
 
+    if idx == min(image_upper_bound, num_urls):
+        return
+
     current_time = time.time()
     elapsed_time_in_seconds = current_time - start_time
     ss_time = current_time - ss_start_time
 
-    print(f"\n\nElapsed time:  {convert_seconds_to_hms(elapsed_time_in_seconds)}")
+    print(f"\nElapsed time:  {convert_seconds_to_hms(elapsed_time_in_seconds)}")
 
     all_times.loc[idx, TIME] = ss_time
     all_times.loc[idx, 'elapsed_time'] = elapsed_time_in_seconds
     all_times.loc[idx, DEVICE_OS] = url_list[DEVICE_OS][idx]
+
     if not all_times.empty:
+        image_limit = min(image_upper_bound, num_urls)
         all_ios_times = all_times.loc[url_list[DEVICE_OS] == IOS][TIME]
         all_android_times = all_times.loc[url_list[DEVICE_OS] == ANDROID][TIME]
 
@@ -1030,13 +1035,13 @@ def update_eta(ss_start_time, idx):
         avg_unknown_os_time = np.mean([avg_android_time, avg_ios_time])
 
         num_ios_images_remaining = len(url_list.loc[(idx < url_list.index) &
-                                                    (url_list.index < min(image_upper_bound, num_urls)) &
+                                                    (url_list.index < image_limit) &
                                                     (url_list[DEVICE_OS] == IOS)])
         num_android_images_remaining = len(url_list.loc[(idx < url_list.index) &
-                                                        (url_list.index < min(image_upper_bound, num_urls)) &
+                                                        (url_list.index < image_limit) &
                                                         (url_list[DEVICE_OS] == ANDROID)])
         num_unknown_os_images_remaining = len(url_list.loc[(idx < url_list.index) &
-                                                           (url_list.index < min(image_upper_bound, num_urls)) &
+                                                           (url_list.index < image_limit) &
                                                            (url_list[DEVICE_OS] == UNKNOWN)])
 
         estimated_time_remaining = (avg_ios_time * num_ios_images_remaining +
@@ -1044,7 +1049,11 @@ def update_eta(ss_start_time, idx):
                                     avg_unknown_os_time + num_unknown_os_images_remaining)
 
         all_times.loc[idx, 'eta'] = estimated_time_remaining
-        if estimated_time_remaining > 0:
+
+        if len(all_times) < 8 and image_limit >= 30:
+            print(f"Estimated time remaining:  Calculating...")
+            return
+        elif estimated_time_remaining > 0:
             print(f"Estimated time remaining:  {convert_seconds_to_hms(estimated_time_remaining)}")
 
     return
@@ -1184,7 +1193,8 @@ if __name__ == '__main__':
             continue
 
         min_url_index = min(num_urls, image_upper_bound)
-        print(f"\n\nFile {index + 1} of {min_url_index}: {url_list[IMG_URL][index]}")
+        print("\n==============================================================================================================\n")
+        print(f"File {index + 1} of {min_url_index}: {url_list[IMG_URL][index]}")
 
         screenshot_time_start = time.time()
         device_id = url_list[DEVICE_ID][index]
@@ -1418,9 +1428,9 @@ if __name__ == '__main__':
                                                                              screenshot=current_screenshot)
                 dtm = (" (" + str(daily_total_minutes) + " minutes)") if daily_total_conf != NO_CONF else ""
                 current_screenshot.set_daily_total_minutes(daily_total_minutes)
-                print(f"Daily total {dashboard_category}: {dt}{dtm}")
+                print(f"Daily total {dashboard_category}: {dt}{dtm}\n")
             else:
-                print(f"Daily total {dashboard_category}: {dt}")
+                print(f"Daily total {dashboard_category}: {dt}\n")
 
             # For Samsung_2021 and 2018 versions of the dashboard, the Screentime heading and Notifications heading
             # both have sub-headings ('most used' and 'most notifications', respectively).
@@ -1512,7 +1522,7 @@ if __name__ == '__main__':
 
                 print("\nApp data found:")
                 print(app_data[[NAME, NUMBER, MINUTES]])
-                print(f"Daily total {dashboard_category}: {dt} {dtm}")
+                print(f"Daily total {dashboard_category}: {dt} {dtm}\n")
                 if current_screenshot.daily_total_minutes is not None and current_screenshot.daily_total_minutes != -1:
                     sum_app_minutes = app_data[app_data[MINUTES] != NO_CONF][MINUTES].astype(int).sum()
                     if int(current_screenshot.daily_total_minutes) < sum_app_minutes:
@@ -1521,7 +1531,7 @@ if __name__ == '__main__':
             else:
                 print("\nApp data found:")
                 print(app_data[[NAME, NUMBER]])
-                print(f"Daily total {dashboard_category}: {dt}")
+                print(f"Daily total {dashboard_category}: {dt}\n")
                 if current_screenshot.daily_total is not None and \
                         current_screenshot.daily_total != -1 and \
                         current_screenshot.category_detected != UNLOCKS:
@@ -1577,7 +1587,7 @@ if __name__ == '__main__':
                 daily_total_minutes = iOS.convert_text_time_to_minutes(daily_total, current_screenshot)
 
                 dtm = (" (" + str(daily_total_minutes) + " minutes)") if daily_total_conf != NO_CONF else ""
-                print(f"Daily total {dashboard_category}: {dt}{dtm}")
+                print(f"Daily total {dashboard_category}: {dt}{dtm}\n")
 
                 current_screenshot.set_daily_total_minutes(daily_total_minutes)
                 headings_above_applist = [MOST_USED_HEADING]
@@ -1598,14 +1608,14 @@ if __name__ == '__main__':
                     dt = "N/A"
                 else:
                     dt = daily_total
-                print(f"Daily total {dashboard_category}: {dt}")
+                print(f"Daily total {dashboard_category}: {dt}\n")
 
                 headings_above_applist = [FIRST_USED_AFTER_PICKUP_HEADING, FIRST_PICKUP_HEADING]
                 heading_below_applist = NOTIFICATIONS_HEADING
 
             elif dashboard_category == NOTIFICATIONS:
                 current_screenshot.set_daily_total(daily_total, daily_total_conf)
-                print(f"Daily total {dashboard_category}: {dt}")
+                print(f"Daily total {dashboard_category}: {dt}\n")
 
                 headings_above_applist = [HOURS_AXIS_HEADING]
                 heading_below_applist = None
@@ -1721,14 +1731,14 @@ if __name__ == '__main__':
                 app_data[MINUTES] = app_data[MINUTES].astype(int)
                 print("\nApp data found:")
                 print(app_data[[NAME, NUMBER, MINUTES]])
-                print(f"Daily total {dashboard_category}: {dt}{dtm}")
+                print(f"Daily total {dashboard_category}: {dt}{dtm}\n")
 
                 # iOS Daily screentime can exceed the sum of the app times. Do not flag iOS screentime images.
 
             else:
                 print("\nApp data found:")
                 print(app_data[[NAME, NUMBER]])
-                print(f"Daily total {dashboard_category}: {dt}")
+                print(f"Daily total {dashboard_category}: {dt}\n")
                 if current_screenshot.daily_total is not None and current_screenshot.daily_total != -1:
                     sum_app_numbers = app_data[app_data[NUMBER] != NO_CONF][NUMBER].astype(int).sum()
                     if int(current_screenshot.daily_total) < sum_app_numbers:
