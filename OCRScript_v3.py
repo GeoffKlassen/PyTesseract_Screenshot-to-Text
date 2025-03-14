@@ -761,7 +761,6 @@ def extract_app_info(screenshot, image, coordinates, scale):
     :return:
     """
     text = screenshot.text
-    empty_text = text.iloc[0:0]
     bg_colour = WHITE if is_light_mode else BLACK
     lang = get_best_language(screenshot)
     crop_top, crop_left, crop_bottom, crop_right = coordinates[0], coordinates[1], coordinates[2], coordinates[3]
@@ -904,7 +903,8 @@ def extract_app_info(screenshot, image, coordinates, scale):
         if not rows_with_hours_axis.empty:
             app_info = app_info[app_info.index > rows_with_hours_axis.index[0]]
 
-        app_info = app_info[app_info['left'] < int(0.95*image.shape[1])]
+        app_info = app_info[(app_info['left'] < int(0.95 * screenshot.width)) &
+                            (app_info['height'] > int(0.02 * screenshot.width))]
 
     app_info = app_info.reset_index(drop=True)
 

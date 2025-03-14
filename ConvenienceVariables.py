@@ -67,8 +67,10 @@ TOTAL_UNLOCKS = 'total unlocks'
 DAY_NAME_HEADING = 'day name'
 VIEW_MORE_HEADING = 'view more'
 REST_OF_THE_DAY = 'rest of the day'
+SEE_ALL_N_APPS = 'See all # apps'
 SEARCH_APPS = 'Search apps'
 DAY_WEEK_MONTH = 'Day Week Month'
+APP_ACTIVITY = 'App activity'
 
 ANDROID_EXCLUSIVE_HEADINGS = [MOST_USED_APPS_HEADING,
                               MOST_NOTIFICATIONS_HEADING,
@@ -76,7 +78,9 @@ ANDROID_EXCLUSIVE_HEADINGS = [MOST_USED_APPS_HEADING,
                               VIEW_MORE_HEADING,
                               REST_OF_THE_DAY,
                               SEARCH_APPS,
-                              DAY_WEEK_MONTH]
+                              SEE_ALL_N_APPS,
+                              DAY_WEEK_MONTH,
+                              APP_ACTIVITY]
 
 GOOGLE = 'Google'
 VERSION_2018 = 'Android 2018'
@@ -92,7 +96,7 @@ OLD_UNLOCKS_HEADING = '2018 unlocks'
     Values to use when data is missing or not found
 """
 NO_NUMBER = -1
-NO_TEXT = "—"  # str(NO_NUMBER)
+NO_TEXT = "_"  # str(NO_NUMBER)
 NO_CONF = -1
 
 """

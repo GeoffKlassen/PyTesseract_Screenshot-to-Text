@@ -135,6 +135,11 @@ SAMSUNG_SEARCH_APPS = {ITA: ['TODO FILL THIS IN'],  # TODO Fill this in
                        GER: ['TODO FILL THIS IN'],  # TODO Fill this in
                        FRA: ['TODO FILL THIS IN']}  # TODO Fill this in
 
+GOOGLE_SEE_ALL_N_APPS = {ITA: ['TODO FILL THIS IN'],  # TODO Fill this in
+                         ENG: ['See all # apps'],
+                         GER: ['TODO FILL THIS IN'],  # TODO Fill this in
+                         FRA: ['TODO FILL THIS IN']}  # TODO Fill this in
+
 # YOU_CAN_SET_DAILY_TIMERS = {ITA: 'Imposta i timer per le app',
 #                             ENG: 'You can set daily timers',
 #                             GER: 'Timer fur Apps einrichten',
@@ -145,6 +150,11 @@ KEYWORDS_FOR_DAY_WEEK_MONTH = {ITA: ['TODO FILL THIS IN'],  # TODO Fill this in
                                ENG: ['Week Month'],
                                GER: ['TODO FILL THIS IN'],  # TODO Fill this in
                                FRA: ['TODO FILL THIS IN']}  # TODO Fill this in
+
+KEYWORDS_FOR_APP_ACTIVITY = {ITA: ['TODO FILL THIS IN'],  # TODO Fill this in
+                             ENG: ['App activity'],
+                             GER: ['TODO FILL THIS IN'],  # TODO Fill this in
+                             FRA: ['TODO FILL THIS IN']}  # TODO Fill this in
 
 KEYWORDS_FOR_REST_OF_THE_DAY = {ITA: ['giornata'],  # full phrase is 'resto della giornata' but 'giornata' is sometimes its own line
                                 ENG: ['rest of the day', 'rest of the', 'of the day', 'the day.'],
@@ -328,6 +338,14 @@ def get_headings(screenshot, time_fmt_short):
                  for key in KEYWORDS_FOR_DAY_WEEK_MONTH[lang]):
             df.loc[i, HEADING_COLUMN] = DAY_WEEK_MONTH
 
+        elif any(OCRScript_v3.levenshtein_distance(row_text, key) <= OCRScript_v3.error_margin(row_text, key)
+                 for key in GOOGLE_SEE_ALL_N_APPS[lang]):
+            df.loc[i, HEADING_COLUMN] = SEE_ALL_N_APPS
+
+        elif any(OCRScript_v3.levenshtein_distance(row_text, key) <= OCRScript_v3.error_margin(row_text, key)
+                 for key in KEYWORDS_FOR_APP_ACTIVITY[lang]):
+            df.loc[i, HEADING_COLUMN] = APP_ACTIVITY
+
         else:
             df = df.drop(i)
 
@@ -418,10 +436,10 @@ def get_android_version(screenshot):
     elif not heads_df[heads_df['text'].str.isupper()].empty:
         android_ver = VERSION_2018  # TODO: not sure on the year
     elif max(abs(heads_df['left'] + 0.5 * heads_df['width'] - (0.5 * screenshot.width))) < (0.11 * screenshot.width) and \
-            not heads_df[HEADING_COLUMN].eq(VIEW_MORE_HEADING).any() or heads_df[HEADING_COLUMN].eq(DAY_WEEK_MONTH).any() or \
-            heads_df[HEADING_COLUMN].eq(SEARCH_APPS).any():
+            not heads_df[HEADING_COLUMN].eq(VIEW_MORE_HEADING).any() or\
+            heads_df[HEADING_COLUMN].isin([DAY_WEEK_MONTH, SEARCH_APPS, SEE_ALL_N_APPS]).any():
         # All the headings found are centred; or
-        # One of the headings "Day Week Month" or "Search apps" / "Search for categories" was detected
+        # One of the headings "Day Week Month" or "Search apps"/"Search for categories" or "See all N apps" was detected
         android_ver = GOOGLE
     elif not (heads_df['heading'].isin(samsung_2021_headings)).any():
         # None of the Samsung 2021 headings are found
@@ -849,17 +867,26 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
         if REST_OF_THE_DAY in headings_df[HEADING_COLUMN].values:
             row_with_rest_of_the_day = headings_df[headings_df[HEADING_COLUMN] == REST_OF_THE_DAY].iloc[-1]
             crop_top = min(screenshot.height, row_with_rest_of_the_day['top'] + int(2.5 * row_with_rest_of_the_day['height']))
+
         elif not date_rows.empty:
             crop_top = min(screenshot.height, date_rows.iloc[-1]['top'] + (2 * date_rows.iloc[-1]['height']))
+
         elif not rows_with_app_numbers.empty:
             crop_top = max(0, rows_with_app_numbers.iloc[0]['top'] - 3*int(rows_with_app_numbers.iloc[0]['height']))
+
         elif headings_df[HEADING_COLUMN].eq(DAY_WEEK_MONTH).any():
             row_with_day_week_month = headings_df[headings_df[HEADING_COLUMN] == DAY_WEEK_MONTH].iloc[0]
             crop_top = int(row_with_day_week_month['top'] + 3*row_with_day_week_month['height'])
             crop_right = screenshot.width
+
         elif headings_df[HEADING_COLUMN].eq(SEARCH_APPS).any():
             row_with_search_apps = headings_df[headings_df[HEADING_COLUMN] == SEARCH_APPS].iloc[0]
             crop_top = int(row_with_search_apps['top'] + row_with_search_apps['height'])
+
+        elif headings_df[HEADING_COLUMN].eq(APP_ACTIVITY).any():
+            row_with_app_activity = headings_df[headings_df[HEADING_COLUMN] == APP_ACTIVITY].iloc[0]
+            crop_top = int(row_with_app_activity['top'] + row_with_app_activity['height'])
+
         else:
             # TODO Leaving this as a catch-all for now -- debug later if this condition is used
             crop_top = 0
@@ -869,6 +896,10 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
         if crop_top == 0:
             print("Could not find suitable values for top/bottom of app region.")
             screenshot.add_error(ERR_APP_AREA)
+
+        if headings_df[HEADING_COLUMN].eq(SEE_ALL_N_APPS).any():
+            row_with_see_all_n_apps = headings_df[headings_df[HEADING_COLUMN] == SEE_ALL_N_APPS].iloc[0]
+            crop_bottom = int(row_with_see_all_n_apps['top'])
 
         text_df.drop(columns=['text_with_digits_replaced'], inplace=True)
         cropped_image = image[crop_top:crop_bottom, crop_left:crop_right]
