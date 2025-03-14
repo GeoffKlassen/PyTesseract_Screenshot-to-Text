@@ -844,7 +844,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
     truncated_text_df.loc[truncated_text_df.index, 'left'] = truncated_text_df['left'] - crop_left
     truncated_text_df.loc[truncated_text_df.index, 'top'] = truncated_text_df['top'] - crop_top
 
-    print(f"\nInitial scan's app {'times' if screenshot.category_detected == SCREENTIME else 'numbers'}"
+    print(f"\nInitial scan's app {'times' if screenshot.category_detected == SCREENTIME else 'numbers'} "
           f"in crop region, where conf > {keep_text_conf}%, plus any instances of X (Twitter):")
     print(truncated_text_df[['left', 'top', 'width', 'height', 'conf', 'text']])
 
@@ -1492,7 +1492,7 @@ if __name__ == '__main__':
                 headings_df[HEADING_COLUMN].str.fullmatch(f"total " + dashboard_category)]
             if all(crops is None for crops in crop_coordinates) or (
                     not daily_total_heading_row.empty and app_area_crop_top < daily_total_heading_row.iloc[0]['top']):
-                print(f"Crop region not found or includes daily total. Setting all app-specific data to N/A.")
+                print(f"Crop region not found or includes daily total. Setting all app-specific data to N/A.\n")
                 current_screenshot.add_error(ERR_APP_DATA)
 
                 set_empty_app_data_and_update(empty_app_data, current_screenshot, index)

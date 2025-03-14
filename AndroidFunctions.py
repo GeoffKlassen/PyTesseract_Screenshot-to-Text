@@ -874,7 +874,7 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
         if REST_OF_THE_DAY in headings_df[HEADING_COLUMN].values:
             row_with_rest_of_the_day = headings_df[headings_df[HEADING_COLUMN] == REST_OF_THE_DAY].iloc[-1]
             crop_top = min(screenshot.height, row_with_rest_of_the_day['top'] + int(2.5 * row_with_rest_of_the_day['height']))
-            crop_top_text = f"below {row_with_rest_of_the_day['text']}"
+            crop_top_text = f"below '{row_with_rest_of_the_day['text']}'"
 
         elif not date_rows.empty:
             crop_top = min(screenshot.height, date_rows.iloc[-1]['top'] + (2 * date_rows.iloc[-1]['height']))
@@ -890,16 +890,16 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
         elif headings_df[HEADING_COLUMN].eq(SEARCH_APPS).any():
             row_with_search_apps = headings_df[headings_df[HEADING_COLUMN] == SEARCH_APPS].iloc[0]
             crop_top = int(row_with_search_apps['top'] + row_with_search_apps['height'])
-            crop_top_text = f"below {row_with_search_apps['text']}'"
+            crop_top_text = f"below '{row_with_search_apps['text']}'"
 
         elif headings_df[HEADING_COLUMN].eq(APP_ACTIVITY).any():
             row_with_app_activity = headings_df[headings_df[HEADING_COLUMN] == APP_ACTIVITY].iloc[0]
             crop_top = int(row_with_app_activity['top'] + row_with_app_activity['height'])
-            crop_top_text = f"below {row_with_app_activity['text']}'"
+            crop_top_text = f"below '{row_with_app_activity['text']}'"
 
         elif not rows_with_app_numbers.empty:
             crop_top = max(0, rows_with_app_numbers.iloc[0]['top'] - 3 * int(rows_with_app_numbers.iloc[0]['height']))
-            crop_top_text = f"below {rows_with_app_numbers.iloc[0]['text']}'"
+            crop_top_text = f"below '{rows_with_app_numbers.iloc[0]['text']}'"
 
         else:
             # TODO Leaving this as a catch-all for now -- debug later if this condition is used
@@ -946,12 +946,11 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
                 row_below_apps = headings_below_apps_df.iloc[0]
                 text_df_app_area = text_df_app_area[text_df_app_area.index < row_below_apps.name]
                 crop_bottom = row_below_apps['top']
-                crop_bottom_text = f"above '{row_above_apps['text']}'"
+                crop_bottom_text = f"above '{row_below_apps['text']}'"
             else:
                 crop_bottom = screenshot.height
                 crop_bottom_text = "(bottom of screenshot)"
 
-            crop_left_idx = None
             if not text_df_app_area.empty and android_version != SAMSUNG_2024:
                 for i, _idx in enumerate(text_df_app_area.index):
                     if i == 0 or crop_left < text_df_app_area['left'][_idx] < int(0.2 * screenshot.width):
