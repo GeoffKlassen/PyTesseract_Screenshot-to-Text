@@ -18,6 +18,34 @@ from datetime import datetime, timedelta
 import hashlib
 import time
 
+import sys
+import atexit
+
+
+class TeeOutput:
+    def __init__(self, file_name):
+        self.terminal = sys.stdout
+        self.log_file = open(file_name, "w")
+        atexit.register(self.close_log_file)  # Ensure the file is closed at exit
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log_file.write(message)
+
+    def flush(self):
+        self.terminal.flush()
+        if self.log_file:  # Only flush if the file is still open
+            self.log_file.flush()
+
+    def close_log_file(self):
+        if self.log_file:
+            self.log_file.close()
+            self.log_file = None
+
+
+# Replace sys.stdout with your custom TeeOutput
+sys.stdout = TeeOutput(f"{study_to_analyze[NAME]} output log.txt")
+
 
 def compile_list_of_urls(df, url_cols,
                          date_col='Record Time', id_col='Participant ID', device_id_col='Device ID'):

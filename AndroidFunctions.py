@@ -338,7 +338,7 @@ def get_headings(screenshot, time_fmt_short):
                  for key in KEYWORDS_FOR_DAY_WEEK_MONTH[lang]):
             df.loc[i, HEADING_COLUMN] = DAY_WEEK_MONTH
 
-        elif any(OCRScript_v3.levenshtein_distance(row_text, key) <= OCRScript_v3.error_margin(row_text, key)
+        elif any(OCRScript_v3.levenshtein_distance(row_text_filtered, key) <= OCRScript_v3.error_margin(row_text_filtered, key)
                  for key in GOOGLE_SEE_ALL_N_APPS[lang]):
             df.loc[i, HEADING_COLUMN] = SEE_ALL_N_APPS
 
@@ -871,12 +871,9 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
         elif not date_rows.empty:
             crop_top = min(screenshot.height, date_rows.iloc[-1]['top'] + (2 * date_rows.iloc[-1]['height']))
 
-        elif not rows_with_app_numbers.empty:
-            crop_top = max(0, rows_with_app_numbers.iloc[0]['top'] - 3*int(rows_with_app_numbers.iloc[0]['height']))
-
         elif headings_df[HEADING_COLUMN].eq(DAY_WEEK_MONTH).any():
             row_with_day_week_month = headings_df[headings_df[HEADING_COLUMN] == DAY_WEEK_MONTH].iloc[0]
-            crop_top = int(row_with_day_week_month['top'] + 3*row_with_day_week_month['height'])
+            crop_top = int(row_with_day_week_month['top'] + row_with_day_week_month['height'])
             crop_right = screenshot.width
 
         elif headings_df[HEADING_COLUMN].eq(SEARCH_APPS).any():
@@ -886,6 +883,9 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
         elif headings_df[HEADING_COLUMN].eq(APP_ACTIVITY).any():
             row_with_app_activity = headings_df[headings_df[HEADING_COLUMN] == APP_ACTIVITY].iloc[0]
             crop_top = int(row_with_app_activity['top'] + row_with_app_activity['height'])
+
+        elif not rows_with_app_numbers.empty:
+            crop_top = max(0, rows_with_app_numbers.iloc[0]['top'] - 3 * int(rows_with_app_numbers.iloc[0]['height']))
 
         else:
             # TODO Leaving this as a catch-all for now -- debug later if this condition is used
