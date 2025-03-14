@@ -111,7 +111,7 @@ class Participant:
             category = PICKUPS
 
         if ERR_FILE_NOT_FOUND in ss.errors or ERR_UNREADABLE_DATA in ss.errors:
-            print("No data to add to participant's temporal data.")
+            print("\nNo data to add to participant's temporal data.")
             return
 
         if ss.relative_day not in [YESTERDAY, DAY_OF_THE_WEEK]:

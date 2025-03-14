@@ -226,10 +226,23 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
     return grey_img, bw_img
 
 
+MARGIN_OF_ERROR = {5: 0,
+                   7: 1,
+                   9: 2,
+                   13: 3,
+                   18: 4,
+                   24: 5,
+                   30: 6
+                   }
+
+
 def error_margin(text1, text2=None):
     t = text1 if text2 is None else min(text1, text2, key=len)
-    _m = max(0, round(3.5 * np.log(max(1.0, 0.35 * len(t) - 0.7))))
-    return _m
+    for key in MARGIN_OF_ERROR:
+        if len(t) <= key:
+            return MARGIN_OF_ERROR[key]
+    # _m = max(0, round(3.5 * np.log(max(1.0, 0.35 * len(t) - 0.7))))
+    return 0
 
 
 def levenshtein_distance(s1, s2):
