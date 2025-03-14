@@ -833,6 +833,7 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
     dashboard_category = screenshot.category_detected if screenshot.category_detected is not None else (
         screenshot.category_submitted)
 
+    print("Cropping image to app area:")
     if android_version == GOOGLE or (android_version == SAMSUNG_2024 and
                                      headings_df[HEADING_COLUMN].eq(SEARCH_APPS).any()):
         # Both GOOGLE Dashboard and the "View all" screen of SAMSUNG_2024 Dasnboard show app names and app times/numbers
@@ -851,12 +852,13 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
                                             lambda x: matches_a_value_pattern(x, value_formats))) &
                                         (text_df['left'] > int(0.1 * screenshot.width))]
         if not rows_with_app_numbers.empty:
-            print(f"Found app number: '{rows_with_app_numbers.iloc[0]['text']}'. Cropping to the left of this row.")
+            crop_left_text = rows_with_app_numbers.iloc[0]['text']
+            crop_right_text = "(symmetrical to left)"
             crop_left = max(0, min(rows_with_app_numbers['left']) - int(0.02 * screenshot.width))
             crop_right = max(0, screenshot.width - crop_left - int(0.04 * screenshot.width))
         else:
             # Default values for crop_left and crop_right
-            print("Using default values for left & right crop.")
+            crop_left_text, crop_right_text = f"({android_version} default)", f"({android_version} default)"
             crop_left = int(0.15 * screenshot.width)  # Crop out the app icon area (first 15% of screenshot.width)
             crop_right = int(0.79 * screenshot.width)  # Crop out the hourglass area (last 79% of screenshot.width)
 
@@ -872,49 +874,60 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
         if REST_OF_THE_DAY in headings_df[HEADING_COLUMN].values:
             row_with_rest_of_the_day = headings_df[headings_df[HEADING_COLUMN] == REST_OF_THE_DAY].iloc[-1]
             crop_top = min(screenshot.height, row_with_rest_of_the_day['top'] + int(2.5 * row_with_rest_of_the_day['height']))
+            crop_top_text = f"below {row_with_rest_of_the_day['text']}"
 
         elif not date_rows.empty:
             crop_top = min(screenshot.height, date_rows.iloc[-1]['top'] + (2 * date_rows.iloc[-1]['height']))
+            crop_top_text = f"below '{date_rows.iloc[-1]['text']}'"
 
         elif headings_df[HEADING_COLUMN].eq(DAY_WEEK_MONTH).any():
             row_with_day_week_month = headings_df[headings_df[HEADING_COLUMN] == DAY_WEEK_MONTH].iloc[0]
             crop_top = int(row_with_day_week_month['top'] + row_with_day_week_month['height'])
             crop_right = screenshot.width
+            crop_top_text = f"below '{row_with_day_week_month['text']}'"
+            crop_right_text = "(right of screenshot)"
 
         elif headings_df[HEADING_COLUMN].eq(SEARCH_APPS).any():
             row_with_search_apps = headings_df[headings_df[HEADING_COLUMN] == SEARCH_APPS].iloc[0]
             crop_top = int(row_with_search_apps['top'] + row_with_search_apps['height'])
+            crop_top_text = f"below {row_with_search_apps['text']}'"
 
         elif headings_df[HEADING_COLUMN].eq(APP_ACTIVITY).any():
             row_with_app_activity = headings_df[headings_df[HEADING_COLUMN] == APP_ACTIVITY].iloc[0]
             crop_top = int(row_with_app_activity['top'] + row_with_app_activity['height'])
+            crop_top_text = f"below {row_with_app_activity['text']}'"
 
         elif not rows_with_app_numbers.empty:
             crop_top = max(0, rows_with_app_numbers.iloc[0]['top'] - 3 * int(rows_with_app_numbers.iloc[0]['height']))
+            crop_top_text = f"below {rows_with_app_numbers.iloc[0]['text']}'"
 
         else:
             # TODO Leaving this as a catch-all for now -- debug later if this condition is used
             crop_top = 0
+            crop_top_text = "(top of screenshot)"
 
         crop_bottom = screenshot.height
+        crop_bottom_text = "(bottom of screenshot)"
 
         if crop_top == 0:
-            print("Could not find suitable values for top/bottom of app region.")
             screenshot.add_error(ERR_APP_AREA)
 
         if headings_df[HEADING_COLUMN].eq(SEE_ALL_N_APPS).any():
             row_with_see_all_n_apps = headings_df[headings_df[HEADING_COLUMN] == SEE_ALL_N_APPS].iloc[0]
             crop_bottom = int(row_with_see_all_n_apps['top'])
+            crop_bottom_text = f"above '{row_with_see_all_n_apps['text']}'"
 
         text_df.drop(columns=['text_with_digits_replaced'], inplace=True)
         cropped_image = image[crop_top:crop_bottom, crop_left:crop_right]
 
     elif android_version in [SAMSUNG_2024, SAMSUNG_2021, VERSION_2018]:
         crop_left = int(0.08 * screenshot.width) if android_version == SAMSUNG_2024 else int(0.17 * screenshot.width)
+        crop_left_text = f"({android_version} default)"
         # Crop out the app icon area (first 8% or 17% of screenshot.width)
         crop_right = int(0.9 * screenshot.width) if android_version == VERSION_2018 else screenshot.width
         # Crop out the > arrows to the right of each app (these appear in the Samsung 2018 version of Dashboard)
-
+        crop_right_text = f"{"(" + android_version + " default)" if android_version == VERSION_2018 else "(right of screenshot)"}"
+        
         if headings_df[HEADING_COLUMN].isin(headings_above_apps + [DAYS_AXIS_HEADING]).any():
             rows_above_apps = headings_df[headings_df[HEADING_COLUMN].isin(headings_above_apps + [DAYS_AXIS_HEADING])]
             if any(heading in rows_above_apps[HEADING_COLUMN].values for heading in headings_above_apps):
@@ -922,6 +935,7 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
             else:
                 row_above_apps = rows_above_apps[rows_above_apps[HEADING_COLUMN] == DAYS_AXIS_HEADING].iloc[0]
             crop_top = row_above_apps['top'] + row_above_apps['height']
+            crop_top_text = f"below '{row_above_apps['text']}'"
             headings_below_apps_df = headings_df[headings_df.index > row_above_apps.name]
 
             text_df_app_area = text_df[(text_df.index > row_above_apps.name) &
@@ -932,22 +946,27 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
                 row_below_apps = headings_below_apps_df.iloc[0]
                 text_df_app_area = text_df_app_area[text_df_app_area.index < row_below_apps.name]
                 crop_bottom = row_below_apps['top']
+                crop_bottom_text = f"above '{row_above_apps['text']}'"
             else:
                 crop_bottom = screenshot.height
+                crop_bottom_text = "(bottom of screenshot)"
 
+            crop_left_idx = None
             if not text_df_app_area.empty and android_version != SAMSUNG_2024:
                 for i, _idx in enumerate(text_df_app_area.index):
                     if i == 0 or crop_left < text_df_app_area['left'][_idx] < int(0.2 * screenshot.width):
                         crop_left = text_df_app_area['left'][_idx] - int(0.02 * screenshot.width)
+                        crop_left_text = f"left of '{text_df_app_area['text'][_idx]}'"
                 if crop_left < int(0.1 * screenshot.width):
                     crop_left = int(0.15 * screenshot.width)
+                    crop_left_text = f"({android_version} default)"
 
                 # new_crop_left = max(0, int(np.median(text_df_below_heading['left']) - 0.02 * screenshot.width))
                 # crop_left = new_crop_left + int(0.1 * screenshot.width if (
                 #         android_version != SAMSUNG_2024 and new_crop_left < int(0.15 * screenshot.width)) else 0)
 
         else:
-            print("Sub-heading above app rows not found. Searching for app rows directly.")
+            # print("Sub-heading above app rows not found. Searching for app rows directly.")
             # If android version is SAMSUNG_2024, then search row by row for a row that matches an app w/ number format.
             crop_top = 0
             format_for_time_or_number_eol = '|'.join([time_format_short.replace("^", "\\s"), "\\s\\d+"])

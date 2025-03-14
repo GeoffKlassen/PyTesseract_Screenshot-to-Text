@@ -1045,8 +1045,8 @@ def update_eta(ss_start_time, idx):
                                                            (url_list[DEVICE_OS] == UNKNOWN)])
 
         estimated_time_remaining = (avg_ios_time * num_ios_images_remaining +
-                                    avg_android_time + num_android_images_remaining +
-                                    avg_unknown_os_time + num_unknown_os_images_remaining)
+                                    avg_android_time * num_android_images_remaining +
+                                    avg_unknown_os_time * num_unknown_os_images_remaining)
 
         all_times.loc[idx, 'eta'] = estimated_time_remaining
 

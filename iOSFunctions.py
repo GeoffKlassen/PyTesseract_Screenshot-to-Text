@@ -626,7 +626,7 @@ def get_total_pickups_2nd_location(screenshot, img):
                                                                value_is_number=True,
                                                                val_fmt=MISREAD_NUMBER_FORMAT)
 
-    print(f"Total pickups, 2nd location: {total} (conf = {total_conf}).")
+    print(f"Total pickups, 2nd location: {total} (conf = {total_conf}).\n")
     return total, total_conf
 
 
@@ -653,12 +653,15 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
     headings_above_df = headings_df[headings_df[HEADING_COLUMN].isin(headings_above)]
     headings_below_df = headings_df[headings_df[HEADING_COLUMN].eq(heading_below)]
 
+    crop_top_text, crop_bottom_text = None, None  # Initialize
+    print("Cropping image to app area:")
     # Search for crop_top and crop_bottom
     if not headings_df.empty and not (headings_df[headings_df['left'] > 0]).empty:
         for i in headings_df.index:
             current_heading = headings_df[HEADING_COLUMN][i]
             if current_heading in headings_above or \
                     current_heading in [DAY_OR_WEEK_HEADING, DATE_HEADING, HOURS_AXIS_HEADING] and crop_bottom == screenshot.height:  # include HOURS AXIS?
+                crop_top_text = headings_df['text'][i]
                 if current_heading == FIRST_PICKUP_HEADING:
                     crop_top = min(crop_bottom, int(headings_df['top'][i] + 2.5 * headings_df['height'][i]))
                 elif current_heading == HOURS_AXIS_HEADING:
@@ -673,7 +676,11 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
                 else:
                     crop_top = int(headings_df['top'][i] + headings_df['height'][i])
             elif current_heading == heading_below:
+                crop_bottom_text = headings_df['text'][i]
                 crop_bottom = headings_df['top'][i]
+
+        print(f"Top of crop region:  {("below '" + crop_top_text + "'") if crop_top_text is not None else "(top of screenshot)"}")
+        print(f"Bottom of crop region:  {("above '" + crop_bottom_text + "'") if crop_bottom_text is not None else "(bottom of screenshot)"}")
 
     if (headings_df.empty or
             headings_df.iloc[-1][HEADING_COLUMN] in [SCREENTIME_HEADING, LIMITS_HEADING] or
@@ -687,7 +694,7 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
         # the screenshot is for screentime and
         #   the 'MOST_USED' heading was not found (the heading for the screentime apps) and
         #   the 'FIRST_USED_AFTER_PICKUP' heading was found (the heading for pickups apps)
-        print(f"Heading above app list was not found.")
+        print(f"Heading above app list was not found. Image will not be cropped.")
         return screenshot.grey_image, [None, None, None, None]
         # app_area_heading_not_found = True
         # num_missed_app_values = 0
@@ -712,18 +719,17 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
                 # Such instances of "X" will likely not left-align with the other rows of app text, making them
                 # unsuitable for left-cropping.
                 crop_left = int(left_edge_of_text - 0.02 * screenshot.width)
-                print(f"Found an app row: '{row_text}'. "
-                      f"Setting left edge of crop area to the left of this row.")
+                print(f"Left of crop region:  left of '{row_text}'\nRight of crop region:  (symmetrical to left)")
                 crop_right = screenshot.width - crop_left + int(0.02 * screenshot.width)
                 break
 
         if crop_left > round(0.22 * screenshot.width):
-            print("Crop region may be too narrow. Resetting to default.")
+            print("Crop region may be too narrow. Resetting width to default.")
             crop_left = round(0.15 * screenshot.width)
             crop_right = round(0.87 * screenshot.width)
         # Reset the left- and right-bounds on the off-chance that the first app found is too far right.
     else:
-        print("No text found in app area. Using default left-to-right crop bounds.")
+        print("Left of crop region:  (default)\nRight of crop region:  (default)")
 
 
     # Crop the image and apply a different monochrome threshold (improves chances of catching missed text)
@@ -735,8 +741,9 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
         _, cropped_filtered_image = cv2.threshold(cropped_grey_image, 50, 180, cv2.THRESH_BINARY)
 
     if crop_top == 0 and crop_bottom == screenshot.height:
-        print("Could not find suitable values for top/bottom of app region.")
+        print("Could not find suitable top/bottom of crop region.")
         screenshot.add_error(ERR_APP_AREA)
+
     elif crop_top == screenshot.height:
         print("Cropped image is empty.")
         screenshot.add_error(ERR_APP_AREA)
