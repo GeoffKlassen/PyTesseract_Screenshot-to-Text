@@ -2,7 +2,7 @@
 They are stored in this one location for consistency."""
 from win32api import GetSystemMetrics
 screen_height = GetSystemMetrics(1)
-print(f"Your screen height is: {screen_height}")
+
 """
     Operating Systems
 """

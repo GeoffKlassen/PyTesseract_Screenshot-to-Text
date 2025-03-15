@@ -332,7 +332,7 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
     headings_df = screenshot.headings_df
     rows_with_day_type = screenshot.rows_with_day_type
 
-    print(f"\nSearching for total {category}:")
+    print(f"Searching for total {category}:")
 
     # Initialize first scan values
     daily_total_1st_scan = NO_TEXT
@@ -475,9 +475,9 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
                     break
 
         if daily_total_1st_scan_conf != NO_CONF:
-            print(f"Total {category}, 1st scan: {daily_total_1st_scan} (conf = {daily_total_1st_scan_conf})")
+            print(f"Total {category}, 1st scan: {daily_total_1st_scan} (conf = {daily_total_1st_scan_conf:.4f})")
         if daily_total_2nd_scan_conf != NO_CONF:
-            print(f"Total {category}, 2nd scan: {daily_total_2nd_scan} (conf = {daily_total_2nd_scan_conf})")
+            print(f"Total {category}, 2nd scan: {daily_total_2nd_scan} (conf = {daily_total_2nd_scan_conf:.4f})")
 
         val_format = MISREAD_TIME_FORMAT_IOS if category == SCREENTIME else MISREAD_NUMBER_FORMAT
         is_number = False if category == SCREENTIME else True
@@ -583,7 +583,7 @@ def get_total_pickups_2nd_location(screenshot, img):
         total_pickups_1st_scan, total_pickups_1st_scan_conf = filter_time_or_number_text(last_word_in_row,
                                                                                          last_word_in_row_conf,
                                                                                          value_format)
-        print(f"Total pickups found in 2nd location: {total_pickups_1st_scan} (conf = {total_pickups_1st_scan_conf}).")
+        print(f"Total pickups found in 2nd location: {total_pickups_1st_scan} (conf = {total_pickups_1st_scan_conf:.4f}).")
     except:
         print("Total pickups in 2nd location not found on first scan.")
         total_pickups_1st_scan = NO_NUMBER
@@ -615,7 +615,7 @@ def get_total_pickups_2nd_location(screenshot, img):
             total_pickups_2nd_scan = value_found[-1]
             total_pickups_2nd_scan_conf = round(rescan_df['conf'][0], 4)
             print(f"Total pickups found in 2nd location (rescan): {total_pickups_2nd_scan} "
-                  f"(conf = {total_pickups_2nd_scan_conf}).")
+                  f"(conf = {total_pickups_2nd_scan_conf:.4f}).")
         else:
             print("Total pickups not found in 2nd location (rescan).")
             total_pickups_2nd_scan = NO_NUMBER
@@ -626,7 +626,7 @@ def get_total_pickups_2nd_location(screenshot, img):
                                                                value_is_number=True,
                                                                val_fmt=MISREAD_NUMBER_FORMAT)
 
-    print(f"Total pickups, 2nd location: {total} (conf = {total_conf}).\n")
+    print(f"Total pickups, 2nd location: {total} (conf = {total_conf:.4f}).\n")
     return total, total_conf
 
 
@@ -1062,7 +1062,7 @@ def get_app_names_and_numbers(screenshot, crop_img, df, category, max_apps):
                 try:
                     row_text = int(row_text) if category != SCREENTIME else row_text
                 except ValueError:
-                    print(f"Error converting {row_text} to integer. Number will be set to {NO_NUMBER} (conf = {NO_CONF}).")
+                    print(f"Error converting {row_text} to integer. Number will be set to N/A.")
                     row_text = NO_NUMBER
                     row_conf = NO_CONF
                     num_missed_app_values += 1

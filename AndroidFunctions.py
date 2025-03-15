@@ -658,7 +658,7 @@ def get_daily_total_and_confidence(screenshot, image, heading):
         total_value_row = headings_df[headings_df[HEADING_COLUMN] == total_heading].iloc[0]
         total_value_1st_scan = total_value_row['text']
         total_value_1st_scan_conf = round(total_value_row['conf'], 4)
-        print(f"Initial scan: {total_value_1st_scan} (conf = {total_value_1st_scan_conf})")
+        print(f"Initial scan: {total_value_1st_scan} (conf = {total_value_1st_scan_conf:.4f})")
 
         crop_top = max(0, total_value_row['top'] - int(0.05 * screenshot.width))
         crop_bottom = min(total_value_row['top'] + total_value_row['height'] + int(0.025 * screenshot.width), screenshot.height)
@@ -713,7 +713,7 @@ def get_daily_total_and_confidence(screenshot, image, heading):
     if not cropped_scan.empty:
         total_value_2nd_scan = cropped_scan.iloc[0]['text']
         total_value_2nd_scan_conf = round(cropped_scan.iloc[0]['conf'], 4)
-        print(f"Cropped scan: {total_value_2nd_scan} (conf = {total_value_2nd_scan_conf})")
+        print(f"Cropped scan: {total_value_2nd_scan} (conf = {total_value_2nd_scan_conf:.4f})")
     else:
         print(f"Total {heading} not found on 2nd scan.")
         total_value_2nd_scan = NO_TEXT
@@ -1127,9 +1127,6 @@ def consolidate_overlapping_text(df, time_format_eol):
     merged_df = df.drop(index=rows_to_drop).reset_index()
     consolidated_df = OCRScript_v3.merge_df_rows_by_height(merged_df)
 
-    if not merged_df.equals(consolidated_df):
-        print("Some rows were consolidated.")
-
     return consolidated_df
 
 
@@ -1370,7 +1367,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                         conf = row_conf
                     except (IndexError, ValueError) as e:
                         print(f"Error: Could not extract app number from '{row_text}'. \n"
-                              f"App number will be set to {NO_NUMBER} (conf = {NO_CONF}).")
+                              f"App number will be set to N/A.")
                         app_number = NO_NUMBER
                         conf = NO_CONF
                     if previous_text == NUMBER:

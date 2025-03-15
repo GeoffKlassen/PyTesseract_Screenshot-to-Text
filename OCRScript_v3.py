@@ -177,8 +177,8 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
 
     if use_downloaded_images:
         if os.path.exists(img_local_path):
-            print(f"Opening local image"
-                  f"'{dir_for_downloaded_images}\\{screenshot.device_os_submitted}\\{screenshot.filename}'...")
+            print(f"Opening local image "
+                  f"'{dir_for_downloaded_images}\\{screenshot.device_os_submitted}\\{screenshot.filename}'...\n")
             image = Image.open(img_local_path)
             image = image.convert('RGB')
             image = np.array(image, dtype='uint8')
@@ -747,8 +747,8 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False,
     str_text2 = str(text2)
     t1 = f"'{str_text1}'" if conf1 != NO_CONF else "N/A"
     t2 = f"'{str_text2}'" if conf2 != NO_CONF else "N/A"
-    c1 = f"(conf = {conf1})" if conf1 != NO_CONF else ""
-    c2 = f"(conf = {conf2})" if conf2 != NO_CONF else ""
+    c1 = f"(conf = {conf1:.4f})" if conf1 != NO_CONF else ""
+    c2 = f"(conf = {conf2:.4f})" if conf2 != NO_CONF else ""
 
     if val_fmt is None:
         val_fmt = MISREAD_NUMBER_FORMAT if value_is_number else MISREAD_TIME_FORMAT_IOS
@@ -1043,9 +1043,10 @@ def update_eta(ss_start_time, idx):
 
     current_time = time.time()
     elapsed_time_in_seconds = current_time - start_time
+    elapsed_time_in_seconds = current_time - start_time
     ss_time = current_time - ss_start_time
 
-    print(f"Image processed in {round(ss_time, 2)} seconds.")
+    print(f"Image processed in {round(ss_time, 3)} seconds.")
 
     print(f"\n\nElapsed time:  {convert_seconds_to_hms(elapsed_time_in_seconds)}")
 
@@ -1359,7 +1360,7 @@ if __name__ == '__main__':
 
         # If there was text found, we can keep going
         print("Text found in initial scan:")
-        print(text_df)
+        print(text_df[['left', 'top', 'width', 'height', 'conf', 'text']])
         current_screenshot.set_text(text_df)
         current_screenshot.set_words_df(text_df_single_words)
 
@@ -1599,7 +1600,7 @@ if __name__ == '__main__':
 
                 print("\nApp data found:")
                 print(app_data[[NAME, NUMBER, MINUTES]])
-                print(f"Daily total {dashboard_category}: {dt} {dtm}\n")
+                print(f"Daily total {dashboard_category}: {dt}{dtm}\n")
                 if current_screenshot.daily_total_minutes is not None and \
                         current_screenshot.daily_total_minutes != NO_NUMBER:
                     sum_app_minutes = app_data[app_data[MINUTES] != NO_CONF][MINUTES].astype(int).sum()

@@ -192,7 +192,7 @@ class Participant:
                 if best_total == ss.daily_total and best_total_conf == ss.daily_total_conf:
                     self.usage_data.loc[date_index, f'{TOTAL}_{category}_{MINUTES}'] = ss.daily_total_minutes
                     self.usage_data_conf.loc[date_index, f'{TOTAL}_{category}_{MINUTES}'] = ss.daily_total_conf
-                    dtm = '' if best_total_conf == NO_CONF else ("(" + str(ss.daily_total_minutes) + " minutes)")
+                    dtm = '' if best_total_conf == NO_CONF else (" (" + str(ss.daily_total_minutes) + " minutes)")
                     dt += dtm
                 else:
                     dtm = '' if best_total_conf == NO_CONF else (
@@ -474,7 +474,7 @@ class Participant:
 
             print(f"\nUpdated {category} data for participant {self.user_id} on {ss.date_detected}:")
             print(updated_df[1:])
-            print(f"Daily total {category}: {dt}")
+            print(f"Daily total {category}: {dt}\n")
 
         return
 
