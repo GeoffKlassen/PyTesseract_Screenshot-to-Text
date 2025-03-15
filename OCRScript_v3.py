@@ -363,13 +363,13 @@ def merge_df_rows_by_line_num(df):
     return df_nearby_rows_combined
 
 
-def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+', initial_scan=False):
+def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+', is_initial_scan=False):
     """
 
     :param img:
     :param cmd_config:
     :param remove_chars:
-    :param initial_scan:
+    :param is_initial_scan:
     :return:
     """
 
@@ -420,11 +420,11 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+',
                     elif df_words['left'][idx] < df_words['left'][idx - 1]:
                         x_rows_to_drop.append(idx)
                 else:
-                    if initial_scan and df_words['left'][idx] < int(0.2 * img.shape[1]):
+                    if is_initial_scan and df_words['left'][idx] < int(0.2 * img.shape[1]):
                         df_words.loc[idx, 'left'] += int(2.5 * df_words['width'][idx])
-                        df_words.loc[idx, 'top'] -= int(0.33 * df_words['height'][idx])
-                        df_words.loc[idx, 'height'] = int(0.75 * df_words.loc[idx, 'height'])
-                        # df_words.loc[idx, 'width'] = int(0.66 * df_words.loc[idx, 'width'])
+                        df_words.loc[idx, 'top'] -= int(0.35 * df_words['height'][idx])
+                        df_words.loc[idx, 'height'] = int(1.1 * min(df_words.loc[idx - 1, 'height'],
+                                                                    df_words.loc[idx, 'height']))
 
     df_words.drop(index=x_rows_to_drop, inplace=True)
     df_words.reset_index(drop=True, inplace=True)
@@ -914,7 +914,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
                     break
 
         for _i in app_info_scan_1.index:
-            if app_info_scan_1['conf'][_i] < conf_limit:
+            if app_info_scan_1['conf'][_i] < conf_limit or app_info_scan_1['text'][_i] == "X":
                 continue
             upper_left_corner = (app_info_scan_1['left'][_i] - 1, app_info_scan_1['top'][_i] - 1)
             bottom_right_corner = (app_info_scan_1['left'][_i] + app_info_scan_1['width'][_i] + 1,
@@ -1343,7 +1343,7 @@ if __name__ == '__main__':
         current_screenshot.set_dimensions(grey_image_scaled.shape)
 
         # Extract the text (if any) that can be found in the image.
-        text_df_single_words, text_df = extract_text_from_image(bw_image_scaled, initial_scan=True)
+        text_df_single_words, text_df = extract_text_from_image(bw_image_scaled, is_initial_scan=True)
 
         if show_images_at_runtime:
             show_image(text_df, bw_image_scaled, draw_boxes=True)
