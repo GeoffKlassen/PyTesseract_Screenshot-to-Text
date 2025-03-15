@@ -1081,9 +1081,42 @@ def update_eta(ss_start_time, idx):
 
         if len(all_times) < 8 and image_limit >= 30:
             print(f"Estimated time remaining:  Calculating...")
-            return
         elif estimated_time_remaining > 0:
             print(f"Estimated time remaining:  {convert_seconds_to_hms(estimated_time_remaining)}")
+
+        times_to_avg = 50
+        recent_ios_times = all_times.loc[url_list[DEVICE_OS] == IOS][TIME].tail(times_to_avg)
+        recent_android_times = all_times.loc[url_list[DEVICE_OS] == ANDROID][TIME].tail(times_to_avg)
+        recent_times = all_times[TIME].tail(times_to_avg)
+
+        avg_time = np.mean(recent_times) if not recent_times.empty else ss_time
+        avg_android_time = np.mean(
+            np.append(recent_android_times, recent_android_times.max())) if not recent_android_times.empty else avg_time
+        avg_ios_time = np.mean(
+            np.append(recent_ios_times, recent_ios_times.max())) if not recent_ios_times.empty else avg_time
+
+        num_ios_images_remaining = len(url_list.loc[(idx < url_list.index) &
+                                                    (url_list.index < image_limit) &
+                                                    (url_list[DEVICE_OS] == IOS)])
+        num_android_images_remaining = len(url_list.loc[(idx < url_list.index) &
+                                                        (url_list.index < image_limit) &
+                                                        (url_list[DEVICE_OS] == ANDROID)])
+        num_unknown_os_images_remaining = len(url_list.loc[(idx < url_list.index) &
+                                                           (url_list.index < image_limit) &
+                                                           (url_list[DEVICE_OS] == UNKNOWN)])
+
+        estimated_time_remaining = (avg_ios_time * num_ios_images_remaining +
+                                    avg_android_time * num_android_images_remaining +
+                                    avg_unknown_os_time * num_unknown_os_images_remaining)
+
+        all_times.loc[idx, 'ETA_2'] = estimated_time_remaining
+
+        if len(all_times) < 8 and image_limit >= 30:
+            print(f"New estimated time remaining:  Calculating...")
+            return
+        elif estimated_time_remaining > 0:
+            print(f"New estimated time remaining:  {convert_seconds_to_hms(estimated_time_remaining)}")
+            return
 
     return
 
