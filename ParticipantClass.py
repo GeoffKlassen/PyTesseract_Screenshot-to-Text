@@ -199,6 +199,7 @@ class Participant:
                             " (" + str(self.usage_data.loc[date_index, f'{TOTAL}_{category}_{MINUTES}']) + " minutes)")
                     dt += dtm
 
+            # if all()
             moe = 2  # A margin of error (moe) for use with edit_distance, to determine if an app name from the existing
                      # data and an app name from the new data should be considered the same app name (and be compared).
             existing_data_lineup_index = -1
@@ -220,7 +221,7 @@ class Participant:
                         existing_data_lineup_index = i
                         new_data_lineup_index = j
                         # The existing data and new screenshot data will be placed in a comparison dataframe,
-                        # such that existing app i lines up with new app j.
+                        # such that existing app 'i' lines up with new app 'j'.
                         lineup_found = True
                         break
                     else:
@@ -271,16 +272,23 @@ class Participant:
                     new_data_lineup_index = 0  # The new data will be placed in the comparison df, starting at position 0
 
                 elif (not pd.isna(min_new_value) and not pd.isna(max_existing_value) and
-                        min_new_value >= max_existing_value) or not existing_data_contains_apps:
+                        min_new_value >= max_existing_value) or (
+                        not existing_data_contains_apps and max_new_value != NO_NUMBER):
                     # The smallest new value is larger than the largest existing value, so the new data 'outranks'
                     # the existing data (i.e. new app #1 will be considered app #1 for the current participant, etc.)
+                    # Also, there is actual data in both the new and the existing apps (not just NO_TEXT / NO_NUMBER).
                     existing_data_lineup_index = 0 # The existing data will be placed in the comparison df, starting at position 0
                     new_data_lineup_index = new_values.idxmin()  # The new data will be placed in the comparison df,
                                                                  # just below the existing data
 
+                elif min_new_value == max_new_value == NO_NUMBER:
+                    print("\nNo new app-level data to compare to existing app-level data. "
+                          "Existing data remains unchanged.")
+                    return
+
             if existing_data_lineup_index == -1 or new_data_lineup_index == -1:
-                print("Could not determine where existing data and new screenshot data line up. "
-                      "Existing data remains unchanged:")
+                print("\nCould not determine where existing app-level data and new screenshot app-level data line up. "
+                      "Existing data remains unchanged.")
                 return
 
             max_lineup = max(existing_data_lineup_index, new_data_lineup_index)

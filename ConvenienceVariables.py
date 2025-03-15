@@ -96,9 +96,11 @@ OLD_UNLOCKS_HEADING = '2018 unlocks'
 """
     Values to use when data is missing or not found
 """
-NO_NUMBER = -1
-NO_TEXT = "_"  # str(NO_NUMBER)
-NO_CONF = -1
+NO_TEXT = "_"   # The display 'name' of any non-existent app name. Needs to be something that an app name couldn't be.
+NO_NUMBER = -1  # The display value of any non-existent app number (or app minutes, in the case of screentime).
+                #   It needs to be a number that an app number/minutes couldn't be (preferrably a number below 0).
+NO_CONF = -1    # The display value for the confidence of a non-existent app name.
+                #   It needs to be a number outside the range 0-100 (preferrably a number below 0).
 
 """
     Column names for the dataframe of URLs
@@ -173,6 +175,8 @@ MINUTES = 'minutes'
 NAME_CONF = 'name_conf'
 NUMBER_CONF = 'number_conf'
 TOTAL = 'total'
+ELAPSED_TIME = 'elapsed_time'
+ETA = 'ETA'
 
 """
     Error Messages    

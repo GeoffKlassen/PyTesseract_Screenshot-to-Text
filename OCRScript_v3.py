@@ -47,25 +47,27 @@ class TeeOutput:
 sys.stdout = TeeOutput(f"{study_to_analyze[NAME]} output log.txt")
 
 
-def compile_list_of_urls(df, url_cols,
+def compile_list_of_urls(df, url_cols, num_urls_remaining,
                          date_col='Record Time', id_col='Participant ID', device_id_col='Device ID'):
     """Create a DataFrame of URLs from a provided DataFrame of survey responses.
-    :param df:             The dataframe with columns that contain URLs
-    :param url_cols:       A dictionary of column names for screentime URLs, pickups URLs, and notifications URLs
-    :param date_col:       The name of the column in df that lists the date & time stamp of submission
-    (For Avicenna CSVs, this is usually 'Record Time')
-    :param id_col:         The name of the column in df that contains the Avicenna ID of the user
-    (For Avicenna CSVs, this is usually 'Participant ID')
-    :param device_id_col:  The name of the column in df that contains the ID of the device from which the user responded
-    (For Avicenna CSVs, this is usually 'Device ID')
+    :param df:                 The dataframe with columns that contain URLs
+    :param url_cols:           A dictionary of column names for screentime URLs, pickups URLs, and notifications URLs
+    :param date_col:           The name of the column in df that lists the date & time stamp of submission
+                               (For Avicenna CSVs, this is usually 'Record Time')
+    :param id_col:             The name of the column in df that contains the Avicenna ID of the user
+                               (For Avicenna CSVs, this is usually 'Participant ID')
+    :param device_id_col:      The name of the column in df that contains the ID of the device from which the user
+                               responded (For Avicenna CSVs, this is usually 'Device ID')
+    :param num_urls_remaining: The number of URLs left to fetch, in order to reach image_upper_bound
 
-    :return: A DataFrame of image URLs, with user ID, response date, and category the image was submitted in.
+    :return: A DataFrame of image URLs, with their user ID, response date, and the category the image was submitted in.
 
     NOTE: iOS & Android Dashboards have three categories of usage statistics: screentime, pickups (a.k.a. unlocks), and
     notifications. Because of this, the table provided from the study may have multiple columns of URLs (e.g. one column
     for each usage category, multiple columns for only one category, or multiple columns for all three categories).
     """
     url_df = pd.DataFrame(columns=[PARTICIPANT_ID, DEVICE_ID, IS_RESEARCHER, RESPONSE_DATE, IMG_RESPONSE_TYPE, IMG_URL])
+
     for _i in df.index:
         user_id = df[id_col][_i]
         dev_id = df[device_id_col][_i]
@@ -91,6 +93,8 @@ def compile_list_of_urls(df, url_cols,
                            IMG_RESPONSE_TYPE: img_response_type,
                            IMG_URL: url}
                 url_df = pd.concat([url_df, pd.DataFrame([new_row])], ignore_index=True)
+                if url_df.shape[0] >= num_urls_remaining:
+                    return url_df
 
     return url_df
 
@@ -944,13 +948,17 @@ def extract_app_info(screenshot, image, coordinates, scale):
     app_info = iOS.consolidate_overlapping_text(app_info) if screenshot.device_os_detected == IOS else (
         Android.consolidate_overlapping_text(app_info, time_format_eol))
 
-    # Sometimes the text for 'rest of the day' isn't found on the initial scan, but it gets found in the app-info scan.
     if screenshot.device_os_detected == ANDROID and screenshot.android_version == GOOGLE:
+        # Sometimes the text for 'rest of the day' isn't found on the initial scan, but it gets found in the app-info scan.
         rows_with_rest_of_the_day = app_info[
             app_info['text'].apply(lambda x: min(levenshtein_distance(x, key) for key in
                                                  Android.KEYWORDS_FOR_REST_OF_THE_DAY[lang])) <= 2]
         if not rows_with_rest_of_the_day.empty:
             app_info = app_info[app_info.index > rows_with_rest_of_the_day.index[0]]
+
+        if app_info.shape[0] > 2:
+            app_info = app_info[(app_info['height'] < int(2.5*app_info['height'].median())) &
+                                (app_info['left'] < int(0.3 * image.shape[1]))]
 
     # Sometimes the hours row isn't found on the initial scan, but it gets found in the app-info scan.
     if screenshot.device_os_detected == IOS:
@@ -1051,7 +1059,7 @@ def update_eta(ss_start_time, idx):
     print(f"\n\nElapsed time:  {convert_seconds_to_hms(elapsed_time_in_seconds)}")
 
     all_times.loc[idx, TIME] = ss_time
-    all_times.loc[idx, 'elapsed_time'] = elapsed_time_in_seconds
+    all_times.loc[idx, ELAPSED_TIME] = elapsed_time_in_seconds
     all_times.loc[idx, DEVICE_OS] = url_list[DEVICE_OS][idx]
 
     if not all_times.empty:
@@ -1107,7 +1115,7 @@ def update_eta(ss_start_time, idx):
 
                                     avg_unknown_os_time * num_unknown_os_images_remaining)
 
-        all_times.loc[idx, 'ETA'] = estimated_time_remaining
+        all_times.loc[idx, ETA] = estimated_time_remaining
 
         if len(all_times) < 8 and image_limit >= 30:
             print(f"Estimated time remaining:  Calculating...")
@@ -1213,25 +1221,36 @@ def set_empty_app_data_and_update(empty_data, screenshot, idx):
     update_eta(screenshot_time_start, idx)
 
 
+
+
+
+"""
+    Start of the main program
+"""
+
 if __name__ == '__main__':
 
     # Read in the list of URLs for the appropriate Study (as specified in RuntimeValues.py)
     url_list = pd.DataFrame()
+    num_urls_to_get = image_upper_bound
     for survey in survey_list:
         print(f"Compiling URLs from {survey[CSV_FILE]}...", end='')
         survey_csv = pd.read_csv(survey[CSV_FILE])
-        current_list = compile_list_of_urls(survey_csv, survey[URL_COLUMNS],
+        current_list = compile_list_of_urls(df=survey_csv,
+                                            url_cols=survey[URL_COLUMNS],
+                                            num_urls_remaining=num_urls_to_get,
                                             date_col=date_record_col_name,
                                             id_col=user_id_col_name,
                                             device_id_col=device_id_col_name)
-        print(f"Done.\n{current_list.shape[0]} URLs found.")
+        print(f"Done.\n{current_list.shape[0]} URLs {'found' if num_urls_to_get > current_list.shape[0] else 'taken'}.")
         url_list = pd.concat([url_list, current_list], ignore_index=True)
-        if len(url_list) >= image_upper_bound:
-            print(f"URL list now contains at least {image_upper_bound} images. No further URLs needed.")
+        num_urls_to_get -= current_list.shape[0]
+        if url_list.shape[0] >= image_upper_bound:
+            print(f"URL list now contains {image_upper_bound} images. No further URLs needed.")
             break
 
     num_urls = url_list.shape[0]
-    print(f'Total URLs from all surveys: {num_urls}')
+    print(f'Total URLs taken from all surveys: {num_urls}')
 
     url_list[DEVICE_OS] = url_list[DEVICE_ID].apply(lambda x: get_os(x))
 
@@ -1239,7 +1258,8 @@ if __name__ == '__main__':
     # If the study we're analyzing only asked for one category of screenshot,
     # then we can ignore looking for the other categories.
 
-    # Initialize an empty dataframe of app data
+    # Initialize an empty dataframe of app data, to be given to screenshots whose app-level data doesn't exist
+    #   (or can't be found).
     empty_app_data = pd.DataFrame({
         NAME: [NO_TEXT] * max_apps_per_category,
         NAME_CONF: [NO_CONF] * max_apps_per_category,
@@ -1248,11 +1268,11 @@ if __name__ == '__main__':
         MINUTES: [NO_NUMBER] * max_apps_per_category
     })
     empty_app_data.index = pd.Index([idx + 1 for idx in empty_app_data.index])
-    # All app_data should have indexes that start at 1 instead of starting at 0
+    # All app_data should have indexes that start at 1 instead of starting at 0; this way, app #1 has index #1, etc.
 
     # Time the data extraction process
     start_time = time.time()
-    all_times = pd.DataFrame(columns=[DEVICE_OS, TIME, 'elapsed_time', 'ETA'])
+    all_times = pd.DataFrame(columns=[DEVICE_OS, TIME, ELAPSED_TIME, ETA])
 
     all_screenshots_df = ScreenshotClass.initialize_data_row()
     all_screenshots_df_conf = ScreenshotClass.initialize_data_row()
@@ -1286,7 +1306,10 @@ if __name__ == '__main__':
 
         print(current_screenshot)
 
-        """ FOR IOS TESTING: SKIP ANDROID IMAGES"""
+        """ FOR ANDROID TESTING: SKIP IOS IMAGES """
+        # if current_screenshot.device_os_detected == IOS:
+        #     continue
+        """ FOR IOS TESTING: SKIP ANDROID IMAGES """
         # if current_screenshot.device_os_detected == ANDROID:
         #     continue
 
@@ -1929,8 +1952,8 @@ if __name__ == '__main__':
     all_pickups_screenshots_df.to_csv(f"{study_to_analyze[NAME]} Pickups Data.csv")
     all_notifications_screenshots_df.to_csv(f"{study_to_analyze[NAME]} Notifications Data.csv")
 
-    all_times['actual_time_remaining'] = total_elapsed_time - all_times['elapsed_time']
-    all_times['relative_difference'] = all_times['ETA'] / all_times['actual_time_remaining'] * 100
+    all_times['actual_time_remaining'] = total_elapsed_time - all_times[ELAPSED_TIME]
+    all_times['relative_difference'] = all_times[ETA] / all_times['actual_time_remaining'] * 100
     all_times.to_csv(f"{study_to_analyze[NAME]} ETAs.csv")  # Mostly for interest's sake
 
     print("Done.")
