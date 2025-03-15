@@ -1045,7 +1045,7 @@ def update_eta(ss_start_time, idx):
     elapsed_time_in_seconds = current_time - start_time
     ss_time = current_time - ss_start_time
 
-    print(f"Image processed in {round(ss_time, 2)} seconds.\n")
+    print(f"Image processed in {round(ss_time, 2)} seconds.")
 
     print(f"\n\nElapsed time:  {convert_seconds_to_hms(elapsed_time_in_seconds)}")
 
