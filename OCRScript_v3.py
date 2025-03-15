@@ -755,7 +755,7 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False,
 
     format_name = NUMBER if value_is_number else TIME
 
-    print(f"Comparing scan 1: {t1} {c1}\n       vs scan 2: {t2} {c2}  ——  ", end='')
+    print(f"Comparing scan 1: {t1} {c1}\n       vs scan 2: {t2} {c2}  --  ", end='')
     if conf1 != NO_CONF and conf2 != NO_CONF:
         if bool(re.search(val_fmt, str_text1)) and bool(re.search(val_fmt, str_text2)) and str_text1 != str_text2:
             if str_text1 in str_text2:
@@ -1045,6 +1045,8 @@ def update_eta(ss_start_time, idx):
     elapsed_time_in_seconds = current_time - start_time
     ss_time = current_time - ss_start_time
 
+    print(f"Image processed in {round(ss_time, 2)} seconds.\n")
+
     print(f"\n\nElapsed time:  {convert_seconds_to_hms(elapsed_time_in_seconds)}")
 
     all_times.loc[idx, TIME] = ss_time
@@ -1056,66 +1058,61 @@ def update_eta(ss_start_time, idx):
         all_ios_times = all_times.loc[url_list[DEVICE_OS] == IOS][TIME]
         all_android_times = all_times.loc[url_list[DEVICE_OS] == ANDROID][TIME]
 
-        avg_ios_time = np.mean(all_ios_times) if not all_ios_times.empty else 2.0
-        avg_android_time = np.mean(
-            np.append(all_android_times, all_times[TIME].max())) if not all_android_times.empty else avg_ios_time
-        avg_ios_time = np.mean(
-            np.append(all_ios_times, all_times[TIME].max())) if not all_ios_times.empty else avg_android_time
-        avg_unknown_os_time = np.mean([avg_android_time, avg_ios_time])
+        ios_screentime_times = all_ios_times[url_list[IMG_RESPONSE_TYPE] == SCREENTIME]
+        ios_pickups_times = all_ios_times[url_list[IMG_RESPONSE_TYPE] == PICKUPS]
+        ios_notifications_times = all_ios_times[url_list[IMG_RESPONSE_TYPE] == NOTIFICATIONS]
 
-        num_ios_images_remaining = len(url_list.loc[(idx < url_list.index) &
-                                                    (url_list.index < image_limit) &
-                                                    (url_list[DEVICE_OS] == IOS)])
-        num_android_images_remaining = len(url_list.loc[(idx < url_list.index) &
-                                                        (url_list.index < image_limit) &
-                                                        (url_list[DEVICE_OS] == ANDROID)])
-        num_unknown_os_images_remaining = len(url_list.loc[(idx < url_list.index) &
-                                                           (url_list.index < image_limit) &
-                                                           (url_list[DEVICE_OS] == UNKNOWN)])
+        android_screentime_times = all_android_times[url_list[IMG_RESPONSE_TYPE] == SCREENTIME]
+        android_pickups_times = all_android_times[url_list[IMG_RESPONSE_TYPE] == PICKUPS]
+        android_notifications_times = all_android_times[url_list[IMG_RESPONSE_TYPE] == NOTIFICATIONS]
 
-        estimated_time_remaining = (avg_ios_time * num_ios_images_remaining +
-                                    avg_android_time * num_android_images_remaining +
+        times_to_avg = 100
+        avg_time = np.mean(all_times[TIME].tail(times_to_avg))
+        avg_unknown_os_time = avg_time
+
+        images_remaining = url_list.loc[(idx < url_list.index) & (url_list.index < image_limit)]
+
+        num_ios_screentime_images_remaining = len(images_remaining[(images_remaining[DEVICE_OS] == IOS) &
+                                                    (images_remaining[IMG_RESPONSE_TYPE] == SCREENTIME)])
+        num_ios_pickups_images_remaining = len(images_remaining[(images_remaining[DEVICE_OS] == IOS) &
+                                                    (images_remaining[IMG_RESPONSE_TYPE] == PICKUPS)])
+        num_ios_notifications_images_remaining = len(images_remaining[(images_remaining[DEVICE_OS] == IOS) &
+                                                    (images_remaining[IMG_RESPONSE_TYPE] == NOTIFICATIONS)])
+
+        num_android_screentime_images_remaining = len(images_remaining[(images_remaining[DEVICE_OS] == ANDROID) &
+                                                    (images_remaining[IMG_RESPONSE_TYPE] == SCREENTIME)])
+        num_android_pickups_images_remaining = len(images_remaining[(images_remaining[DEVICE_OS] == ANDROID) &
+                                                    (images_remaining[IMG_RESPONSE_TYPE] == PICKUPS)])
+        num_android_notifications_images_remaining = len(images_remaining[(images_remaining[DEVICE_OS] == ANDROID) &
+                                                    (images_remaining[IMG_RESPONSE_TYPE] == NOTIFICATIONS)])
+
+        num_unknown_os_images_remaining = len(images_remaining.loc[url_list[DEVICE_OS] == UNKNOWN])
+
+        avg_ios_screentime_time = np.mean(ios_screentime_times.tail(times_to_avg)) if not ios_screentime_times.empty else avg_time
+        avg_ios_pickups_time = np.mean(ios_pickups_times.tail(times_to_avg)) if not ios_pickups_times.empty else avg_time
+        avg_ios_notifications_time = np.mean(ios_notifications_times.tail(times_to_avg)) if not ios_notifications_times.empty else avg_time
+
+        avg_android_screentime_time = np.mean(android_screentime_times.tail(times_to_avg)) if not android_screentime_times.empty else avg_time
+        avg_android_pickups_time = np.mean(android_pickups_times.tail(times_to_avg)) if not android_pickups_times.empty else avg_time
+        avg_android_notifications_time = np.mean(android_notifications_times.tail(times_to_avg)) if not android_notifications_times.empty else avg_time
+
+        estimated_time_remaining = (avg_ios_screentime_time * num_ios_screentime_images_remaining +
+                                    avg_ios_pickups_time * num_ios_pickups_images_remaining +
+                                    avg_ios_notifications_time * num_ios_notifications_images_remaining +
+
+                                    avg_android_screentime_time * num_android_screentime_images_remaining +
+                                    avg_android_pickups_time * num_android_pickups_images_remaining +
+                                    avg_android_notifications_time * num_android_notifications_images_remaining +
+
                                     avg_unknown_os_time * num_unknown_os_images_remaining)
 
         all_times.loc[idx, 'ETA'] = estimated_time_remaining
 
         if len(all_times) < 8 and image_limit >= 30:
             print(f"Estimated time remaining:  Calculating...")
-        elif estimated_time_remaining > 0:
-            print(f"Estimated time remaining:  {convert_seconds_to_hms(estimated_time_remaining)}")
-
-        times_to_avg = 50
-        recent_ios_times = all_times.loc[url_list[DEVICE_OS] == IOS][TIME].tail(times_to_avg)
-        recent_android_times = all_times.loc[url_list[DEVICE_OS] == ANDROID][TIME].tail(times_to_avg)
-        recent_times = all_times[TIME].tail(times_to_avg)
-
-        avg_time = np.mean(recent_times) if not recent_times.empty else ss_time
-        avg_android_time = np.mean(
-            np.append(recent_android_times, recent_android_times.max())) if not recent_android_times.empty else avg_time
-        avg_ios_time = np.mean(
-            np.append(recent_ios_times, recent_ios_times.max())) if not recent_ios_times.empty else avg_time
-
-        num_ios_images_remaining = len(url_list.loc[(idx < url_list.index) &
-                                                    (url_list.index < image_limit) &
-                                                    (url_list[DEVICE_OS] == IOS)])
-        num_android_images_remaining = len(url_list.loc[(idx < url_list.index) &
-                                                        (url_list.index < image_limit) &
-                                                        (url_list[DEVICE_OS] == ANDROID)])
-        num_unknown_os_images_remaining = len(url_list.loc[(idx < url_list.index) &
-                                                           (url_list.index < image_limit) &
-                                                           (url_list[DEVICE_OS] == UNKNOWN)])
-
-        estimated_time_remaining = (avg_ios_time * num_ios_images_remaining +
-                                    avg_android_time * num_android_images_remaining +
-                                    avg_unknown_os_time * num_unknown_os_images_remaining)
-
-        all_times.loc[idx, 'ETA_2'] = estimated_time_remaining
-
-        if len(all_times) < 8 and image_limit >= 30:
-            print(f"New estimated time remaining:  Calculating...")
             return
         elif estimated_time_remaining > 0:
-            print(f"New estimated time remaining:  {convert_seconds_to_hms(estimated_time_remaining)}")
+            print(f"Estimated time remaining:  {convert_seconds_to_hms(estimated_time_remaining)}")
             return
 
     return
@@ -1147,6 +1144,10 @@ def add_screenshot_info_to_master_df(screenshot, idx):
                 # Make sure the ERR_DUPLICATE_DATA and ERR_DUPLICATE_COUNTS columns exist
                 all_screenshots_df[ERR_DUPLICATE_DATA] = None
                 all_screenshots_df[ERR_DUPLICATE_COUNTS] = None
+
+                all_screenshots_df_conf[ERR_DUPLICATE_DATA] = None
+                all_screenshots_df_conf[ERR_DUPLICATE_COUNTS] = None
+
             if not (matching_screenshots[PARTICIPANT_ID].eq(screenshot.user_id).all()):
                 same_or_other_user = MULTIPLE_USERS
             else:
@@ -1155,6 +1156,10 @@ def add_screenshot_info_to_master_df(screenshot, idx):
                 all_screenshots_df.loc[n, ERR_DUPLICATE_DATA] = same_or_other_user
                 all_screenshots_df.loc[n, ERR_DUPLICATE_COUNTS] = num_duplicates
                 all_screenshots_df.loc[n, REVIEW_COUNT] += 1
+
+                all_screenshots_df_conf.loc[n, ERR_DUPLICATE_DATA] = same_or_other_user
+                all_screenshots_df_conf.loc[n, ERR_DUPLICATE_COUNTS] = num_duplicates
+                all_screenshots_df_conf.loc[n, REVIEW_COUNT] += 1
 
     for df, col_name in zip([all_screenshots_df, all_screenshots_df_conf], [[NAME, NUMBER], [NAME_CONF, NUMBER_CONF]]):
 
@@ -1583,7 +1588,7 @@ if __name__ == '__main__':
                                                          time_formats=time_formats,
                                                          coordinates=crop_coordinates)
 
-            dt = current_screenshot.daily_total if current_screenshot.daily_total != NO_TEXT else "N/A"
+            dt = current_screenshot.daily_total if current_screenshot.daily_total_conf != NO_CONF else "N/A"
             if dashboard_category == SCREENTIME:
                 for i in range(1, max_apps_per_category + 1):
                     if i in app_data.index:  # Make sure the index exists

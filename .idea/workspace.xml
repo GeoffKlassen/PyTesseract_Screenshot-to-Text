@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4e170b4d-2af2-47c5-9e6d-e8a288c22989" name="Changes" comment="Added 'updated_df' that prints to console whenever new data is compared to existing data (for a participant-day-category)">
+    <list default="true" id="4e170b4d-2af2-47c5-9e6d-e8a288c22989" name="Changes" comment="Trying out a new ETA calculation, based only on the 50 most recent screenshots (of each OS version), instead of averaging ALL of them.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/OCRScript_v3.py" beforeDir="false" afterPath="$PROJECT_DIR$/OCRScript_v3.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/RuntimeValues.py" beforeDir="false" afterPath="$PROJECT_DIR$/RuntimeValues.py" afterDir="false" />
@@ -111,13 +111,22 @@
       <option name="project" value="LOCAL" />
       <updated>1741989847277</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Trying out a new ETA calculation, based only on the 50 most recent screenshots (of each OS version), instead of averaging ALL of them.">
+      <option name="closed" value="true" />
+      <created>1741999208666</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1741999208666</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="1. Added 'relative difference' to ETA csv&#10;&#10;2. Added columns for 'same user' and 'different user' counts to Duplicate Screenshot Info csv&#10;&#10;3. When showing images on screen, program now uses the current screen's height as a metric for how much to scale the image (so it fits on the screen).&#10;&#10;4. Set maximum error_margin for two strings to be 7&#10;&#10;5. Program now outputs a CSV of the confidence values of the data (as well as the data itself)&#10;&#10;6. In AndroidFunctions.py: getting headings now uses two forms of a filtered row text (hashes instead of numbers, and that plus no spaces) in comparing row text to heading keywords. Helps to catch more headings." />
     <MESSAGE value="Added 'updated_df' that prints to console whenever new data is compared to existing data (for a participant-day-category)" />
-    <option name="LAST_COMMIT_MESSAGE" value="Added 'updated_df' that prints to console whenever new data is compared to existing data (for a participant-day-category)" />
+    <MESSAGE value="Trying out a new ETA calculation, based only on the 50 most recent screenshots (of each OS version), instead of averaging ALL of them." />
+    <option name="LAST_COMMIT_MESSAGE" value="Trying out a new ETA calculation, based only on the 50 most recent screenshots (of each OS version), instead of averaging ALL of them." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
