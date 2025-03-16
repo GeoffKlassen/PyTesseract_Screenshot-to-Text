@@ -506,7 +506,7 @@ def determine_language_of_image(participant, df):
     for key, _list in LANGUAGE_KEYWORDS.items():
         for val in _list:
             if df['text'].str.contains(val).any():
-                print(f"Language keyword detected: \"{val}\". Setting language to {key}.")
+                print(f"Language keyword detected: '{val}'. Setting language to {key}.")
                 return key, True
 
     print(f"No language keywords detected. {backup_lang_msg}")
@@ -583,7 +583,7 @@ def get_date_in_screenshot(screenshot):
             if (screenshot.date_submitted - complete_date.date()).days < 0:
                 # In case a screenshot of a previous year is submitted after the new year, correct the year.
                 complete_date = date_object.replace(year=(int(screenshot.date_submitted.year) - 1))
-            print(f"Date text detected: \"{date_row_text}\".  Setting date to {complete_date.date()}.")
+            print(f"Date text detected: '{date_row_text}'.  Setting date to {complete_date.date()}.")
             return complete_date.date(), dates_df
         else:
             print("Invalid month abbreviation.")
@@ -661,23 +661,28 @@ def get_day_type_in_screenshot(screenshot):
             lambda x: min(levenshtein_distance(x, key) for key in KEYWORDS_FOR_WEEK[lang])) <= moe_week_keyword)]
 
     if rows_with_yesterday.shape[0] > 0:
-        print(f"Day text detected: \"{rows_with_yesterday.iloc[0]['text']}\". "
+        print(f"Day text detected: '{rows_with_yesterday.iloc[0]['text']}'. "
               f"Setting image type to '{YESTERDAY}'.")
         return YESTERDAY, rows_with_yesterday
     elif rows_with_today.shape[0] > 0:
-        print(f"Day text detected: \"{rows_with_today.iloc[0]['text']}\". "
+        print(f"Day text detected: '{rows_with_today.iloc[0]['text']}'. "
               f"Setting image type to '{TODAY}'.")
         return TODAY, rows_with_today
     elif rows_with_day_before_yesterday.shape[0] > 0:
-        print(f"Day text detected: \"{rows_with_day_before_yesterday.iloc[0]['text']}\". "
+        print(f"Day text detected: '{rows_with_day_before_yesterday.iloc[0]['text']}'. "
               f"Setting image type to '{DAY_BEFORE_YESTERDAY}.")
         return DAY_BEFORE_YESTERDAY, rows_with_day_before_yesterday
     elif rows_with_weekday.shape[0] > 0:
-        print(f"Day text detected: \"{rows_with_weekday.iloc[0]['text']}.\" "
-              f"Setting image type to '{DAY_OF_THE_WEEK}'.")
-        return DAY_OF_THE_WEEK, rows_with_weekday
+        print(f"Day text detected: '{rows_with_weekday.iloc[0]['text']}.' ", end='')
+        if (screenshot.date_detected is not None
+                and screenshot.date_detected == screenshot.date_submitted - timedelta(days=1)):
+            print(f"Setting image type to '{YESTERDAY}'.")
+            return YESTERDAY, rows_with_weekday
+        else:
+            print(f"Setting image type to '{DAY_OF_THE_WEEK}'.")
+            return DAY_OF_THE_WEEK, rows_with_weekday
     elif rows_with_week_keyword.shape[0] > 0:
-        print(f"Week text detected: \"{rows_with_week_keyword.iloc[0]['text']}\". "
+        print(f"Week text detected: '{rows_with_week_keyword.iloc[0]['text']}'. "
               f"Setting image type to '{WEEK}'.")
         return WEEK, rows_with_week_keyword
     else:
@@ -849,30 +854,30 @@ def extract_app_info(screenshot, image, coordinates, scale):
     # and that lie in the 'app info' cropped region
     # text.loc[text['text'].str.match(r'^[xX]+\s?[xX]*$'), 'text'] = 'X'
     keep_text_conf = 70
-    truncated_text_df = text[(text['conf'] > keep_text_conf) | (text['text'] == 'X')]
-    truncated_text_df = truncated_text_df[(truncated_text_df['left'] > crop_left) &
-                                          (truncated_text_df['top'] > crop_top) &
-                                          (truncated_text_df['left'] < crop_right) &
-                                          (truncated_text_df['top'] < crop_bottom) &
-                                          ((truncated_text_df['text'].str.isdigit()) |
-                                           (truncated_text_df['text'].str.fullmatch(time_format_long)) |
-                                           (truncated_text_df['text'].str.fullmatch(MISREAD_TIME_FORMAT_IOS)) |
-                                           (truncated_text_df['text'] == 'X'))]
-    truncated_text_df.loc[truncated_text_df.index, 'left'] = truncated_text_df['left'] - crop_left
-    truncated_text_df.loc[truncated_text_df.index, 'top'] = truncated_text_df['top'] - crop_top
+    truncated_initial_scan = text[(text['conf'] > keep_text_conf) | (text['text'] == 'X')]
+    truncated_initial_scan = truncated_initial_scan[(truncated_initial_scan['left'] > crop_left) &
+                                                    (truncated_initial_scan['top'] > crop_top) &
+                                                    (truncated_initial_scan['right'] < crop_right) &
+                                                    (truncated_initial_scan['top'] < crop_bottom) &
+                                                    ((truncated_initial_scan['text'].str.isdigit()) |
+                                                     (truncated_initial_scan['text'].str.fullmatch(time_format_long)) |
+                                                     (truncated_initial_scan['text'].str.fullmatch(MISREAD_TIME_FORMAT_IOS)) |
+                                                     (truncated_initial_scan['text'] == 'X'))]
+    truncated_initial_scan.loc[truncated_initial_scan.index, 'left'] = truncated_initial_scan['left'] - crop_left
+    truncated_initial_scan.loc[truncated_initial_scan.index, 'top'] = truncated_initial_scan['top'] - crop_top
 
     print(f"\nInitial scan's app {'times' if screenshot.category_detected == SCREENTIME else 'numbers'} "
           f"in crop region, where conf > {keep_text_conf}%, plus any instances of X (Twitter):")
-    print(truncated_text_df[['left', 'top', 'width', 'height', 'conf', 'text']])
+    print(truncated_initial_scan[['left', 'top', 'width', 'height', 'conf', 'text']])
 
-    if app_info_scan_1['text'].eq("X").any() and truncated_text_df['text'].eq("X").any():
+    if app_info_scan_1['text'].eq("X").any() and truncated_initial_scan['text'].eq("X").any():
         # If both the initial scan and the first cropped scan found the app name 'X',
         # then only use the one in the cropped scan
-        truncated_text_df = truncated_text_df[~(truncated_text_df['text'] == "X")]
+        truncated_initial_scan = truncated_initial_scan[~(truncated_initial_scan['text'] == "X")]
 
     cols_to_scale = ['left', 'top', 'width', 'height']
-    truncated_text_df[cols_to_scale] = truncated_text_df[cols_to_scale].apply(lambda x: x * scale).astype(int)
-    overlapped_text = pd.concat([app_info_scan_1, truncated_text_df], ignore_index=True)
+    truncated_initial_scan[cols_to_scale] = truncated_initial_scan[cols_to_scale].apply(lambda x: x * scale).astype(int)
+    overlapped_text = pd.concat([app_info_scan_1, truncated_initial_scan], ignore_index=True)
     app_info_scan_1 = iOS.consolidate_overlapping_text(overlapped_text) if screenshot.device_os_detected == IOS else (
         Android.consolidate_overlapping_text(overlapped_text, time_format_eol))
     app_info_scan_1 = app_info_scan_1.sort_values(by=['top', 'left']).reset_index(drop=True)
@@ -965,6 +970,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
         hours_axis_pattern = '|'.join(iOS.KEYWORDS_FOR_HOURS_AXIS)
         rows_with_hours_axis = app_info[app_info['text'].str.contains(hours_axis_pattern, regex=True)]
         if not rows_with_hours_axis.empty:
+            print("Found hours axis in cropped image; removing it (and all data rows above it).")
             app_info = app_info[app_info.index > rows_with_hours_axis.index[0]]
 
         app_info = app_info[(app_info['left'] < int(0.95 * screenshot.width)) &
@@ -1022,28 +1028,50 @@ def filter_common_misread_app_names(df):
 
 
 def update_eta(ss_start_time, idx):
-    def convert_seconds_to_hms(sec):
+
+    def convert_elapsed_time_to_hms(sec):
         _hr = int(sec / 3600)
         _min = int((sec / 60) % 60)
         _sec = int(sec % 60)
         if _hr == 0:
             str_hr = ""
+            str_min = str(_min) + ":"
         else:
             str_hr = str(_hr) + ":"
+            str_min = f"{'0' if _min < 10 else ''}{str(_min)}:"
 
-        if _min == 0:
-            str_min = f"{"00:" if _hr > 0 else "0:"}"
-        elif 0 < _min < 10 and _hr > 0:
-            str_min = "0" + str(_min) + ":"
-        else:
-            str_min = str(_min) + ":"
-
-        if 0 <= _sec < 10:
-            str_sec = "0" + str(_sec)
-        else:
-            str_sec = str(_sec)
+        str_sec = f"{'0' if _sec < 10 else ''}{str(_sec)}"
 
         str_time = str_hr + str_min + str_sec
+
+        return str_time
+
+    def convert_eta_to_string(sec):
+        if sec > 59:
+            sec = ((sec + 9) // 10) * 10
+
+        _hr = int(sec / 3600)
+        _min = int((sec / 60) % 60)
+        _sec = int(sec % 60)
+        if _hr > 0:
+            str_hr = str(_hr) + f" hour{'s' if _hr > 1 else ''}"
+            str_min = " " + str(((_min + 4) // 5) * 5) + " minutes"
+        else:
+            str_hr = ""
+            if _min > 0:
+                str_min = str(_min) + f" minute{'s' if _min > 1 else ''}"
+            else:
+                str_min = ""
+
+        if _hr > 0 or _min >= 10:
+            str_sec = ""
+        elif _min >= 1:
+            str_sec = " " + (str(((_sec + 9) // 10) * 10) + " seconds") if _sec > 0 else ""
+        else:
+            str_sec = str(_sec) + f" second{'s' if _sec > 1 else ''}"
+
+        str_time = str_hr + str_min + str_sec
+
         return str_time
 
     if idx == min(image_upper_bound, num_urls):
@@ -1051,12 +1079,11 @@ def update_eta(ss_start_time, idx):
 
     current_time = time.time()
     elapsed_time_in_seconds = current_time - start_time
-    elapsed_time_in_seconds = current_time - start_time
     ss_time = current_time - ss_start_time
 
     print(f"Image processed in {round(ss_time, 3)} seconds.")
 
-    print(f"\n\nElapsed time:  {convert_seconds_to_hms(elapsed_time_in_seconds)}")
+    print(f"\n\nElapsed time:  {convert_elapsed_time_to_hms(elapsed_time_in_seconds)}")
 
     all_times.loc[idx, TIME] = ss_time
     all_times.loc[idx, ELAPSED_TIME] = elapsed_time_in_seconds
@@ -1121,7 +1148,7 @@ def update_eta(ss_start_time, idx):
             print(f"Estimated time remaining:  Calculating...")
             return
         elif estimated_time_remaining > 0:
-            print(f"Estimated time remaining:  {convert_seconds_to_hms(estimated_time_remaining)}")
+            print(f"Estimated time remaining:  {convert_eta_to_string(estimated_time_remaining)}")
             return
 
     return
@@ -1690,10 +1717,10 @@ if __name__ == '__main__':
                 daily_total_minutes = iOS.convert_text_time_to_minutes(daily_total, current_screenshot)
 
                 dtm = (" (" + str(daily_total_minutes) + " minutes)") if daily_total_conf != NO_CONF else ""
-                print(f"Daily total {dashboard_category}: {dt}{dtm}\n")
+                print("Daily " + ('total ' if current_screenshot.relative_day != WEEK else 'average ') + f"{dashboard_category}: {dt}{dtm}\n")
 
                 current_screenshot.set_daily_total_minutes(daily_total_minutes)
-                headings_above_applist = [MOST_USED_HEADING]
+                headings_above_applist = [MOST_USED_HEADING, HOURS_AXIS_HEADING]
                 heading_below_applist = PICKUPS_HEADING
 
             elif dashboard_category == PICKUPS:
@@ -1711,16 +1738,16 @@ if __name__ == '__main__':
                     dt = "N/A"
                 else:
                     dt = daily_total
-                print(f"Daily total {dashboard_category}: {dt}\n")
+                print("Daily " + ('total ' if current_screenshot.relative_day != WEEK else 'average ') + f"{dashboard_category}: {dt}\n")
 
-                headings_above_applist = [FIRST_USED_AFTER_PICKUP_HEADING, FIRST_PICKUP_HEADING]
+                headings_above_applist = [FIRST_USED_AFTER_PICKUP_HEADING, FIRST_PICKUP_HEADING, HOURS_AXIS_HEADING]
                 heading_below_applist = NOTIFICATIONS_HEADING
 
             elif dashboard_category == NOTIFICATIONS:
                 current_screenshot.set_daily_total(daily_total, daily_total_conf)
                 print(f"Daily total {dashboard_category}: {dt}\n")
 
-                headings_above_applist = [HOURS_AXIS_HEADING]
+                headings_above_applist = [HOURS_AXIS_HEADING, DAYS_AXIS_HEADING]
                 heading_below_applist = None
 
             else:
@@ -1735,10 +1762,10 @@ if __name__ == '__main__':
                 set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
                 continue
 
-            elif current_screenshot.relative_day == WEEK:
-                print(f"Screenshot contains weekly data. Setting all app-specific data to N/A.\n")
-                set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
-                continue
+            # elif current_screenshot.relative_day == WEEK:
+            #     print(f"Screenshot contains weekly data. Setting all app-specific data to N/A.\n")
+            #     set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
+            #     continue
 
             # Crop image to app region
             cropped_image, crop_coordinates = iOS.crop_image_to_app_area(current_screenshot, headings_above_applist,
@@ -1842,14 +1869,14 @@ if __name__ == '__main__':
                 app_data[MINUTES] = app_data[MINUTES].astype(int)
                 print("\nApp data found:")
                 print(app_data[[NAME, NUMBER, MINUTES]])
-                print(f"Daily total {dashboard_category}: {dt}{dtm}\n")
+                print("Daily " + ('total ' if current_screenshot.relative_day != WEEK else 'average ') + f"{dashboard_category}: {dt}{dtm}\n")
 
                 # iOS Daily screentime can exceed the sum of the app times. Do not flag iOS screentime images.
 
             else:
                 print("\nApp data found:")
                 print(app_data[[NAME, NUMBER]])
-                print(f"Daily total {dashboard_category}: {dt}\n")
+                print("Daily " + ('total ' if current_screenshot.relative_day != WEEK else 'average ') + f"{dashboard_category}: {dt}\n")
                 if current_screenshot.daily_total is not None and current_screenshot.daily_total != NO_TEXT:
                     sum_app_numbers = app_data[app_data[NUMBER] != NO_CONF][NUMBER].astype(int).sum()
                     if int(current_screenshot.daily_total) < sum_app_numbers:

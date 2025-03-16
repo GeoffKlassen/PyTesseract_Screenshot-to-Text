@@ -644,10 +644,15 @@ def get_daily_total_and_confidence(screenshot, image, heading):
 
     def rescan_cropped_area(img, c_top, c_bottom, c_left, c_right):
         cropped_image = img[c_top:c_bottom, c_left:c_right]
-        scale = 0.5  # Pytesseract sometimes fails to read very large text; scale down the cropped region
-        scaled_cropped_image = cv2.resize(cropped_image, None,
-                                          fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
-        _, rescan_df = OCRScript_v3.extract_text_from_image(scaled_cropped_image)
+        scale = 0.8  # Pytesseract sometimes fails to read very large text; scale down the cropped region
+
+        while True:
+            scaled_cropped_image = cv2.resize(cropped_image, None,
+                                              fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+            _, rescan_df = OCRScript_v3.extract_text_from_image(scaled_cropped_image)
+            scale -= 0.2
+            if rescan_df.shape[0] > 0 or scale <= 0.2:
+                break
 
         if show_images_at_runtime:
             OCRScript_v3.show_image(rescan_df, scaled_cropped_image)
@@ -1110,10 +1115,17 @@ def consolidate_overlapping_text(df, time_format_eol):
                 rows_to_drop.append(i - 1)
             elif current_num_digits < prev_num_digits:
                 rows_to_drop.append(i)
-            elif len(previous_text) > len(current_text):
-                rows_to_drop.append(i)
-            elif len(current_text) > len(previous_text):
-                rows_to_drop.append(i - 1)
+            elif OCRScript_v3.levenshtein_distance(current_text, previous_text) < OCRScript_v3.error_margin(current_text, previous_text):
+                # Sometimes pytesseract just plainly gets text wrong (e.g., one time it read 'Discord' as 'BD) exe) ge!')
+                if len(previous_text) > len(current_text):
+                    rows_to_drop.append(i)
+                elif len(current_text) > len(previous_text):
+                    rows_to_drop.append(i - 1)
+                else:
+                    if df['conf'][i - 1] > df['conf'][i]:
+                        rows_to_drop.append(i)
+                    else:
+                        rows_to_drop.append(i - 1)
             elif df['conf'][i - 1] > df['conf'][i]:
                 if previous_text == 'min':
                     rows_to_drop.append(i - 1)

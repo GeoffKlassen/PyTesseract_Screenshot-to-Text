@@ -71,11 +71,18 @@ KEYWORDS_FOR_HOURS_AXIS = ['00 06', '06 12', '12 18',
 KEYWORDS_FOR_HOURS_AXIS_2 = {ENG: {"0", "00", "6", "06", "12", "18",  # Number only
                                    "AM", "PM", "6AM", "12PM", "6PM", "12AM",  # AM/PM included
                                    "am", "pm", "6am", "12pm", "6pm", "12am",  # am/pm included
-                                   "42", "48", "112", "GAM"},  # Misreadings
-                             ITA: {"0", "6", "12", "18", "mele", "112", "118"},
-                             GER: {"00", "06", "12", "18",
-                                   "Uhr" "00 Uhr", "06 Uhr", "12 Uhr", "18 Uhr"},
-                             FRA: {"TODO FILL THIS IN"}
+                                   "42", "48", "112", "GAM"},  # Common Misreadings
+
+                             ITA: {"0", "00", "6", "06", "12", "18",  # Number only
+                                   "AM", "PM", "6AM", "12PM", "6PM", "12AM",  # AM/PM included
+                                   "mele", "112", "118", "GAM"},  # Common misreadings
+
+                             GER: {"0", "00", "6", "06", "12", "18",  # Number only
+                                   "Uhr" "00 Uhr", "06 Uhr", "12 Uhr", "18 Uhr"},  # Uhr included
+
+                             FRA: {"0", "00", "6", "06", "12", "18",  # Number only
+                                   "AM", "PM", "6AM", "12PM", "6PM", "12AM",  # AM/PM included
+                                   "GAM"}
                             }
 
 
@@ -126,49 +133,68 @@ def get_headings(screenshot):
     # If a row in the screenshot (closely) matches the format of a heading, label that row as that heading type.
     for i in df.index:
         row_text = df['text'][i]
+        row_words = set(df['text'][i].split())
+
         if not day_type_rows.empty and i in day_type_rows.index:
             df.loc[i, HEADING_COLUMN] = DAY_OR_WEEK_HEADING
+
         elif re.match(screenshot.date_format, row_text, re.IGNORECASE):
             df.loc[i, HEADING_COLUMN] = DATE_HEADING
+
         elif any(OCRScript_v3.levenshtein_distance(row_text, keyword) <= OCRScript_v3.error_margin(row_text, keyword)
                  for keyword in KEYWORDS_FOR_SCREEN_TIME[lang]):
             df.loc[i, HEADING_COLUMN] = SCREENTIME_HEADING
+
         elif any(OCRScript_v3.levenshtein_distance(row_text, keyword) <= OCRScript_v3.error_margin(row_text, keyword)
                  for keyword in KEYWORDS_FOR_LIMITATIONS[lang]):
             df.loc[i, HEADING_COLUMN] = LIMITS_HEADING
+
         elif any(OCRScript_v3.levenshtein_distance(row_text, keyword) <= OCRScript_v3.error_margin(row_text, keyword)
                  for keyword in KEYWORDS_FOR_FIRST_USED_AFTER_PICKUP[lang]):
             # Need to check for "FIRST USED AFTER PICKUP" before checking for "MOST USED" because the first 9 characters
             # of "FIRST USED AFTER PICKUP" (i.e. "FIRST USE") are within the error margin for "MOST USED"
             df.loc[i, HEADING_COLUMN] = FIRST_USED_AFTER_PICKUP_HEADING
+
         elif any(OCRScript_v3.levenshtein_distance(row_text[:len(keyword)], keyword) <=
                  OCRScript_v3.error_margin(keyword)
                  for keyword in KEYWORDS_FOR_MOST_USED[lang]):
             # Only checking a substring of row_text because sometimes the df row with "MOST USED" contains more words,
             # but we only care about the first two words
             df.loc[i, HEADING_COLUMN] = MOST_USED_HEADING
+
         elif any(OCRScript_v3.levenshtein_distance(row_text, keyword) <= OCRScript_v3.error_margin(row_text, keyword)
                  for keyword in KEYWORDS_FOR_PICKUPS[lang]):
             df.loc[i, HEADING_COLUMN] = PICKUPS_HEADING
+
         elif any(OCRScript_v3.levenshtein_distance(row_text, keyword) <= OCRScript_v3.error_margin(row_text, keyword)
                  for keyword in KEYWORDS_FOR_FIRST_PICKUP[lang]):
             df.loc[i, HEADING_COLUMN] = FIRST_PICKUP_HEADING
+
         elif any(OCRScript_v3.levenshtein_distance(row_text, keyword) <= OCRScript_v3.error_margin(row_text, keyword)
                  for keyword in KEYWORDS_FOR_NOTIFICATIONS[lang]):
             df.loc[i, HEADING_COLUMN] = NOTIFICATIONS_HEADING
+
         elif re.search('|'.join(KEYWORDS_FOR_HOURS_AXIS), row_text, re.IGNORECASE):
             df.loc[i, HEADING_COLUMN] = HOURS_AXIS_HEADING
+
+        elif len(row_words.intersection(DAY_ABBREVIATIONS[lang])) >= 3:
+            df.loc[i, HEADING_COLUMN] = DAYS_AXIS_HEADING
+
         elif any(OCRScript_v3.levenshtein_distance(row_text, keyword) <= OCRScript_v3.error_margin(row_text, keyword)
                  for keyword in KEYWORDS_FOR_LIMIT_USAGE[lang]):
             df.loc[i, HEADING_COLUMN] = LIMIT_USAGE_HEADING
+
         elif any(OCRScript_v3.levenshtein_distance(row_text, keyword) <= OCRScript_v3.error_margin(row_text, keyword)
                  for keyword in KEYWORDS_FOR_COMMUNICATION[lang]):
             df.loc[i, HEADING_COLUMN] = COMMUNICATION_HEADING
+
         elif any(OCRScript_v3.levenshtein_distance(row_text, keyword) <= OCRScript_v3.error_margin(row_text, keyword)
                  for keyword in KEYWORDS_FOR_SEE_ALL_ACTIVITY[lang]):
             df.loc[i, HEADING_COLUMN] = SEE_ALL_ACTIVITY
+
         else:
             df = df.drop(i)
+
     df.loc[df[HEADING_COLUMN].isin(IOS_EXCLUSIVE_HEADINGS), OS_COLUMN] = IOS
 
     return df
@@ -391,7 +417,7 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
 
         if row_above_total.size > 0:
             index_to_start = row_above_total.name + 1
-            crop_top = row_above_total['top'] + row_above_total['height']
+            crop_top = row_above_total['top'] + row_above_total['height'] * (1 if screenshot.relative_day != WEEK else 2)
             if using_heading_row:
                 # The heading row is higher than the day row, so when using the heading row as the reference,
                 # crop_top should be further down (on the screenshot)
@@ -448,7 +474,7 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
         crop_bottom = crop_top + int(screenshot.width / 8)  # Daily Total height is usually < 8x screenshot_width.
 
     crop_left = 0
-    crop_right = int(0.6 * screenshot.width)
+    crop_right = int(0.6 * screenshot.width) if category == SCREENTIME else int(0.5 * screenshot.width)
     # Right edge of Daily Total is not likely more than 60% away from the left edge of the screenshot
 
     cropped_image = img[crop_top:crop_bottom, crop_left:crop_right]
@@ -456,19 +482,26 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
         print(f"Could not find suitable crop region for daily total {category}.")
         return daily_total_1st_scan, daily_total_1st_scan_conf
     else:
-        scale = 0.5  # Pytesseract sometimes fails to read very large text; scale down the cropped region
-        scaled_cropped_image = cv2.resize(cropped_image, None,
-                                          fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+        scale = 0.8  # Pytesseract sometimes fails to read very large text; scale down the cropped region incrementally
+                     # until either text is found or the scale factor gets too small.
 
-        kernel_dim = int(screenshot.width / 500)
-        kernel_dim -= 1 if kernel_dim % 2 == 0 else 0
-        kernel_size = (kernel_dim, kernel_dim)
-        scaled_cropped_image = cv2.GaussianBlur(scaled_cropped_image, kernel_size, 0)
+        while True:
+            scaled_cropped_image = cv2.resize(cropped_image, None,
+                                              fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
 
-        if category == SCREENTIME:
-            _, rescan_df = OCRScript_v3.extract_text_from_image(scaled_cropped_image)
-        else:
-            _, rescan_df = OCRScript_v3.extract_text_from_image(scaled_cropped_image, cmd_config=r'--oem 3 --psm 6 outputbase digits')
+            kernel_dim = int(screenshot.width / 500)
+            kernel_dim -= 1 if kernel_dim % 2 == 0 else 0
+            kernel_size = (kernel_dim, kernel_dim)
+            scaled_cropped_image = cv2.GaussianBlur(scaled_cropped_image, kernel_size, 0)
+
+            if category == SCREENTIME:
+                _, rescan_df = OCRScript_v3.extract_text_from_image(scaled_cropped_image)
+            else:
+                _, rescan_df = OCRScript_v3.extract_text_from_image(scaled_cropped_image, cmd_config=r'--oem 3 --psm 6 outputbase digits')
+
+            scale -= 0.2
+            if scale <= 0.2 or rescan_df.shape[0] > 0:
+                break
 
         # For debugging.
         if show_images_at_runtime:
@@ -675,39 +708,76 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
     headings_above_df = headings_df[headings_df[HEADING_COLUMN].isin(headings_above)]
     headings_below_df = headings_df[headings_df[HEADING_COLUMN].eq(heading_below)]
 
-    crop_top_text, crop_bottom_text = None, None  # Initialize
+    crop_top_heading, crop_bottom_heading = None, None  # Initialize
     print("Cropping image to app area:")
+
     # Search for crop_top and crop_bottom
     if not headings_df.empty and not (headings_df[headings_df['left'] > 0]).empty:
+
         for i in headings_df.index:
+            row_top = headings_df['top'][i]
+            row_height = headings_df['height'][i]
+            row_bottom = row_top + row_height
+            row_text = headings_df['text'][i]
+
             current_heading = headings_df[HEADING_COLUMN][i]
-            if current_heading in headings_above or \
-                    current_heading in [DAY_OR_WEEK_HEADING, DATE_HEADING, HOURS_AXIS_HEADING] and crop_bottom == screenshot.height:  # include HOURS AXIS?
-                crop_top_text = headings_df['text'][i]
-                if current_heading == FIRST_PICKUP_HEADING:
-                    crop_top = min(crop_bottom, int(headings_df['top'][i] + 2.5 * headings_df['height'][i]))
+            if current_heading in headings_above:
+                # Used to include [DAY_OR_WEEK_HEADING, DATE_HEADING],
+                # but the region we want is never right below either of those headings; such a region always includes
+                # one of the graphs on iOS Dashboard, which contains text that can be misinterpreted as app names or
+                # numbers (whic impedes app data extraction).
+                crop_top_heading = row_text + "'"
+
+                if current_heading == FIRST_PICKUP_HEADING and category == PICKUPS:
+                    crop_top = min(crop_bottom, int(row_bottom + 1.5 * row_height))
+                    # The distance between 'First Pickup Total Pickups' and the app area is usually 1.5x the height of
+                    # 'First Pickup Total Pickups'
+
+                elif current_heading == DAYS_AXIS_HEADING and category == NOTIFICATIONS:
+                    if screenshot.relative_day == WEEK:
+                        crop_top = min(crop_bottom, int(row_bottom))
+                    else:
+                        crop_top = min(crop_bottom, int(row_bottom + 5 * row_height))
+                        # The distance between the DAYS AXIS and the app area is a bit more than 5x the height of the DAYS AXIS
+
                 elif current_heading == HOURS_AXIS_HEADING:
                     if category == NOTIFICATIONS:
-                        crop_top = int(headings_df['top'][i] + headings_df['height'][i])
-                    elif category == SCREENTIME:
-                        crop_top = min(screenshot.height, int(headings_df['top'][i] + 7 * headings_df['height'][i]))
+                        crop_top = int(row_top + row_height)
+                        # In iOS Notifications screenshots, the HOURS AXIS is right above the app area
+
+                    if category == SCREENTIME:
+                        crop_top = min(screenshot.height, int(row_bottom + 6 * row_height))
+                        crop_top_heading += " (+ buffer)"
+                        # In iOS Screentime screenshots, the distance between the HOURS AXIS and the app area is
+                        # usually 6x the height of the HOURS AXIS
+
                     elif category == PICKUPS:
-                        crop_top = min(screenshot.height, int(headings_df['top'][i] + 5 * headings_df['height'][i]))
+                        crop_top = min(screenshot.height, int(row_bottom + 4 * row_height))
+                        crop_top_heading += " (+ buffer)"
+                        # In iOS Pickups screnshots, the distance between the HOURS AXIS and the app area is usually
+                        # 4x the height of the HOURS AXIS
+
                     else:
                         pass
-                else:
-                    crop_top = int(headings_df['top'][i] + headings_df['height'][i])
-            elif current_heading == heading_below:
-                crop_bottom_text = headings_df['text'][i]
-                crop_bottom = headings_df['top'][i]
 
-        print(f"Top of crop region:  {("below '" + crop_top_text + "'") if crop_top_text is not None else "(top of screenshot)"}")
-        print(f"Bottom of crop region:  {("above '" + crop_bottom_text + "'") if crop_bottom_text is not None else "(bottom of screenshot)"}")
+                else:
+                    crop_top = int(row_top + row_height)
+                    # For any other heading that appears directly above the app area
+
+            elif current_heading == heading_below:
+                crop_bottom_heading = row_text
+                crop_bottom = row_top
+                # Once the crop_bottom has been set, stop looking for more top/bottom crop values.
+
+                break
+
+        print(f"Top of crop region:  {("below '" + crop_top_heading) if crop_top_heading is not None else "(top of screenshot)"}")
+        print(f"Bottom of crop region:  {("above '" + crop_bottom_heading + "'") if crop_bottom_heading is not None else "(bottom of screenshot)"}")
 
     if (headings_df.empty or
             headings_df.iloc[-1][HEADING_COLUMN] in [SCREENTIME_HEADING, LIMITS_HEADING] or
             crop_top == 0 or
-            screenshot.category_submitted == SCREENTIME and ~headings_df[HEADING_COLUMN].str.contains(MOST_USED_HEADING).any() and
+            category == SCREENTIME and ~headings_df[HEADING_COLUMN].str.contains(MOST_USED_HEADING).any() and
             headings_df[HEADING_COLUMN].str.contains(FIRST_USED_AFTER_PICKUP_HEADING).any()):
         # No relevant app data to extract if:
         # there are no headings found, or
