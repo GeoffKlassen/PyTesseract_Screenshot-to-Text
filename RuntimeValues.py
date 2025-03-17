@@ -12,7 +12,7 @@ from LanguageDictionaries import *
     As of Feb 10, 2025, there are 2 preset studies available: HappyB2.0 and BCH.
 """
 
-study_to_analyze = studies[0]
+study_to_analyze = studies[2]
 # Use studies[0] for the HappyB2.0 study (pre-launch prep)
 # Use studies[1] for the HappyB2.0 study (2024 Aug-Dec)
 # Use studies[2] for the BCH study
@@ -52,7 +52,7 @@ save_downloaded_images = True  # If True, images downloaded at runtime are saved
 avicenna_user = "geoff.klassen@usask.ca"
 avicenna_password = "Phi1*618ah"
 
-show_images_at_runtime = True
+show_images_at_runtime = False
 # If True, images of the screenshots will be shown during runtime (mostly for debugging).
 
 app_area_scale_factor = 1
@@ -62,8 +62,8 @@ app_area_scale_factor = 1
 conf_limit = 80
 ERR_CONFIDENCE = f"ERR Values below {int(conf_limit)}% confidence"
 
-image_lower_bound = 337
-image_upper_bound = 3736
+image_lower_bound = 1
+image_upper_bound = 452
 #   553 for HappyB2.0 (pre-launch)
 # 19313 for HappyB2.0 2024 Aug-Dec (1387 + 2349 + 15577)  (First two surveys: 1387 + 2349 = 3736)
 #   452 for BCH study

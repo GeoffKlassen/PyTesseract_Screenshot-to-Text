@@ -665,10 +665,10 @@ def get_daily_total_and_confidence(screenshot, image, heading):
         total_value_1st_scan_conf = round(total_value_row['conf'], 4)
         print(f"Initial scan: {total_value_1st_scan} (conf = {total_value_1st_scan_conf:.4f})")
 
-        crop_top = max(0, total_value_row['top'] - int(0.05 * screenshot.width))
-        crop_bottom = min(total_value_row['top'] + total_value_row['height'] + int(0.025 * screenshot.width), screenshot.height)
-        crop_left = max(0, total_value_row['left'] - int(0.05 * screenshot.width))
-        crop_right = min(total_value_row['left'] + total_value_row['width'] + int(0.05 * screenshot.width), screenshot.width)
+        crop_top = max(0, total_value_row['top'] - int(0.5 * total_value_row['height']))
+        crop_bottom = min(total_value_row['top'] + total_value_row['height'] + int(0.5 * total_value_row['height']), screenshot.height)
+        crop_left = max(0, total_value_row['left'] - int(0.5 * total_value_row['height']))
+        crop_right = min(total_value_row['left'] + total_value_row['width'] + int(0.5 * total_value_row['height']), screenshot.width)
 
         cropped_scan = rescan_cropped_area(image, crop_top, crop_bottom, crop_left, crop_right)
     elif android_version == GOOGLE and not (day_rows.empty or date_rows.empty):
@@ -724,15 +724,12 @@ def get_daily_total_and_confidence(screenshot, image, heading):
         total_value_2nd_scan = NO_TEXT
         total_value_2nd_scan_conf = NO_CONF
 
-    if screenshot.category_detected is not None:
-        is_number = False if screenshot.category_detected == SCREENTIME else True
-    else:
-        is_number = False if screenshot.category_submitted == SCREENTIME else True
-
     total_value, total_conf = OCRScript_v3.choose_between_two_values(total_value_1st_scan, total_value_1st_scan_conf,
                                                                      total_value_2nd_scan, total_value_2nd_scan_conf,
-                                                                     value_is_number=is_number,
+                                                                     value_is_digits=False,  # See comment below
                                                                      val_fmt=screenshot.time_format_long)
+    # Note: in all versions of Android dashboard, the daily total never appears as just digits without letters;
+    # it always appears as '123 unlocks' or '1h 23m' or '123 notifications'.  Thus, the 'value' is never just a number.
     total_value = str(total_value)
 
     if screenshot.category_detected != SCREENTIME:

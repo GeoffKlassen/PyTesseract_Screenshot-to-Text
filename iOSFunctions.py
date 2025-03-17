@@ -418,7 +418,7 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
 
         if row_above_total.size > 0:
             index_to_start = row_above_total.name + 1
-            crop_top = row_above_total['top'] + row_above_total['height'] * (1 if screenshot.relative_day != WEEK else 2)
+            crop_top = row_above_total['top'] + row_above_total['height']
             if using_heading_row:
                 # The heading row is higher than the day row, so when using the heading row as the reference,
                 # crop_top should be further down (on the screenshot)
@@ -429,7 +429,7 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
             # iOS shows the daily total in a larger font size than the headings,
             # so the crop region needs to be about 4x as tall as a heading
             # to increase the chance of the whole daily total falling within the crop region
-            crop_bottom = crop_top + (4 * row_above_total['height'])
+            crop_bottom = crop_top + (5 if screenshot.relative_day != WEEK else 4) * row_above_total['height']
             if only_one_day_row:
                 # The 'overlay' date row (at the top of the screen after scrolling) can sometimes be even further away
                 crop_bottom += 2 * row_above_total['height']
@@ -527,7 +527,6 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
                     # that value is not an 'hours' row (Sometimes after cropping the image, the hours row is included
                     # and gets misread as a value format because it may contain AM, which is also a misread form of 4m)
                     daily_total_2nd_scan, daily_total_2nd_scan_conf = filter_time_or_number_text(row_text, row_conf, value_pattern)
-                    daily_total_2nd_scan_conf = row_conf
                     break
 
         if daily_total_1st_scan_conf != NO_CONF:
@@ -539,7 +538,7 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
         is_number = False if category == SCREENTIME else True
         daily_tot, daily_tot_conf = OCRScript_v3.choose_between_two_values(daily_total_1st_scan, daily_total_1st_scan_conf,
                                                                            daily_total_2nd_scan, daily_total_2nd_scan_conf,
-                                                                           value_is_number=is_number,
+                                                                           value_is_digits=is_number,
                                                                            val_fmt=val_format)
 
         return daily_tot, daily_tot_conf
@@ -669,7 +668,7 @@ def get_total_pickups_2nd_location(screenshot, img):
         value_found = re.findall(MISREAD_NUMBER_FORMAT, rescan_words['text'].iloc[-1])
         if value_found:
             total_pickups_2nd_scan = value_found[-1]
-            total_pickups_2nd_scan_conf = round(rescan_df['conf'][0], 4)
+            total_pickups_2nd_scan_conf = round(rescan_words.iloc[-1]['conf'], 4)
             print(f"Total pickups found in 2nd location (rescan): {total_pickups_2nd_scan} "
                   f"(conf = {total_pickups_2nd_scan_conf:.4f}).")
         else:
@@ -679,7 +678,7 @@ def get_total_pickups_2nd_location(screenshot, img):
 
     total, total_conf = OCRScript_v3.choose_between_two_values(total_pickups_1st_scan, total_pickups_1st_scan_conf,
                                                                total_pickups_2nd_scan, total_pickups_2nd_scan_conf,
-                                                               value_is_number=True,
+                                                               value_is_digits=True,
                                                                val_fmt=MISREAD_NUMBER_FORMAT)
 
     print(f"Total pickups, 2nd location: {total} (conf = {total_conf:.4f}).\n")

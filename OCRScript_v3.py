@@ -741,14 +741,14 @@ def get_os(dev_id, screenshot=None):
         return UNKNOWN
 
 
-def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False, val_fmt=None):
+def choose_between_two_values(text1, conf1, text2, conf2, value_is_digits=False, val_fmt=None):
     """
 
     :param text1:
     :param conf1:
     :param text2:
     :param conf2:
-    :param value_is_number:
+    :param value_is_digits:
     :param val_fmt:
     :return:
     """
@@ -760,9 +760,9 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False,
     c2 = f"(conf = {conf2:.4f})" if conf2 != NO_CONF else ""
 
     if val_fmt is None:
-        val_fmt = MISREAD_NUMBER_FORMAT if value_is_number else MISREAD_TIME_FORMAT_IOS
+        val_fmt = MISREAD_NUMBER_FORMAT if value_is_digits else MISREAD_TIME_FORMAT_IOS
 
-    format_name = NUMBER if value_is_number else TIME
+    format_name = NUMBER if value_is_digits else TIME
 
     print(f"Comparing scan 1: {t1} {c1}\n       vs scan 2: {t2} {c2}  --  ", end='')
     if conf1 != NO_CONF and conf2 != NO_CONF:
@@ -779,10 +779,10 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False,
         elif not bool(re.search(val_fmt, str_text1)) and bool(re.search(val_fmt, str_text2)):
             print(f"Only {t2} matches a proper {format_name} format. Using {t2}.")
             return text2, conf2
-        elif len(str_text1) > len(str_text2) and value_is_number:
+        elif len(str_text1) > len(str_text2) and value_is_digits:
             print(f"{t1} has more characters than {t2}. Keeping {t1}.")
             return text1, conf1
-        elif len(str_text1) < len(str_text2) and value_is_number:
+        elif len(str_text1) < len(str_text2) and value_is_digits:
             print(f"{t2} has more characters than {t1}. Using {t2}.")
             return text2, conf2
         else:
@@ -796,20 +796,20 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_number=False,
                 print("Confidence values are equal. Keeping 1st scan.")
                 return text2, conf2
     elif conf1 != NO_CONF:
-        if value_is_number and not bool(re.search(val_fmt, str_text1)):
+        if value_is_digits and not bool(re.search(val_fmt, str_text1)):
             print(f"Improper number format found in {t1}; no text found in {t2}.")
             return NO_NUMBER, NO_CONF
         print(f"No text found in 2nd scan. Keeping {t1}.")
         return text1, conf1
     elif conf2 != NO_CONF:
-        if value_is_number and not bool(re.search(val_fmt, str_text2)):
+        if value_is_digits and not bool(re.search(val_fmt, str_text2)):
             print(f"No text found in {t1}; improper number format found in {t2}.")
             return NO_NUMBER, NO_CONF
         print(f"No text found on 1st scan. Using {t2}.")
         return text2, conf2
     else:
         print("No text found on 1st or 2nd scan.")
-        if value_is_number:
+        if value_is_digits:
             return NO_NUMBER, NO_CONF
         return NO_TEXT, NO_CONF
 
@@ -1005,7 +1005,10 @@ def get_dashboard_category(screenshot):
             Android.get_dashboard_category(screenshot)
         if category is None:
             category_was_found = False
-            category = current_screenshot.category_submitted
+            if current_screenshot.category_submitted == PICKUPS and dev_os == ANDROID:
+                category = UNLOCKS
+            else:
+                category = current_screenshot.category_submitted
         else:
             category_was_found = True
 
@@ -1047,7 +1050,7 @@ def update_eta(ss_start_time, idx):
         return str_time
 
     def convert_eta_to_string(sec):
-        if sec > 59:
+        if sec >= 60:
             sec = ((sec + 9) // 10) * 10
 
         _hr = int(sec / 3600)
@@ -1063,10 +1066,10 @@ def update_eta(ss_start_time, idx):
             else:
                 str_min = ""
 
-        if _hr > 0 or _min >= 10:
+        if _hr > 0 or _min >= 30:
             str_sec = ""
         elif _min >= 1:
-            str_sec = " " + (str(((_sec + 9) // 10) * 10) + " seconds") if _sec > 0 else ""
+            str_sec = ", " + (str(((_sec + 9) // 10) * 10) + " seconds") if _sec > 0 else ""
         else:
             str_sec = str(_sec) + f" second{'s' if _sec > 1 else ''}"
 
@@ -1090,7 +1093,7 @@ def update_eta(ss_start_time, idx):
     all_times.loc[idx, DEVICE_OS] = url_list[DEVICE_OS][idx]
 
     if not all_times.empty:
-        image_limit = min(image_upper_bound, num_urls)
+        image_index_limit = min(image_upper_bound, num_urls)
         all_ios_times = all_times.loc[url_list[DEVICE_OS] == IOS][TIME]
         all_android_times = all_times.loc[url_list[DEVICE_OS] == ANDROID][TIME]
 
@@ -1106,7 +1109,8 @@ def update_eta(ss_start_time, idx):
         avg_time = np.mean(all_times[TIME].tail(times_to_avg))
         avg_unknown_os_time = avg_time
 
-        images_remaining = url_list.loc[(idx < url_list.index) & (url_list.index < image_limit)]
+        images_remaining = url_list.loc[(idx <= url_list.index) & (url_list.index <= image_index_limit)]
+        num_images_left = len(images_remaining)
 
         num_ios_screentime_images_remaining = len(images_remaining[(images_remaining[DEVICE_OS] == IOS) &
                                                     (images_remaining[IMG_RESPONSE_TYPE] == SCREENTIME)])
@@ -1144,10 +1148,10 @@ def update_eta(ss_start_time, idx):
 
         all_times.loc[idx, ETA] = estimated_time_remaining
 
-        if len(all_times) < 8 and image_limit >= 30:
+        if len(all_times) < 8 and num_images_left >= 30:
             print(f"Estimated time remaining:  Calculating...")
             return
-        elif estimated_time_remaining > 0:
+        elif num_images_left > 0:
             print(f"Estimated time remaining:  {convert_eta_to_string(estimated_time_remaining)}")
             return
 
@@ -1525,12 +1529,15 @@ if __name__ == '__main__':
                 current_screenshot.set_category_detected(dashboard_category)
             else:
                 current_screenshot.add_error(ERR_CATEGORY)
-                dashboard_category = current_screenshot.category_submitted
+                if current_screenshot.category_submitted == PICKUPS:
+                    dashboard_category = UNLOCKS
+                else:
+                    dashboard_category = current_screenshot.category_submitted
 
             daily_total, daily_total_conf = Android.get_daily_total_and_confidence(screenshot=current_screenshot,
                                                                                    image=bw_image_scaled,
                                                                                    heading=dashboard_category)
-            if dashboard_category != SCREENTIME:
+            if dashboard_category != SCREENTIME and daily_total_conf != NO_CONF:
                 try:
                     daily_total = str(int(daily_total))
                 except ValueError:
