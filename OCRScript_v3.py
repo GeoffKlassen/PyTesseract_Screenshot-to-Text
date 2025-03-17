@@ -326,7 +326,7 @@ def merge_df_rows_by_height(df):
         df.drop(columns=['level'], inplace=True)
     if 'level_0' in df.columns:
         df.drop(columns=['level_0'], inplace=True)
-    consolidated_df = df.drop(index=rows_to_drop).reset_index()
+    consolidated_df = df.drop(index=rows_to_drop).reset_index(drop=True)
 
     return consolidated_df
 
@@ -537,7 +537,7 @@ def get_date_in_screenshot(screenshot):
     :param screenshot: The screenshot to search for a date.
     :return: The date-format value of the date found in the screenshot text (if any), otherwise 'None'.
     """
-    empty_df = pd.DataFrame
+    empty_df = pd.DataFrame()
     df = screenshot.text
     lang = get_best_language(screenshot)
     # Different languages display dates in different formats. Create the correct regex pattern for the date.
@@ -1390,7 +1390,7 @@ if __name__ == '__main__':
             bw_image_scaled = cv2.GaussianBlur(bw_image_scaled, ksize=ksize, sigmaX=0)
 
         # current_screenshot.set_scale_factor(screenshot_scale_factor)
-        current_screenshot.set_image(grey_image_scaled)
+        current_screenshot.set_images(grey_image_scaled, bw_image, screenshot_scale_factor)
         current_screenshot.set_dimensions(grey_image_scaled.shape)
 
         # Extract the text (if any) that can be found in the image.
@@ -1414,6 +1414,7 @@ if __name__ == '__main__':
         current_screenshot.set_text(text_df)
         current_screenshot.set_words_df(text_df_single_words)
 
+        # Create a hash for the text found in the initial scan, for comparison to other hashes to detect duplicate images
         all_text_in_one_string = ''.join(text_df['text'])
         current_screenshot.set_hash(hashlib.md5(all_text_in_one_string.encode()).hexdigest())
 

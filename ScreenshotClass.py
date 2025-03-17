@@ -141,6 +141,8 @@ class Screenshot:
         self.user_id = participant.user_id
         self.device_id = device_id
         self.grey_image = None
+        self.bw_image = None
+        self.scale_factor = None
         self.height = 0
         self.width = 0
         self.is_light_mode = None
@@ -178,8 +180,10 @@ class Screenshot:
         s_cat = f"Category submitted: {self.category_submitted}"
         return f"{s_date}{s_cat}"
 
-    def set_image(self, img):
-        self.grey_image = img
+    def set_images(self, grey_img, bw_img, scale):
+        self.grey_image = grey_img
+        self.bw_image = bw_img
+        self.scale_factor = scale
 
     def set_dimensions(self, dim):
         self.height, self.width = dim[0], dim[1]

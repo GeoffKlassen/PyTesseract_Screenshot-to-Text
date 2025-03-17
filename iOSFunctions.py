@@ -117,13 +117,14 @@ HOURS_FORMAT = 'h'
 SECONDS_FORMAT = 's'
 
 
-def get_headings(screenshot):
+def get_headings(screenshot, rescale_df=pd.DataFrame()):
     """
     Finds the rows of text within the given screenshot that contain key headings ("SCREENTIME", "MOST USED", etc.)
     :param screenshot: The screenshot to search for headings
+    :param rescale_df:
     :return: A df that contains only the rows with headings from the text within the screenshot (if none, an empty df)
     """
-    df = screenshot.text.copy()
+    df = screenshot.text.copy() if rescale_df.empty else rescale_df
     day_type_rows = screenshot.rows_with_day_type
     lang = OCRScript_v3.get_best_language(screenshot)
 
@@ -655,7 +656,7 @@ def get_total_pickups_2nd_location(screenshot, img):
     scale_factor = 0.5  # pytesseract sometimes fails to read oversize text. Scale the image down for the rescan.
     scaled_cropped_image = cv2.resize(cropped_image, None,
                                       fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_AREA)
-    rescan_words, rescan_df = OCRScript_v3.extract_text_from_image(scaled_cropped_image)
+    rescan_words, rescan_text_df = OCRScript_v3.extract_text_from_image(scaled_cropped_image)
 
     if show_images_at_runtime:
         OCRScript_v3.show_image(rescan_words, scaled_cropped_image)
@@ -695,9 +696,11 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
     """
     # Determine the region of the screenshot that (likely) contains the list of the top n apps.
     # Initialize the crop region -- the 'for' loop below trims it further
-    text = screenshot.text
-    headings_df = screenshot.headings_df
+    text = screenshot.text.copy()
+    headings_df = screenshot.headings_df.copy()
     category = screenshot.category_detected if screenshot.category_detected is not None else screenshot.category_submitted
+
+    crop_top_heading, crop_bottom_heading = None, None  # Initialize
 
     # Initialize the crop region
     crop_top = 0
@@ -708,88 +711,105 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
     headings_above_df = headings_df[headings_df[HEADING_COLUMN].isin(headings_above)]
     headings_below_df = headings_df[headings_df[HEADING_COLUMN].eq(heading_below)]
 
-    crop_top_heading, crop_bottom_heading = None, None  # Initialize
     print("Cropping image to app area:")
 
-    # Search for crop_top and crop_bottom
-    if not headings_df.empty and not (headings_df[headings_df['left'] > 0]).empty:
+    for attempt in range(1, 3):
+        # Search for crop_top and crop_bottom
+        if not headings_df.empty and not (headings_df[headings_df['left'] > 0]).empty:
 
-        for i in headings_df.index:
-            row_top = headings_df['top'][i]
-            row_height = headings_df['height'][i]
-            row_bottom = row_top + row_height
-            row_text = headings_df['text'][i]
+            for i in headings_df.index:
+                row_top = headings_df['top'][i]
+                row_height = headings_df['height'][i]
+                row_bottom = row_top + row_height
+                row_text = headings_df['text'][i]
 
-            current_heading = headings_df[HEADING_COLUMN][i]
-            if current_heading in headings_above:
-                # Used to include [DAY_OR_WEEK_HEADING, DATE_HEADING],
-                # but the region we want is never right below either of those headings; such a region always includes
-                # one of the graphs on iOS Dashboard, which contains text that can be misinterpreted as app names or
-                # numbers (whic impedes app data extraction).
-                crop_top_heading = row_text + "'"
+                current_heading = headings_df[HEADING_COLUMN][i]
+                if current_heading in headings_above:
+                    # Used to include [DAY_OR_WEEK_HEADING, DATE_HEADING],
+                    # but the region we want is never right below either of those headings; such a region always includes
+                    # one of the graphs on iOS Dashboard, which contains text that can be misinterpreted as app names or
+                    # numbers (which impedes app data extraction).
+                    crop_top_heading = row_text + "'"
 
-                if current_heading == FIRST_PICKUP_HEADING and category == PICKUPS:
-                    crop_top = min(crop_bottom, int(row_bottom + 1.5 * row_height))
-                    # The distance between 'First Pickup Total Pickups' and the app area is usually 1.5x the height of
-                    # 'First Pickup Total Pickups'
+                    if current_heading == FIRST_PICKUP_HEADING and category == PICKUPS:
+                        crop_top = min(crop_bottom, int(row_bottom + 1.5 * row_height))
+                        # The distance between 'First Pickup Total Pickups' and the app area is usually 1.5x the height of
+                        # 'First Pickup Total Pickups'
 
-                elif current_heading == DAYS_AXIS_HEADING and category == NOTIFICATIONS:
-                    if screenshot.relative_day == WEEK:
-                        crop_top = min(crop_bottom, int(row_bottom))
+                    elif current_heading == DAYS_AXIS_HEADING and category == NOTIFICATIONS:
+                        if screenshot.relative_day == WEEK:
+                            crop_top = min(crop_bottom, int(row_bottom))
+                        else:
+                            crop_top = min(crop_bottom, int(row_bottom + 5 * row_height))
+                            # The distance between the DAYS AXIS and the app area is a bit more than 5x the height of the DAYS AXIS
+
+                    elif current_heading == HOURS_AXIS_HEADING:
+                        if category == NOTIFICATIONS:
+                            crop_top = int(row_top + row_height)
+                            # In iOS Notifications screenshots, the HOURS AXIS is right above the app area
+
+                        elif category == SCREENTIME:
+                            crop_top = min(screenshot.height, int(row_bottom + 6 * row_height))
+                            crop_top_heading += " (+ buffer)"
+                            # In iOS Screentime screenshots, the distance between the HOURS AXIS and the app area is
+                            # usually 6x the height of the HOURS AXIS
+
+                        elif category == PICKUPS:
+                            crop_top = min(screenshot.height, int(row_bottom + 4 * row_height))
+                            crop_top_heading += " (+ buffer)"
+                            # In iOS Pickups screnshots, the distance between the HOURS AXIS and the app area is usually
+                            # 4x the height of the HOURS AXIS
+
+                        else:
+                            pass
+
                     else:
-                        crop_top = min(crop_bottom, int(row_bottom + 5 * row_height))
-                        # The distance between the DAYS AXIS and the app area is a bit more than 5x the height of the DAYS AXIS
-
-                elif current_heading == HOURS_AXIS_HEADING:
-                    if category == NOTIFICATIONS:
                         crop_top = int(row_top + row_height)
-                        # In iOS Notifications screenshots, the HOURS AXIS is right above the app area
+                        # For any other heading that appears directly above the app area
 
-                    if category == SCREENTIME:
-                        crop_top = min(screenshot.height, int(row_bottom + 6 * row_height))
-                        crop_top_heading += " (+ buffer)"
-                        # In iOS Screentime screenshots, the distance between the HOURS AXIS and the app area is
-                        # usually 6x the height of the HOURS AXIS
+                elif current_heading == heading_below:
+                    crop_bottom_heading = row_text
+                    crop_bottom = row_top
+                    # Once the crop_bottom has been set, stop looking for more top/bottom crop values.
 
-                    elif category == PICKUPS:
-                        crop_top = min(screenshot.height, int(row_bottom + 4 * row_height))
-                        crop_top_heading += " (+ buffer)"
-                        # In iOS Pickups screnshots, the distance between the HOURS AXIS and the app area is usually
-                        # 4x the height of the HOURS AXIS
+                    break
 
-                    else:
-                        pass
+        if not (headings_df.empty
+                or headings_df.iloc[-1][HEADING_COLUMN] in [SCREENTIME_HEADING, LIMITS_HEADING]
+                or crop_top == 0
+                or category == SCREENTIME
+                    and ~headings_df[HEADING_COLUMN].str.contains(MOST_USED_HEADING).any()
+                    and headings_df[HEADING_COLUMN].str.contains(FIRST_USED_AFTER_PICKUP_HEADING).any()):
+            break
+        else:
+            # No relevant app data to extract if:
+            # there are no headings found, or
+            # the last heading found is 'SCREENTIME' or 'LIMITS', or
+            # the screenshot contains week-level data, or
+            # the screenshot is for screentime and
+            #   the 'MOST_USED' heading was not found (the heading for the screentime apps) and
+            #   the 'FIRST_USED_AFTER_PICKUP' heading was found (the heading for pickups apps)
+            if attempt == 1:
+                print("Heading above app list not found on initial scan. Rescaling screenshot and trying again.")
+                mult = 0.8
+                rescale_factor = mult * screenshot.scale_factor
+                rescaled_bw_image = cv2.resize(screenshot.bw_image, dsize=None,
+                                               fx=rescale_factor,
+                                               fy=rescale_factor,
+                                               interpolation=cv2.INTER_AREA)
+                _, text = OCRScript_v3.extract_text_from_image(rescaled_bw_image)
+                text[['left', 'top', 'width', 'height']] = (text[['left', 'top', 'width', 'height']] / mult).astype(int)
+                headings_df = get_headings(screenshot, text)
 
-                else:
-                    crop_top = int(row_top + row_height)
-                    # For any other heading that appears directly above the app area
-
-            elif current_heading == heading_below:
-                crop_bottom_heading = row_text
-                crop_bottom = row_top
-                # Once the crop_bottom has been set, stop looking for more top/bottom crop values.
-
-                break
-
-        print(f"Top of crop region:  {("below '" + crop_top_heading) if crop_top_heading is not None else "(top of screenshot)"}")
-        print(f"Bottom of crop region:  {("above '" + crop_bottom_heading + "'") if crop_bottom_heading is not None else "(bottom of screenshot)"}")
-
-    if (headings_df.empty or
-            headings_df.iloc[-1][HEADING_COLUMN] in [SCREENTIME_HEADING, LIMITS_HEADING] or
-            crop_top == 0 or
-            category == SCREENTIME and ~headings_df[HEADING_COLUMN].str.contains(MOST_USED_HEADING).any() and
-            headings_df[HEADING_COLUMN].str.contains(FIRST_USED_AFTER_PICKUP_HEADING).any()):
-        # No relevant app data to extract if:
-        # there are no headings found, or
-        # the last heading found is 'SCREENTIME' or 'LIMITS', or
-        # the screenshot contains week-level data, or
-        # the screenshot is for screentime and
-        #   the 'MOST_USED' heading was not found (the heading for the screentime apps) and
-        #   the 'FIRST_USED_AFTER_PICKUP' heading was found (the heading for pickups apps)
-        print(f"Heading above app list was not found. Image will not be cropped.")
-        return screenshot.grey_image, [None, None, None, None]
-        # app_area_heading_not_found = True
-        # num_missed_app_values = 0
+            elif attempt == 2:
+                print("2nd attempt: heading above app list was not found. Image will not be cropped.")
+                return screenshot.grey_image, [None, None, None, None]
+                # app_area_heading_not_found = True
+                # num_missed_app_values = 0
+    print(
+        f"\nTop of crop region:  {("below '" + crop_top_heading) if crop_top_heading is not None else "(top of screenshot)"}")
+    print(
+        f"Bottom of crop region:  {("above '" + crop_bottom_heading + "'") if crop_bottom_heading is not None else "(bottom of screenshot)"}")
 
     # Look for text in the initial scan that would qualify as an app name
     app_area_text = text[(text['left'] > int(0.15*screenshot.width)) &
