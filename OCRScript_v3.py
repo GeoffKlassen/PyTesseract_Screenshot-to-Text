@@ -907,7 +907,8 @@ def extract_app_info(screenshot, image, coordinates, scale):
         cropped_grey_image = screenshot.grey_image[crop_top:crop_bottom, crop_left:crop_right]
         # Initialize
         _, image_missed_text = cv2.threshold(cropped_grey_image, bw_threshold, max_value, cv2.THRESH_BINARY)
-        image_missed_text = cv2.GaussianBlur(image_missed_text, ksize=ksize, sigmaX=0)
+        _ksize = (3, 3) if screenshot.width > 1000 else (1, 1)
+        image_missed_text = cv2.GaussianBlur(image_missed_text, ksize=_ksize, sigmaX=0)
     else:
         image_missed_text = image.copy()
 
@@ -1728,7 +1729,8 @@ if __name__ == '__main__':
                 print("Daily " + ('total ' if current_screenshot.relative_day != WEEK else 'average ') + f"{dashboard_category}: {dt}{dtm}\n")
 
                 current_screenshot.set_daily_total_minutes(daily_total_minutes)
-                headings_above_applist = [MOST_USED_HEADING, HOURS_AXIS_HEADING]
+                headings_above_applist = [MOST_USED_HEADING,  # Main
+                                          HOURS_AXIS_HEADING, DAY_OR_WEEK_C_HEADING, DATE_C_HEADING]  # Backups
                 heading_below_applist = PICKUPS_HEADING
 
             elif dashboard_category == PICKUPS:
@@ -1748,14 +1750,16 @@ if __name__ == '__main__':
                     dt = daily_total
                 print("Daily " + ('total ' if current_screenshot.relative_day != WEEK else 'average ') + f"{dashboard_category}: {dt}\n")
 
-                headings_above_applist = [FIRST_USED_AFTER_PICKUP_HEADING, FIRST_PICKUP_HEADING, HOURS_AXIS_HEADING]
+                headings_above_applist = [FIRST_USED_AFTER_PICKUP_HEADING, FIRST_PICKUP_HEADING,  # Mains
+                                          HOURS_AXIS_HEADING, DAY_OR_WEEK_C_HEADING, DATE_C_HEADING]  # Backups
                 heading_below_applist = NOTIFICATIONS_HEADING
 
             elif dashboard_category == NOTIFICATIONS:
                 current_screenshot.set_daily_total(daily_total, daily_total_conf)
                 print(f"Daily total {dashboard_category}: {dt}\n")
 
-                headings_above_applist = [HOURS_AXIS_HEADING, DAYS_AXIS_HEADING]
+                headings_above_applist = [HOURS_AXIS_HEADING,  # Main
+                                          DAYS_AXIS_HEADING, DAY_OR_WEEK_C_HEADING, DATE_C_HEADING]  # Backups
                 heading_below_applist = None
 
             else:

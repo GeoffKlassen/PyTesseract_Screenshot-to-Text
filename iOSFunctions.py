@@ -136,11 +136,17 @@ def get_headings(screenshot, rescale_df=pd.DataFrame()):
         row_text = df['text'][i]
         row_words = set(df['text'][i].split())
 
-        if not day_type_rows.empty and i in day_type_rows.index:
-            df.loc[i, HEADING_COLUMN] = DAY_OR_WEEK_HEADING
+        if re.match(screenshot.date_format, row_text, re.IGNORECASE):
+            if df.loc[i, 'left'] < int(0.15 * screenshot.width):
+                df.loc[i, HEADING_COLUMN] = DATE_L_HEADING
+            else:
+                df.loc[i, HEADING_COLUMN] = DATE_C_HEADING
 
-        elif re.match(screenshot.date_format, row_text, re.IGNORECASE):
-            df.loc[i, HEADING_COLUMN] = DATE_HEADING
+        elif not day_type_rows.empty and i in day_type_rows.index:
+            if df.loc[i, 'left'] < int(0.15 * screenshot.width):
+                df.loc[i, HEADING_COLUMN] = DAY_OR_WEEK_L_HEADING
+            else:
+                df.loc[i, HEADING_COLUMN] = DAY_OR_WEEK_C_HEADING
 
         elif any(OCRScript_v3.levenshtein_distance(row_text, keyword) <= OCRScript_v3.error_margin(row_text, keyword)
                  for keyword in KEYWORDS_FOR_SCREEN_TIME[lang]):
@@ -175,7 +181,12 @@ def get_headings(screenshot, rescale_df=pd.DataFrame()):
                  for keyword in KEYWORDS_FOR_NOTIFICATIONS[lang]):
             df.loc[i, HEADING_COLUMN] = NOTIFICATIONS_HEADING
 
+        elif len(row_words.intersection(KEYWORDS_FOR_HOURS_AXIS_2[lang])) >= 2:
+            print("I found the hours axis with the new method!")
+            df.loc[i, HEADING_COLUMN] = HOURS_AXIS_HEADING
+
         elif re.search('|'.join(KEYWORDS_FOR_HOURS_AXIS), row_text, re.IGNORECASE):
+            print("Found hours with the OLD method")
             df.loc[i, HEADING_COLUMN] = HOURS_AXIS_HEADING
 
         elif len(row_words.intersection(DAY_ABBREVIATIONS[lang])) >= 3:
@@ -241,9 +252,9 @@ def get_dashboard_category(screenshot):
             #     there's more data below the most used heading, or
             #     the MOST_USED heading is not too close to the bottom of the screenshot; or
 
-             heads_df[HEADING_COLUMN].str.fullmatch(DAY_OR_WEEK_HEADING).any() and
-             text_df.shape[0] >= heads_df[heads_df[HEADING_COLUMN] == DAY_OR_WEEK_HEADING].index[0] + 1 and
-             text_df[text_df.index == heads_df[heads_df[HEADING_COLUMN] == DAY_OR_WEEK_HEADING].index[0] + 1][
+             heads_df[HEADING_COLUMN].str.fullmatch(DAY_OR_WEEK_L_HEADING + "|" + DAY_OR_WEEK_C_HEADING).any() and
+             text_df.shape[0] >= heads_df[heads_df[HEADING_COLUMN].isin([DAY_OR_WEEK_L_HEADING, DAY_OR_WEEK_C_HEADING])].index[0] + 1 and
+             text_df[text_df.index == heads_df[heads_df[HEADING_COLUMN].isin([DAY_OR_WEEK_L_HEADING, DAY_OR_WEEK_C_HEADING])].index[0] + 1][
                  'text'].str.contains(MISREAD_TIME_FORMAT_IOS).any()) or (
             # Found a 'day or week' heading, and
             #     the very next row matches a (misread) TIME format; or
@@ -251,8 +262,8 @@ def get_dashboard_category(screenshot):
             text_df[
                 (text_df['text'].str.match(MISREAD_TIME_FORMAT_IOS, na=False)) &
                 (text_df['left'] > 0.15 * screenshot.width) &
-                ((heads_df.loc[heads_df[HEADING_COLUMN].eq(DAY_OR_WEEK_HEADING)].iloc[0].name if not
-                  heads_df[heads_df[HEADING_COLUMN].eq(DAY_OR_WEEK_HEADING)].empty else 0) < text_df.index) &
+                ((heads_df.loc[heads_df[HEADING_COLUMN].isin([DAY_OR_WEEK_L_HEADING, DAY_OR_WEEK_C_HEADING])].iloc[0].name if not
+                  heads_df[heads_df[HEADING_COLUMN].isin([DAY_OR_WEEK_L_HEADING, DAY_OR_WEEK_C_HEADING])].empty else 0) < text_df.index) &
                 (text_df.index < (heads_df.loc[heads_df[HEADING_COLUMN].eq(PICKUPS_HEADING)].iloc[0].name if not
                  heads_df[heads_df[HEADING_COLUMN].eq(PICKUPS_HEADING)].empty else text_df.shape[0]))
             ].shape[0] >= 2):
@@ -400,7 +411,7 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
         if not heading_row.empty:
             screenshot.set_total_heading_found(True)
             day_below_heading_row = headings_df[
-                (headings_df.index == heading_row.index[-1] + 1) & (headings_df[HEADING_COLUMN] == DAY_OR_WEEK_HEADING)]
+                (headings_df.index == heading_row.index[-1] + 1) & (headings_df[HEADING_COLUMN].isin([DAY_OR_WEEK_L_HEADING, DAY_OR_WEEK_C_HEADING]))]
             if not day_below_heading_row.empty:
                 row_above_total = day_below_heading_row.iloc[0]
             else:
@@ -724,8 +735,8 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
 
                 current_heading = headings_df[HEADING_COLUMN][i]
                 if current_heading in headings_above:
-                    # Used to include [DAY_OR_WEEK_HEADING, DATE_HEADING],
-                    # but the region we want is never right below either of those headings; such a region always includes
+                    # Used to include [DATE_HEADING],
+                    # but the region we want is never right below this heading; such a region always includes
                     # one of the graphs on iOS Dashboard, which contains text that can be misinterpreted as app names or
                     # numbers (which impedes app data extraction).
                     crop_top_heading = row_text + "'"

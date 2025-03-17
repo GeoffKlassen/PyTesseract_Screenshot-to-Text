@@ -259,31 +259,42 @@ def get_headings(screenshot, time_fmt_short):
         if any(OCRScript_v3.levenshtein_distance(row_text, day) <= OCRScript_v3.error_margin(row_text, day) for day in day_types):
             # Row contains a day name
             df.loc[i, HEADING_COLUMN] = DAY_NAME_HEADING
+
         elif re.search(screenshot.date_format, row_text, re.IGNORECASE):
             # Row contains date text
-            df.loc[i, HEADING_COLUMN] = DATE_HEADING
+            if df.loc[i, 'left'] < int(0.15 * screenshot.width):
+                df.loc[i, HEADING_COLUMN] = DATE_L_HEADING
+            else:
+                df.loc[i, HEADING_COLUMN] = DATE_C_HEADING
+
         elif len(row_words.intersection(DAY_ABBREVIATIONS[lang])) >= 3:
             df.loc[i, HEADING_COLUMN] = DAYS_AXIS_HEADING
+
         elif any(OCRScript_v3.levenshtein_distance(row_text, key) <= OCRScript_v3.error_margin(row_text, key)
                  for key in KEYWORDS_FOR_SCREEN_TIME[lang]):
             # Row contains 'Screen time'
             df.loc[i, HEADING_COLUMN] = SCREENTIME_HEADING
+
         elif any(OCRScript_v3.levenshtein_distance(row_text[:len(key)], key) <= OCRScript_v3.error_margin(key)
                  for key in KEYWORDS_FOR_MOST_USED_APPS[lang]):
             # Row contains 'Most used'
             df.loc[i, HEADING_COLUMN] = MOST_USED_APPS_HEADING
+
         elif any(OCRScript_v3.levenshtein_distance(row_text, key) <= OCRScript_v3.error_margin(row_text, key)
                  for key in KEYWORDS_FOR_NOTIFICATIONS_RECEIVED[lang]) and row_text_has_no_digits:
             # Row contains 'Notifications'
             df.loc[i, HEADING_COLUMN] = NOTIFICATIONS_HEADING
+
         elif any(OCRScript_v3.levenshtein_distance(row_text, key) <= OCRScript_v3.error_margin(row_text, key)
                  for key in KEYWORDS_FOR_MOST_NOTIFICATIONS[lang]) and row_text_has_no_digits:
             # Row contains 'Most Notifications'
             df.loc[i, HEADING_COLUMN] = MOST_NOTIFICATIONS_HEADING
+
         elif any(OCRScript_v3.levenshtein_distance(row_text, key) <= OCRScript_v3.error_margin(row_text, key)
                  for key in KEYWORDS_FOR_TIMES_OPENED[lang]) and row_text_has_no_digits:
             # Row contains 'Times Opened'
             df.loc[i, HEADING_COLUMN] = UNLOCKS_HEADING
+
         elif any(OCRScript_v3.levenshtein_distance(row_text, key) <= OCRScript_v3.error_margin(row_text, key)
                  for key in KEYWORDS_FOR_VIEW_MORE[lang]):
             # Row contains 'View More'
@@ -293,9 +304,11 @@ def get_headings(screenshot, time_fmt_short):
                  for key in KEYWORDS_FOR_2018_SCREENTIME[lang]):
             # Row contains
             df.loc[i, HEADING_COLUMN] = OLD_SCREENTIME_HEADING
+
         elif any(OCRScript_v3.levenshtein_distance(row_text, key) <= OCRScript_v3.error_margin(row_text, key)
                  for key in KEYWORDS_FOR_2018_MOST_USED[lang]):
             df.loc[i, HEADING_COLUMN] = OLD_MOST_USED_HEADING
+
         elif any(OCRScript_v3.levenshtein_distance(row_text, key) <= OCRScript_v3.error_margin(row_text, key)
                  for key in KEYWORDS_FOR_2018_UNLOCKS[lang]):
             df.loc[i, HEADING_COLUMN] = OLD_UNLOCKS_HEADING
@@ -587,6 +600,8 @@ def filter_time_text(text, conf, hr_f, min_f):
     text2 = re.sub(r"br|Ar", "hr", text2)
     text2 = re.sub(r"(?<=[\d\s])ming$", "mins", text2)
     text2 = re.sub(r"ii", "11", text2, re.IGNORECASE)
+    text2 = re.sub(r"5S(?=\s?h)", "5", text2, re.IGNORECASE)
+
     text2 = re.sub(r"((?<=\d\s)tr)|((?<=\d)tr)", "hr", text2)
     text2 = re.sub(r"((?<=\d\s)hy)|((?<=\d)hy)", "hr", text2)
     text2 = re.sub(r"((?<=\d\s)ty)|((?<=\d)ty)", "hr", text2)
@@ -606,6 +621,7 @@ def filter_time_text(text, conf, hr_f, min_f):
     text2 = replace_misread_digit('(s|S)', '5', text2)
     text2 = replace_misread_digit('(o|O)', '0', text2)
     text2 = replace_misread_digit('(b)', '6', text2)
+    text2 = replace_misread_digit('(Z)', '2', text2)
 
     text2 = re.sub(r"[^0-9a-zA-Z\s]", '', text2)
 
@@ -996,9 +1012,22 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
                     # print(f"App row found: '{text_df['text'][i]}'. ")
 
                     if crop_top == 0:
-                        if i > 0 and ((abs(text_df['left'][i-1] - text_df['left'][i]) < int(0.01*screenshot.width) or
-                                       abs(text_df['right'][i-1] - text_df['right'][i]) < int(0.01*screenshot.width)) and
-                                      abs(text_df['height'][i-1] - text_df['height'][i]) < int(0.02*screenshot.width)):
+
+                        if i > 1 and sum([
+                            abs(text_df['left'][i - 2] - text_df['left'][i]) < int(0.01 * screenshot.width),
+                            abs(text_df['right'][i - 2] - text_df['right'][i]) < int(0.01 * screenshot.width),
+                            abs(text_df['height'][i - 2] - text_df['height'][i]) < int(0.02 * screenshot.width)
+                            ]) >= 2:
+                            # print(f"Detected possible app row above it: '{text_df['text'][i-1]}'. "
+                            #       f"Setting top of crop region to the top of this row.")
+                            crop_top = max(0, int(text_df['top'][i - 2] - 0.02 * screenshot.width))
+                            crop_top_text = f"above '{text_df['text'][i - 2]}'"
+
+                        elif i > 0 and sum([
+                            abs(text_df['left'][i - 1] - text_df['left'][i]) < int(0.01 * screenshot.width),
+                            abs(text_df['right'][i - 1] - text_df['right'][i]) < int(0.01 * screenshot.width),
+                            abs(text_df['height'][i - 1] - text_df['height'][i]) < int(0.02 * screenshot.width)
+                            ]) >= 2:
                             # print(f"Detected possible app row above it: '{text_df['text'][i-1]}'. "
                             #       f"Setting top of crop region to the top of this row.")
                             crop_top = max(0, int(text_df['top'][i-1] - 0.02*screenshot.width))

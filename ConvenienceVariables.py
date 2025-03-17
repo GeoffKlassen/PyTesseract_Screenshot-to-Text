@@ -31,8 +31,10 @@ should equal the total pickups, and on Android the total unlocks is generally lo
 HEADING_COLUMN = 'heading'
 OS_COLUMN = 'OS'
 
-DAY_OR_WEEK_HEADING = 'day or week'
-DATE_HEADING = 'date'
+DAY_OR_WEEK_L_HEADING = 'day or week (left)'
+DAY_OR_WEEK_C_HEADING = 'day or week (centred)'
+DATE_L_HEADING = 'date (left)'
+DATE_C_HEADING = 'date (centred)'
 SCREENTIME_HEADING = SCREENTIME
 NOTIFICATIONS_HEADING = NOTIFICATIONS
 
