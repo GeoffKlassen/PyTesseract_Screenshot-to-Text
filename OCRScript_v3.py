@@ -44,7 +44,7 @@ class TeeOutput:
 
 
 # Replace sys.stdout with your custom TeeOutput
-sys.stdout = TeeOutput(f"{study_to_analyze[NAME]} output log.txt")
+sys.stdout = TeeOutput(f"{study_to_analyze[NAME]} output log laptop.txt")
 
 
 def compile_list_of_urls(df, url_cols, num_urls_remaining,
@@ -404,7 +404,8 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+',
     df_words = df_words[df_words['conf'] > 0]
     df_words = df_words.fillna('')
     df_words = df_words[(df_words['text'] != '') & (df_words['text'] != ' ')]
-    df_words['text'] = (df_words['text'].apply(ensure_text_is_string))
+    # df_words['text'] = (df_words['text'].apply(ensure_text_is_string))
+    df_words['text'] = df_words['text'].astype(str)
     df_words = df_words[~df_words['text'].str.contains('^[aemu]+$')] if df_words.shape[0] > 0 else df_words
 
     # Sometimes tesseract misreads (Italian) "Foto" as "mele"/"melee"
@@ -1058,7 +1059,7 @@ def update_eta(ss_start_time, idx):
         _min = int((sec / 60) % 60)
         _sec = int(sec % 60)
         if _hr > 0:
-            str_hr = str(_hr) + f" hour{'s' if _hr > 1 else ''}"
+            str_hr = str(_hr) + f", hour{'s' if _hr > 1 else ''}"
             str_min = " " + str(((_min + 4) // 5) * 5) + " minutes"
         else:
             str_hr = ""

@@ -68,19 +68,19 @@ KEYWORDS_FOR_HOURS_AXIS = ['00 06', '06 12', '12 18',
                            r'^0\s.*12|6\s.*18$']  # TODO This method is a bit messy
 
 # TODO Fill this in and make sure it's all correct, then rewrite the code to check for 2+ occurrences of these strings
-KEYWORDS_FOR_HOURS_AXIS_2 = {ENG: {"0", "00", "6", "06", "12", "18",  # Number only
+KEYWORDS_FOR_HOURS_AXIS_2 = {ENG: {"00", "06", "12", "18",  # Number only
                                    "AM", "PM", "6AM", "12PM", "6PM", "12AM",  # AM/PM included
                                    "am", "pm", "6am", "12pm", "6pm", "12am",  # am/pm included
                                    "42", "48", "112", "GAM"},  # Common Misreadings
 
-                             ITA: {"0", "00", "6", "06", "12", "18",  # Number only
+                             ITA: {"00", "06", "12", "18",  # Number only
                                    "AM", "PM", "6AM", "12PM", "6PM", "12AM",  # AM/PM included
                                    "mele", "112", "118", "GAM"},  # Common misreadings
 
-                             GER: {"0", "00", "6", "06", "12", "18",  # Number only
+                             GER: {"00", "06", "12", "18",  # Number only
                                    "Uhr" "00 Uhr", "06 Uhr", "12 Uhr", "18 Uhr"},  # Uhr included
 
-                             FRA: {"0", "00", "6", "06", "12", "18",  # Number only
+                             FRA: {"00", "06", "12", "18",  # Number only
                                    "AM", "PM", "6AM", "12PM", "6PM", "12AM",  # AM/PM included
                                    "GAM"}
                             }
@@ -181,8 +181,9 @@ def get_headings(screenshot, rescale_df=pd.DataFrame()):
                  for keyword in KEYWORDS_FOR_NOTIFICATIONS[lang]):
             df.loc[i, HEADING_COLUMN] = NOTIFICATIONS_HEADING
 
-        elif len(row_words.intersection(KEYWORDS_FOR_HOURS_AXIS_2[lang])) >= 2:
-            print("I found the hours axis with the new method!")
+        elif len(row_words.intersection(KEYWORDS_FOR_HOURS_AXIS_2[lang])) >= 2 and \
+                not bool(re.search(MISREAD_TIME_FORMAT_IOS, row_text)):
+            print(f"I found the hours axis with the new method! it is {row_text}")
             df.loc[i, HEADING_COLUMN] = HOURS_AXIS_HEADING
 
         elif re.search('|'.join(KEYWORDS_FOR_HOURS_AXIS), row_text, re.IGNORECASE):

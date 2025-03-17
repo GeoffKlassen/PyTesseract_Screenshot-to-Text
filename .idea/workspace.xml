@@ -5,9 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4e170b4d-2af2-47c5-9e6d-e8a288c22989" name="Changes" comment="Trying out a new ETA calculation, based only on the 50 most recent screenshots (of each OS version), instead of averaging ALL of them.">
+      <change beforePath="$PROJECT_DIR$/.idea/OCRScript_v3.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/OCRScript_v3.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/OCRScript_v3.py" beforeDir="false" afterPath="$PROJECT_DIR$/OCRScript_v3.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/RuntimeValues.py" beforeDir="false" afterPath="$PROJECT_DIR$/RuntimeValues.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/iOSFunctions.py" beforeDir="false" afterPath="$PROJECT_DIR$/iOSFunctions.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -31,17 +33,17 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Python.AndroidFunctions.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.OCRScript_v3.executor&quot;: &quot;Run&quot;,
-    &quot;Python.RuntimeValues.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;reference.idesettings.debugger.python&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Python.AndroidFunctions.executor": "Debug",
+    "Python.OCRScript_v3.executor": "Debug",
+    "Python.RuntimeValues.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "master",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
   }
-}</component>
+}]]></component>
   <component name="RunManager">
     <configuration name="OCRScript_v3" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="OCRScript_v3" />
@@ -133,18 +135,23 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/ParticipantClass.py</url>
-          <line>461</line>
+          <line>469</line>
           <option name="timeStamp" value="28" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/ParticipantClass.py</url>
-          <line>407</line>
+          <line>415</line>
           <option name="timeStamp" value="29" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/ParticipantClass.py</url>
-          <line>457</line>
+          <line>465</line>
           <option name="timeStamp" value="30" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/OCRScript_v3.py</url>
+          <line>399</line>
+          <option name="timeStamp" value="31" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
