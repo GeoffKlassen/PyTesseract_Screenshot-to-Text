@@ -865,10 +865,10 @@ def extract_app_info(screenshot, image, coordinates, scale):
 
     """Sometimes the cropped rescan misses app numbers that were found on the initial scan.
                     Merge these app numbers from the initial scan into the rescan."""
-    # Select only numbers from the initial scan that have high confidence (above conf_limit)
+    # Select only numbers from the initial scan that have high confidence (above keep_text_conf)
     # and that lie in the 'app info' cropped region
     # text.loc[text['text'].str.match(r'^[xX]+\s?[xX]*$'), 'text'] = 'X'
-    keep_text_conf = 70
+    keep_text_conf = 65
     truncated_initial_scan = text[(text['conf'] > keep_text_conf) | (text['text'] == 'X')]
     truncated_initial_scan = truncated_initial_scan[(truncated_initial_scan['left'] > crop_left) &
                                                     (truncated_initial_scan['top'] > crop_top) &

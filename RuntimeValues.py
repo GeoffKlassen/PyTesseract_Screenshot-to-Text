@@ -52,7 +52,7 @@ save_downloaded_images = True  # If True, images downloaded at runtime are saved
 avicenna_user = "geoff.klassen@usask.ca"
 avicenna_password = "Phi1*618ah"
 
-show_images_at_runtime = False
+show_images_at_runtime = True
 # If True, images of the screenshots will be shown during runtime (mostly for debugging).
 
 app_area_scale_factor = 1
@@ -62,7 +62,7 @@ app_area_scale_factor = 1
 conf_limit = 80
 ERR_CONFIDENCE = f"ERR Values below {int(conf_limit)}% confidence"
 
-image_lower_bound = 1
+image_lower_bound = 359
 # Lowest file index to analyze when running the code
 image_upper_bound = None
 # Highest file index to analyze when running the code

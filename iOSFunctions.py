@@ -520,7 +520,7 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
                                               fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
 
             kernel_dim = int(screenshot.width / 500)
-            kernel_dim -= 1 if kernel_dim % 2 == 0 else 0
+            kernel_dim += 1 if kernel_dim % 2 == 0 else 0
             kernel_size = (kernel_dim, kernel_dim)
             scaled_cropped_image = cv2.GaussianBlur(scaled_cropped_image, kernel_size, 0)
 

@@ -154,9 +154,9 @@ PICKUP_COLS = 'pickups'
 NOTIFY_COLS = 'notifications'
 URL_COLUMNS = 'urls'
 
-MISREAD_TIME_FORMAT_IOS = (r'\b[12T]?[0-9toAQ]\s?[hn]\s?[1-5tA]?[0-9tA]\s?mi?n?\b'
+MISREAD_TIME_FORMAT_IOS = (r'\b[12T]?[0-9toAQ]\s?[hn]\s?[1-5tA]?[0-9tA]\s?[Mm]i?n?\b'
                            r'|\b[12T]?[0-9toA]\s?[hn]\b'
-                           r'|\b[1-5tA]?[0-9itA]\s?mi?n?\b'
+                           r'|\b[1-5tA]?[0-9itA]\s?[Mm]i?n?\b'
                            r'|\b[1-5]?[0-9O]\s?s\b')
 MISREAD_NUMBER_FORMAT = r'\b[0-9ASLlTK]+\b'
 MISREAD_TIME_OR_NUMBER_FORMAT = '|'.join([MISREAD_TIME_FORMAT_IOS, MISREAD_NUMBER_FORMAT])
