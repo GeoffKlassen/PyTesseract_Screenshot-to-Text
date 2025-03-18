@@ -98,7 +98,7 @@ KEYWORDS_FOR_YESTERDAY = {
 
 KEYWORDS_FOR_WEEKDAY_NAMES = {
     ENG: ['monday', 'tuesday',  'wednesday', 'thursday',   'friday',   'saturday', 'sunday',
-          'Mon',    'Tue',      'Wed',       'Thu'         'Fri'       'Sat'       'Sun'     ],
+          'Mon',    'Tue',      'Wed',       'Thu',        'Fri',      'Sat',      'Sun'     ],
     ITA: ['lunedi', 'martedi',  'mercoledi', 'giovedi',    'venerdi',  'sabato',   'domenica'],
     GER: ['montag', 'dienstag', 'mittwoch',  'donnerstag', 'freitag',  'samstag',  'sonntag' ],
     FRA: ['lundi',  'mardi',    'mercredi',  'jeudi',      'vendredi', 'samedi',   'dimanche']

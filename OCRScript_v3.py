@@ -90,9 +90,9 @@ def compile_list_of_urls(df, url_cols, num_urls_remaining,
                            IMG_URL: url}
                 url_df = pd.concat([url_df, pd.DataFrame([new_row])], ignore_index=True)
                 if url_df.shape[0] >= num_urls_remaining > 0:
-                    return url_df
+                    return url_df, False
 
-    return url_df
+    return url_df, True
 
 
 def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
@@ -357,9 +357,12 @@ def merge_df_rows_by_line_num(df):
     df['right'] = df['left'] + df['width']
     df['bottom'] = df['top'] + df['height']
 
-    if df['text'].eq("X").any():
-        df['next_top'] = df['top'].shift(-1)
-        df.loc[(df['text'] == "X") & (df['bottom'] < df['next_top']), 'line_num'] = 0
+    df['next_top'] = df['top'].shift(-1)
+
+    df.loc[(df['text'] == "X") & (df['bottom'] < df['next_top']), 'line_num'] = 0
+
+    df.drop(['next_top'], axis=1, inplace=True)
+
 
     df_rows_merged = df.groupby(['page_num',
                                  'block_num',
@@ -412,6 +415,10 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+',
         df_words = pytesseract.image_to_data(img, output_type='data.frame', config=cmd_config)
     else:
         df_words = pytesseract.image_to_data(img, output_type='data.frame')
+
+    df_words['next_text'] = df_words['text'].shift(-1)
+    df_words['next_line_num'] = df_words['line_num'].shift(-1)
+
     df_words = df_words.replace({remove_chars: ''}, regex=True)
     df_words = df_words.replace({r'é': 'e'}, regex=True)  # For app name "Pokémon GO", etc.
     df_words = df_words.replace({r'^[xX]+\s?[xX]*$': 'X'}, regex=True)
@@ -420,7 +427,18 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+',
     df_words = df_words[(df_words['text'] != '') & (df_words['text'] != ' ')]
     df_words['text'] = (df_words['text'].apply(ensure_text_is_string))
     df_words['text'] = df_words['text'].apply(lambda x: re.sub(r'(?<=[26G\s][aApP])([mM])(?=[126G])', r'\1 ', x))
-    df_words = df_words[~df_words['text'].str.contains('^[aemu]+$')] if df_words.shape[0] > 0 else df_words
+
+    valid_day_abbreviations = {string for value in DAY_ABBREVIATIONS.values() for string in value if len(string) > 1}
+    if df_words.shape[0] > 0:
+        df_words = df_words[~df_words['text'].str.contains('^[aemu]+$')]
+        # Remove words that only contain aemu's (these words are often misreadings of the graph 'dash' lines as words)
+
+        df_words = df_words[~((df_words['text'].str.len() == 1) &
+                              (df_words['next_text'].isin(valid_day_abbreviations)) &
+                              (df_words['line_num'].eq(df_words['next_line_num'])))]
+        # This command helps to remove the leading '<' character from a GOOGLE date row, which causes the row's
+        # centre to be shifted to the left (meaning it wouldn't line up with the other centred headings on the screenshot,
+        # which is used to detect the GOOGLE Android version)
 
     # Sometimes tesseract misreads (Italian) "Foto" as "mele"/"melee"
     df_words['text'] = df_words['text'].replace({r'^melee$|^mele$': 'Foto'}, regex=True)
@@ -446,6 +464,7 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+',
                                                                     df_words.loc[idx, 'height']))
 
     df_words.drop(index=x_rows_to_drop, inplace=True)
+    df_words.drop(columns=['next_text', 'next_line_num'], inplace=True)
     df_words.reset_index(drop=True, inplace=True)
 
     df_lines = merge_df_rows_by_line_num(df_words)
@@ -932,7 +951,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
     # any text that it missed (or whose confidence wasn't high enough).
     if not app_info_scan_1.empty:
         if screenshot.device_os_detected == ANDROID:
-            start_row = app_info_scan_1.iloc[0]['top']
+            start_row = min(image_missed_text.shape[0] - 1, app_info_scan_1.iloc[0]['top'])
             for r in range(start_row, 0, -1):
                 if np.all(image[r, :] == image[r, 0]) and np.all(image[r, 0] != bg_colour):
                     image_missed_text = cv2.rectangle(image_missed_text, (0, 0), (image.shape[1], r), bg_colour, -1)
@@ -1309,13 +1328,13 @@ if __name__ == '__main__':
     for survey in survey_list:
         print(f"Compiling URLs from {survey[CSV_FILE]}...", end='')
         survey_csv = pd.read_csv(survey[CSV_FILE])
-        current_list = compile_list_of_urls(df=survey_csv,
+        current_list, full_survey = compile_list_of_urls(df=survey_csv,
                                             url_cols=survey[URL_COLUMNS],
                                             num_urls_remaining=num_urls_to_get,
                                             date_col=date_record_col_name,
                                             id_col=user_id_col_name,
                                             device_id_col=device_id_col_name)
-        print(f"Done.\n{current_list.shape[0]} URLs {'found' if num_urls_to_get > current_list.shape[0] else 'taken'}.")
+        print(f"Done.\n{current_list.shape[0]} URLs {'found' if full_survey else 'taken'}.")
         url_list = pd.concat([url_list, current_list], ignore_index=True)
         num_urls_to_get -= current_list.shape[0]
         if url_list.shape[0] >= image_upper_bound > 0:
@@ -1682,13 +1701,13 @@ if __name__ == '__main__':
             cropped_image = cv2.GaussianBlur(cropped_image, ksize=(3, 3), sigmaX=0)
             scaled_cropped_image = cv2.resize(cropped_image,
                                               dsize=None,
-                                              fx=app_area_scale_factor,
-                                              fy=app_area_scale_factor,
+                                              fx=APP_AREA_SCALE_FACTOR,
+                                              fy=APP_AREA_SCALE_FACTOR,
                                               interpolation=cv2.INTER_AREA)
 
             # Extract app info from cropped image
             app_area_df = extract_app_info(current_screenshot, scaled_cropped_image, crop_coordinates,
-                                           app_area_scale_factor)
+                                           APP_AREA_SCALE_FACTOR)
             if android_version == GOOGLE:
                 app_area_df = app_area_df[app_area_df['left'] < int(0.7 * app_area_crop_width)]
 
@@ -1859,8 +1878,8 @@ if __name__ == '__main__':
             cropped_image = cv2.GaussianBlur(cropped_image, ksize=(3, 3), sigmaX=0)
             scaled_cropped_image = cv2.resize(cropped_image,
                                               dsize=None,
-                                              fx=app_area_scale_factor,
-                                              fy=app_area_scale_factor,
+                                              fx=APP_AREA_SCALE_FACTOR,
+                                              fy=APP_AREA_SCALE_FACTOR,
                                               interpolation=cv2.INTER_AREA)
 
             # Perform pre-scan to remove value bars below app names and fragments of app icons left of app names
@@ -1883,13 +1902,13 @@ if __name__ == '__main__':
 
             scaled_cropped_filtered_image = cv2.resize(cropped_filtered_image,
                                                        dsize=None,
-                                                       fx=app_area_scale_factor,
-                                                       fy=app_area_scale_factor,
+                                                       fx=APP_AREA_SCALE_FACTOR,
+                                                       fy=APP_AREA_SCALE_FACTOR,
                                                        interpolation=cv2.INTER_AREA)
 
             # Extract app info from cropped image
             app_area_df = extract_app_info(current_screenshot, scaled_cropped_filtered_image, crop_coordinates,
-                                           app_area_scale_factor)
+                                           APP_AREA_SCALE_FACTOR)
             if ERR_APP_DATA in current_screenshot.errors:
                 set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
                 continue
@@ -1909,7 +1928,7 @@ if __name__ == '__main__':
 
             columns_to_scale = ['left', 'top', 'width', 'height']
             confident_text_from_prescan.loc[:, columns_to_scale] = \
-                confident_text_from_prescan.loc[:, columns_to_scale].apply(lambda x: x * app_area_scale_factor).astype(
+                confident_text_from_prescan.loc[:, columns_to_scale].apply(lambda x: x * APP_AREA_SCALE_FACTOR).astype(
                     int)
             app_area_2_df = iOS.consolidate_overlapping_text(
                 pd.concat([app_area_df, confident_text_from_prescan], ignore_index=True))

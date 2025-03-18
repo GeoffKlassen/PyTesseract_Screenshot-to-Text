@@ -367,10 +367,12 @@ def get_android_version(screenshot):
 
     In version 1 (Samsung version), all headings appear on one scrollable page, in this order:
         Screen time,   Most used apps,   Notifications received,   Most notifications,   Unlocks
-    In version 2 (NEW Samsung version), all 3 categories are available, but there are no category headings.
+    In version 2 (NEW Samsung version), all 3 categories are available, but there are no category headings (i.e. no
+        word like "Screentime" above the screentime section).
 
     In version 3 (Google version), each category is its own page, with the heading selected from a drop-down menu. The headings to choose from are:
         Screen time,   Notifications received,   Times opened
+        All rows classified as a 'heading' are centred in the image (e.g., "Screen time", "Yesterday", "Sun Jan 1", etc.)
     In version 4 (2018 version), the user can choose to view an activity summary of either 'Today' or 'Last 7 days'.
     Thus, the data cannot be for one complete 24-hour day, and are thus not usable for the HappyB study.
     However, the data from these screenshots will still be extracted and saved. The headings are:
@@ -843,7 +845,7 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
         rows_with_app_numbers = text_df[(text_df.index > last_index_headings) &
                                         (text_df['text_with_digits_replaced'].apply(
                                             lambda x: matches_a_value_pattern(x, value_formats))) &
-                                        (text_df['left'] > int(0.1 * screenshot.width))]
+                                        (text_df['left'] > int(0.08 * screenshot.width))]  # 0.8 settled on through trial and error
         if not rows_with_app_numbers.empty:
             row_closest_to_median_left = rows_with_app_numbers.loc[(rows_with_app_numbers['left'] - rows_with_app_numbers['left'].median()).abs().idxmin()]
             crop_left_text = f"left of '{row_closest_to_median_left['text']}' (median left)"
@@ -1325,16 +1327,20 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                 continue
 
             app_name, app_number = split_app_name_and_screen_time(row_text)
-            if app_name != '' and (app_number == '' and row_left + crop_left > (0.4 * screenshot.width)):
-                # Sometimes there are 'pill' shapes above the app time; these can be misread as app names.
-                # Ignore such apparent app names whose left edges lie beyond 40% of the screenshot width.
-                continue
-            if android_version == GOOGLE and app_name != '' and previous_text == NAME and \
-                    row_top - previous_row_bottom < row_height and len(app_names) - 1 <= max_apps:
-                num_missed_app_values += 1
-                # Sometimes an app time that appears just below an app name can be interpreted as an app name,
-                # even after filtering. Ignore such misread app times.
-                continue
+            if app_name != '':
+                if app_number == '' and row_left + crop_left > (0.4 * screenshot.width):
+                    # Sometimes there are 'pill' shapes above the app time; these can be misread as app names.
+                    # Ignore such apparent app names whose left edges lie beyond 40% of the screenshot width.
+                    continue
+                if android_version == GOOGLE and previous_text == NAME and \
+                        row_top - previous_row_bottom < row_height and len(app_names) - 1 <= max_apps:
+                    num_missed_app_values += 1
+                    # Sometimes an app time that appears just below an app name can be interpreted as an app name,
+                    # even after filtering. Ignore such misread app times.
+                    continue
+                if all(char in {'o', 'O', ' '} for char in app_name):
+                    # Sometimes the Home button (looks like 'O') gets misread as text
+                    continue
 
             build_app_and_number_dfs(app_name, app_number)
             previous_row_bottom = row_bottom
@@ -1373,6 +1379,9 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                     # (e.g. "14" instead of "14 notifications").
                     app_number = app_name.split()[-1]
                     app_name = ' '.join(app_name.split()[:-1])
+                elif all(char in {'o', 'O', ' '} for char in app_name):
+                    # Sometimes the Home button (looks like 'O') gets misread as text
+                    continue
             build_app_and_number_dfs(app_name, app_number)
 
     elif category == UNLOCKS:
@@ -1394,6 +1403,10 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                     # not an app name, so it should be ignored
                     previous_row_bottom = row_bottom
                     continue
+                elif all(char in {'o', 'O', ' '} for char in row_text):
+                    # Sometimes the Home button (looks like 'O') gets misread as text
+                    continue
+
 
                 # moe_unlocks = round(np.log(len(row_text)))
                 row_text_filtered = re.sub(r'\d+', '#', row_text)
