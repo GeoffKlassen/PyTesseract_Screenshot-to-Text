@@ -167,7 +167,7 @@ PROPER_TIME_OR_NUMBER_FORMAT = '|'.join([PROPER_TIME_FORMAT, PROPER_NUMBER_FORMA
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
-BROWN = (165, 165, 165)  # Not used as a pixel colour, just used as a shorthand for the colour name
+OTHER = (165, 165, 165)  # Not used as a pixel colour, just used as a shorthand for backgrounds that aren't white or black
 
 APP = 'app'
 # NAME = 'name'  # Already defined above

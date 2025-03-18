@@ -736,6 +736,16 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
     crop_left = int(0.15 * screenshot.width) # The app icons are typically within the leftmost 15% of the screenshot
     crop_right = int(0.87 * screenshot.width) # Symbols (arrows, hourglass) typically appear in the rightmost 87% of the screenshot
 
+    # Sometimes multiple categories of data appear in the same screenshot. If the heading of the section for which we're
+    # trying to extract data appears anywhere in the screenshot, then we should start our search for app-level data
+    # below this main heading. Otherwise, we may accidentally find app data from a different category.
+    if category in headings_df[HEADING_COLUMN].values:
+        # Find the index of the first row where HEADING_COLUMN equals 'category'
+        index_to_keep = headings_df[headings_df[HEADING_COLUMN] == category].index[0]
+
+        # Slice the DataFrame to remove rows above that index
+        headings_df = headings_df.loc[index_to_keep:]
+
     headings_above_df = headings_df[headings_df[HEADING_COLUMN].isin(headings_above)]
     headings_below_df = headings_df[headings_df[HEADING_COLUMN].eq(heading_below)]
 
@@ -829,6 +839,13 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
                 text[['left', 'top', 'width', 'height']] = (text[['left', 'top', 'width', 'height']] / mult).astype(int)
                 headings_df = get_headings(screenshot, text)
 
+                if category in headings_df[HEADING_COLUMN].values:
+                    # Find the index of the first row where HEADING_COLUMN equals 'category'
+                    index_to_keep = headings_df[headings_df[HEADING_COLUMN] == category].index[0]
+
+                    # Slice the DataFrame to remove rows above that index
+                    headings_df = headings_df.loc[index_to_keep:]
+
             elif attempt == 2:
                 print("2nd attempt: heading above app list was not found. Image will not be cropped.")
                 return screenshot.grey_image, [None, None, None, None]
@@ -875,7 +892,7 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
     # Crop the image and apply a different monochrome threshold (improves chances of catching missed text)
     cropped_grey_image = screenshot.grey_image[crop_top:crop_bottom, crop_left:crop_right]
     # Create a new monochrome image with a different threshold to ensure the bars below the app names show up well.
-    if screenshot.is_light_mode:
+    if screenshot.bg_colour == WHITE:
         _, cropped_filtered_image = cv2.threshold(cropped_grey_image, 220, 255, cv2.THRESH_BINARY)
     else:
         _, cropped_filtered_image = cv2.threshold(cropped_grey_image, 50, 180, cv2.THRESH_BINARY)
@@ -902,12 +919,12 @@ def erase_value_bars_and_icons(screenshot, df, image):
     can't get read as text. (Pickups images have the same bars, but they are coloured, so the filtering steps in
     load_and_process_image removes these.)
 
-    :param screenshot: The screenshot object for the given df (contains is_light_mode)
+    :param screenshot: The screenshot object for the given df (contains the image's background colour)
     :param df: The prescan text to use for finding app names
     :param image: The cropped app-area image to draw boxes on (to cover up the bars and app icons)
     :return: The image with bars and app icons removed.
     """
-    background_colour = WHITE if screenshot.is_light_mode else BLACK
+    background_colour = screenshot.bg_colour
     top_left_coordinates = []
 
     def find_and_erase_bar_and_icon(r, c, h_max, erase_icon=True):

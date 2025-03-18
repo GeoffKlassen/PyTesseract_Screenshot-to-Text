@@ -145,7 +145,8 @@ class Screenshot:
         self.scale_factor = None
         self.height = 0
         self.width = 0
-        self.is_light_mode = None
+        # self.is_light_mode = None
+        self.bg_colour = None
         self.text = pd.DataFrame
         self.words_df = pd.DataFrame
         self.text_hash = None
@@ -188,8 +189,8 @@ class Screenshot:
     def set_dimensions(self, dim):
         self.height, self.width = dim[0], dim[1]
 
-    def set_is_light_mode(self, tf):
-        self.is_light_mode = tf
+    # def set_is_light_mode(self, tf):
+    #     self.is_light_mode = tf
 
     def set_text(self, text):
         self.text = text
@@ -261,3 +262,6 @@ class Screenshot:
                     self.num_values_low_conf = num
                 elif error == ERR_MISSING_VALUE:
                     self.num_missed_values = num
+
+    def set_bg_colour(self, bg):
+        self.bg_colour = bg

@@ -192,15 +192,19 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
         return image, image
     # check if image is in lightmode or dark mode
     # threshold = 127  # Halfway between 0 and 255
-    brown_bg_threshold = 160
+    brown_bg_threshold = 65  # 160
     white_bg_threshold = 170
     average_pixel_colour = np.mean(image)
+    print(f"Average pixel colour is: {average_pixel_colour}")
     if average_pixel_colour > white_bg_threshold:
         bg_colour = WHITE
+        screenshot.set_bg_colour(WHITE)
     elif average_pixel_colour < brown_bg_threshold:
         bg_colour = BLACK
+        screenshot.set_bg_colour(BLACK)
     else:
-        bg_colour = BROWN
+        bg_colour = OTHER
+        screenshot.set_bg_colour(OTHER)
 
     remove_color_blocks_from_image(image, (bg_colour == WHITE))
 
@@ -217,9 +221,14 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
         bw_threshold = black_threshold if screenshot.device_os_detected == ANDROID else 70
         max_value = 180
     else:
-        # Settings for 'brown' mode.
+        # Settings for 'OTHER' mode.
         bw_threshold = 140
         max_value = 255
+
+    # for thresh in range(10, 250, 10):
+    #     (_, bw_img) = cv2.threshold(grey_img, thresh, max_value, cv2.THRESH_BINARY)
+    #     print(f"\n\nthreshold = {thresh}     bw_threshold = {bw_threshold}")
+    #     show_image(pd.DataFrame(columns=['left', 'width', 'top', 'height', 'conf', 'text' ]), bw_img)
 
     (_, bw_img) = cv2.threshold(grey_img, bw_threshold, max_value, cv2.THRESH_BINARY)
 
@@ -432,13 +441,16 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+',
     if df_words.shape[0] > 0:
         df_words = df_words[~df_words['text'].str.contains('^[aemu]+$')]
         # Remove words that only contain aemu's (these words are often misreadings of the graph 'dash' lines as words)
-
+        
+        df_words = df_words[~(df_words['text'] == "cai")]
+        # The icon for the app name "Character.AI" is the text 'c.ai'
+        
         df_words = df_words[~((df_words['text'].str.len() == 1) &
                               (df_words['next_text'].isin(valid_day_abbreviations)) &
                               (df_words['line_num'].eq(df_words['next_line_num'])))]
         # This command helps to remove the leading '<' character from a GOOGLE date row, which causes the row's
-        # centre to be shifted to the left (meaning it wouldn't line up with the other centred headings on the screenshot,
-        # which is used to detect the GOOGLE Android version)
+        # centre to be shifted to the left, meaning it wouldn't line up with the other centred headings on the screenshot
+        # (all headings on Google dashboard are centred in the image, which is used to set the Android version)
 
     # Sometimes tesseract misreads (Italian) "Foto" as "mele"/"melee"
     df_words['text'] = df_words['text'].replace({r'^melee$|^mele$': 'Foto'}, regex=True)
@@ -638,11 +650,11 @@ def get_day_type_in_screenshot(screenshot):
     date_pattern = get_date_regex(lang)
     dev_os = screenshot.device_os_detected
 
-    moe_yesterday = round(np.log(max((len(key) for key in KEYWORDS_FOR_YESTERDAY[lang]))))
-    moe_today = round(np.log(max((len(key) for key in KEYWORDS_FOR_TODAY[lang]))))
-    moe_weekday = round(np.log(max((len(key) for key in KEYWORDS_FOR_WEEKDAY_NAMES[lang]))))
-    moe_week_keyword = round(np.log(max((len(key) for key in KEYWORDS_FOR_WEEK[lang]))))
-    moe_day_before_yesterday = round(np.log(max((len(key) for key in KEYWORDS_FOR_DAY_BEFORE_YESTERDAY[lang]))))
+    # moe_yesterday = round(np.log(max((len(key) for key in KEYWORDS_FOR_YESTERDAY[lang]))))
+    # moe_today = round(np.log(max((len(key) for key in KEYWORDS_FOR_TODAY[lang]))))
+    # moe_weekday = round(np.log(max((len(key) for key in KEYWORDS_FOR_WEEKDAY_NAMES[lang]))))
+    # moe_week_keyword = round(np.log(max((len(key) for key in KEYWORDS_FOR_WEEK[lang]))))
+    # moe_day_before_yesterday = round(np.log(max((len(key) for key in KEYWORDS_FOR_DAY_BEFORE_YESTERDAY[lang]))))
     # moe = 'margin of error'
     # Set how close a spelling can be to a keyword in order for that spelling to be considered the (misread) keyword.
 
@@ -656,56 +668,59 @@ def get_day_type_in_screenshot(screenshot):
             #   (2) the next row contains a date, or
             #   (3) is Android; and
             # Row text does not come close to 'rest of the day' (or its variants)
-            lambda x: min(levenshtein_distance(row_word[:len(key)], key)
+            lambda x: any(levenshtein_distance(row_word[:len(key)], key) <= error_margin(key)
                           for row_word in str.split(x)[:2]
-                          for key in KEYWORDS_FOR_TODAY[lang])) <= moe_today) &
+                          for key in KEYWORDS_FOR_TODAY[lang]))) &
                              ((dev_os == ANDROID) |
                               (df['text'].str.contains(date_pattern, case=False)) |
                               (df['next_text'].str.contains(date_pattern, case=False))) & (
-                                     df['text'].apply(lambda x: min(levenshtein_distance(x, key) for key in
-                                                                    Android.KEYWORDS_FOR_REST_OF_THE_DAY[lang])) >
-                                     moe_today)]
+                                     df['text'].apply(lambda x: any(levenshtein_distance(x, key) <= error_margin(x, key)
+                                                                    for key in
+                                                                    Android.KEYWORDS_FOR_REST_OF_THE_DAY[lang])))]
 
         rows_with_yesterday = df[(df['text'].apply(
             # Row contains yesterday, and (1) also contains date or (2) the next row contains a date, or (3) is Android
             # (In Android, rows with day names are not guaranteed to be followed by a date.)
-            lambda x: min(levenshtein_distance(row_word[:len(key)], key)
+            lambda x: any(levenshtein_distance(row_word[:len(key)], key) <= error_margin(key)
                           for row_word in str.split(x)[0:1]
-                          for key in KEYWORDS_FOR_YESTERDAY[lang])) <= moe_yesterday) &
+                          for key in KEYWORDS_FOR_YESTERDAY[lang]))) &
                                  ((dev_os == ANDROID) |
                                   (df['text'].str.contains(date_pattern, case=False)) |
                                   (df['next_text'].str.contains(date_pattern, case=False)))]
 
         rows_with_day_before_yesterday = df[(df['text'].apply(
             # Row contains 'day before yesterday'
-            lambda x: min(levenshtein_distance(x, key)
-                          for key in KEYWORDS_FOR_DAY_BEFORE_YESTERDAY[lang])) <= moe_day_before_yesterday)]
+            lambda x: any(levenshtein_distance(x, key) <= error_margin(x, key)
+                          for key in KEYWORDS_FOR_DAY_BEFORE_YESTERDAY[lang])))]
         # 'Day before yesterday' text may only appear in Android screenshots
 
         rows_with_weekday = df[(df['text'].apply(
             # Row contains name of weekday, and (1) also contains date, or (2) the next row contains a date
-            lambda x: min(levenshtein_distance(str.split(x)[0], key)
-                          for key in KEYWORDS_FOR_WEEKDAY_NAMES[lang])) <= moe_weekday) &
+            lambda x: any(levenshtein_distance(str.split(x)[0], key) <= error_margin(str.split(x)[0], key)
+                          for key in KEYWORDS_FOR_WEEKDAY_NAMES[lang]))) &
                                ((df['text'].str.contains(date_pattern, case=False)) |
                                 (df['next_text'].str.contains(date_pattern, case=False)))]
         # Full (un-abbreviated) 'weekday' text may only appear in iOS screenshots'
 
         rows_with_week_keyword = df[(df['text'].apply(
             # Row contains one of the keywords for a week-format screenshot (e.g. Daily Average) (iOS only)
-            lambda x: min(levenshtein_distance(x, key) for key in KEYWORDS_FOR_WEEK[lang])) <= moe_week_keyword)]
+            lambda x: any(levenshtein_distance(x, key) <= error_margin(x, key) for key in KEYWORDS_FOR_WEEK[lang])))]
 
     if rows_with_yesterday.shape[0] > 0:
         print(f"Day text detected: '{rows_with_yesterday.iloc[0]['text']}'. "
               f"Setting image type to '{YESTERDAY}'.")
         return YESTERDAY, rows_with_yesterday
+
     elif rows_with_today.shape[0] > 0:
         print(f"Day text detected: '{rows_with_today.iloc[0]['text']}'. "
               f"Setting image type to '{TODAY}'.")
         return TODAY, rows_with_today
+
     elif rows_with_day_before_yesterday.shape[0] > 0:
         print(f"Day text detected: '{rows_with_day_before_yesterday.iloc[0]['text']}'. "
               f"Setting image type to '{DAY_BEFORE_YESTERDAY}.")
         return DAY_BEFORE_YESTERDAY, rows_with_day_before_yesterday
+
     elif rows_with_weekday.shape[0] > 0:
         print(f"Day text detected: '{rows_with_weekday.iloc[0]['text']}.' ", end='')
         if (screenshot.date_detected is not None
@@ -715,10 +730,12 @@ def get_day_type_in_screenshot(screenshot):
         else:
             print(f"Setting image type to '{DAY_OF_THE_WEEK}'.")
             return DAY_OF_THE_WEEK, rows_with_weekday
+
     elif rows_with_week_keyword.shape[0] > 0:
         print(f"Week text detected: '{rows_with_week_keyword.iloc[0]['text']}'. "
               f"Setting image type to '{WEEK}'.")
         return WEEK, rows_with_week_keyword
+
     else:
         print("No day/week text detected.")
         return None, None
@@ -858,7 +875,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
     :return:
     """
     text = screenshot.text
-    bg_colour = WHITE if is_light_mode else BLACK
+    bg_colour = screenshot.bg_colour
     lang = get_best_language(screenshot)
     crop_top, crop_left, crop_bottom, crop_right = coordinates[0], coordinates[1], coordinates[2], coordinates[3]
     remove_chars = r"[^a-zA-Z0-9+é:.!,()'&\-]+" if screenshot.device_os_detected == IOS else r"[^a-zA-Z0-9+é.!()'&\-]+"
@@ -1427,10 +1444,6 @@ if __name__ == '__main__':
 
             set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
             continue
-
-        is_light_mode = True if np.mean(grey_image) > 170 else False
-        current_screenshot.set_is_light_mode(is_light_mode)
-        # Light-mode images have an average pixel brightness above 170 (scale 0 to 255).
 
         # pytesseract does a better job of extracting text from images if the text isn't too big.
         if grey_image.shape[1] >= 2500:

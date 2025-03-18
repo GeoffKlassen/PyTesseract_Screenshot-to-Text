@@ -284,13 +284,15 @@ def get_headings(screenshot, time_fmt_short):
                  for key in KEYWORDS_FOR_2018_UNLOCKS[lang]):
             df.loc[i, HEADING_COLUMN] = OLD_UNLOCKS_HEADING
 
-        elif (bool(re.match(time_fmt_short, row_text)) and df['left'][i] < 0.15 * screenshot.width or
-                (not re.fullmatch(r'#+', row_text_hash_digits_no_spaces) and
-                 any(OCRScript_v3.levenshtein_distance(row_text_hash_digits_no_spaces, key.replace(' ', '')) <=
-                     OCRScript_v3.error_margin(row_text_hash_digits_no_spaces, key.replace(' ', ''))
-                     for key in GOOGLE_SCREENTIME_FORMATS[lang]) and
-                 abs(centre_of_row - (0.5 * screenshot.width)) < (0.1 * screenshot.width))) and \
-                not df[HEADING_COLUMN].str.contains(TOTAL_SCREENTIME).any():
+        elif ((bool(re.match(time_fmt_short, row_text))
+                      and df['left'][i] < 0.15 * screenshot.width
+                  or (not re.fullmatch(r'#+', row_text_hash_digits_no_spaces)
+                      and any(OCRScript_v3.levenshtein_distance(row_text_hash_digits_no_spaces, key.replace(' ', '')) <=
+                        OCRScript_v3.error_margin(row_text_hash_digits_no_spaces, key.replace(' ', ''))
+                        for key in GOOGLE_SCREENTIME_FORMATS[lang])
+                      and abs(centre_of_row - int(0.5 * screenshot.width)) < int(0.1 * screenshot.width)))
+              and df['height'][i] > int(0.04 * screenshot.width)
+              and not df[HEADING_COLUMN].str.contains(TOTAL_SCREENTIME).any()):
             # Row text starts with a short-format time length (e.g. 1h5m) and is left-aligned (Samsung style), or
             # Row text matches a long-format time length (e.g. 1 hr 5 min) and is centred (Google style)
             df.loc[i, HEADING_COLUMN] = TOTAL_SCREENTIME
@@ -648,6 +650,9 @@ def get_daily_total_and_confidence(screenshot, image, heading):
 
         return rescan_df
 
+    crop_left = 0
+    crop_right = screenshot.width
+
     if headings_df[HEADING_COLUMN].eq(total_heading).any():
         total_value_row = headings_df[headings_df[HEADING_COLUMN] == total_heading].iloc[0]
         total_value_1st_scan = total_value_row['text']
@@ -669,8 +674,6 @@ def get_daily_total_and_confidence(screenshot, image, heading):
         row_below_total = rows_below_total.iloc[0]
         crop_top = max([0, row_below_total['top'] - (4 * row_below_total['height'])])
         crop_bottom = row_below_total['top']
-        crop_left = 0
-        crop_right = screenshot.width
 
         cropped_scan = rescan_cropped_area(image, crop_top, crop_bottom, crop_left, crop_right)
 
@@ -681,8 +684,6 @@ def get_daily_total_and_confidence(screenshot, image, heading):
         row_above_total = headings_df[headings_df[HEADING_COLUMN] == heading].iloc[0]
         crop_top = min([screenshot.height, row_above_total['top'] + (3 * row_above_total['height'])])
         crop_bottom = max([screenshot.height, crop_top + (6 * row_above_total['height'])])
-        crop_left = 0
-        crop_right = screenshot.width
 
         cropped_scan = rescan_cropped_area(image, crop_top, crop_bottom, crop_left, crop_right)
 
@@ -693,7 +694,6 @@ def get_daily_total_and_confidence(screenshot, image, heading):
         row_above_total = headings_df[headings_df[HEADING_COLUMN] == heading].iloc[0]
         crop_top = min([screenshot.height, row_above_total['top'] + (2 * row_above_total['height'])])
         crop_bottom = max([screenshot.height, crop_top + (4 * row_above_total['height'])])
-        crop_left = 0
         crop_right = int(0.5 * screenshot.width)
 
         cropped_scan = rescan_cropped_area(image, crop_top, crop_bottom, crop_left, crop_right)
@@ -703,6 +703,10 @@ def get_daily_total_and_confidence(screenshot, image, heading):
         total_value_1st_scan = NO_TEXT
         total_value_1st_scan_conf = NO_CONF
         cropped_scan = df.drop(df.index)
+
+    cropped_scan = cropped_scan[cropped_scan['left'] + crop_left < int(0.5 * screenshot.width)]
+    # Daily totals are always either centred or left-aligned. Sometimes a vertical 'hours axis' value gets misread as
+    # a time value; these vertical axes appear on the right edge of the Google dashboard.
 
     if not cropped_scan.empty:
         total_value_2nd_scan = cropped_scan.iloc[0]['text']
@@ -839,7 +843,7 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
                          ["#" + KEYWORDS_FOR_HR[lang][-1] + "#" + KEYWORDS_FOR_MIN[lang][-1]] +
                          ["#" + KEYWORDS_FOR_MIN[lang][-1]])
 
-        last_index_headings = headings_df.index[-1] if not headings_df.empty else -1
+        last_index_headings = headings_df[headings_df[HEADING_COLUMN] != SEE_ALL_N_APPS].index[-1] if not headings_df.empty else -1
         text_df['text_with_digits_replaced'] = text_df['text'].str.replace(r'\d+', '#', regex=True)
 
         rows_with_app_numbers = text_df[(text_df.index > last_index_headings) &
@@ -1338,7 +1342,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                     # Sometimes an app time that appears just below an app name can be interpreted as an app name,
                     # even after filtering. Ignore such misread app times.
                     continue
-                if all(char in {'o', 'O', ' '} for char in app_name):
+                if all(char in {'o', 'O', '0', ' '} for char in app_name):
                     # Sometimes the Home button (looks like 'O') gets misread as text
                     continue
 
@@ -1379,7 +1383,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                     # (e.g. "14" instead of "14 notifications").
                     app_number = app_name.split()[-1]
                     app_name = ' '.join(app_name.split()[:-1])
-                elif all(char in {'o', 'O', ' '} for char in app_name):
+                elif all(char in {'o', 'O', '0', ' '} for char in app_name):
                     # Sometimes the Home button (looks like 'O') gets misread as text
                     continue
             build_app_and_number_dfs(app_name, app_number)
@@ -1403,7 +1407,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                     # not an app name, so it should be ignored
                     previous_row_bottom = row_bottom
                     continue
-                elif all(char in {'o', 'O', ' '} for char in row_text):
+                elif all(char in {'o', 'O', '0', ' '} for char in row_text):
                     # Sometimes the Home button (looks like 'O') gets misread as text
                     continue
 
