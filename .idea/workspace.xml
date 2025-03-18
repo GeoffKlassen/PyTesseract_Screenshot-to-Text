@@ -4,7 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4e170b4d-2af2-47c5-9e6d-e8a288c22989" name="Changes" comment="New method of detecting hours axis seems to be working just as well as the old method.&#10;&#10;Also, found out why '00 06 12 18' was being replaced with '0 6 12 18' --- it has to do with the 'ensure_text_is_string' function in the extract_text_from_image function -- that function converted each word to an integer (if possible), then back to a string." />
+    <list default="true" id="4e170b4d-2af2-47c5-9e6d-e8a288c22989" name="Changes" comment="New method of detecting hours axis seems to be working just as well as the old method.&#10;&#10;Also, found out why '00 06 12 18' was being replaced with '0 6 12 18' --- it has to do with the 'ensure_text_is_string' function in the extract_text_from_image function -- that function converted each word to an integer (if possible), then back to a string.">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/AndroidFunctions.py" beforeDir="false" afterPath="$PROJECT_DIR$/AndroidFunctions.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ConvenienceVariables.py" beforeDir="false" afterPath="$PROJECT_DIR$/ConvenienceVariables.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/OCRScript_v3.py" beforeDir="false" afterPath="$PROJECT_DIR$/OCRScript_v3.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RuntimeValues.py" beforeDir="false" afterPath="$PROJECT_DIR$/RuntimeValues.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Studies.py" beforeDir="false" afterPath="$PROJECT_DIR$/Studies.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -165,8 +172,8 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/OCRScript_v3.py</url>
-          <line>399</line>
-          <option name="timeStamp" value="31" />
+          <line>1689</line>
+          <option name="timeStamp" value="33" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

@@ -31,10 +31,10 @@ DATE_RANGE_FORMAT = {ITA: [r'\d{1,2}-\d{1,2}\s?MMM',
 
 # hhh/HHH stands for the short/long format for hours; mmm/MMM stands for the short/long format for minutes.
 # The list of abbreviations for the necessary language will be subbed in as needed to create the full regex.
-TIME_FORMATS = [r'^[0-9ilLT]?[0-9aAilLStT]\s?hhh\s?[0-9aAilLT]?[0-9aAilLoStT]\s?mmm$',  # Format for ## hr ## min
-                r'^[0-9ilLT]?[0-9aAilLStT]\s?HHH\s?[0-9aAilLT]?[0-9aAilLoStT]\s?MMM$',  # Format for ## hours ## minutes
-                r'^[01ilLT]?[0-9aAilLStT]\s?HHH$',                                     # Format for ## hours
-                r'^[0-9aAilT]?[0-9AlLOStT]\s?MMM$']                                    # Format for ## minutes
+TIME_FORMATS = [r'^[1ilLT]?[0-9aAilLStT]\s?hhh\s?[1-5aAilLT]?[0-9aAilLoStT]\s?mmm$',  # Format for ## hr ## min
+                r'^[1ilLT]?[0-9aAilLStT]\s?HHH\s?[1-5aAilLT]?[0-9aAilLoStT]\s?MMM$',  # Format for ## hours ## minutes
+                r'^[1ilLT]?[0-9aAilLStT]\s?HHH$',                                     # Format for ## hours
+                r'^[1-5aAilT]?[0-9AlLOStT]\s?MMM$']                                    # Format for ## minutes
 # Sometimes pytesseract mistakes digits for letters (e.g.  A = 4,   I/L/T = 1,   S = 5)
 # Including these letters in the regex ensures that times with a misread digit still match a time format.
 
@@ -1053,9 +1053,11 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
         return cropped_image, [crop_top, crop_left, crop_bottom, crop_right]
 
 
-def consolidate_overlapping_text(df, time_format_eol):
+def consolidate_overlapping_text(df, screenshot):
     # For calculating overlap of two text boxes
     Rectangle = namedtuple('Rectangle', 'xmin ymin xmax ymax')
+    short_time_format_eol = screenshot.time_format_end_of_line
+    long_time_format = screenshot.time_format_long
 
     def calculate_overlap(rect_a, rect_b):
         # Find the overlap in the x-axis
@@ -1098,13 +1100,25 @@ def consolidate_overlapping_text(df, time_format_eol):
 
         if calculate_overlap(current_textbox, prev_textbox) > 0.5:  # Used to be 0.3; revert if it causes issues.
             # If two text boxes overlap by at least 50%, consider them to be two readings of the same text.
-            if (re.search(time_format_eol, df.loc[i, 'text']) and
-                    not re.search(time_format_eol, df.loc[i - 1, 'text'])):
-                rows_to_drop.append(i - 1)
-            elif (not re.search(time_format_eol, df.loc[i, 'text']) and
-                  re.search(time_format_eol, df.loc[i - 1, 'text'])):
-                rows_to_drop.append(i)
-            elif current_text == "X" and previous_text != "X":
+            if screenshot.category_detected == SCREENTIME:
+                if (re.search(short_time_format_eol, df.loc[i, 'text']) and
+                        not re.search(short_time_format_eol, df.loc[i - 1, 'text'])):
+                    rows_to_drop.append(i - 1)
+                    continue
+                elif (not re.search(short_time_format_eol, df.loc[i, 'text']) and
+                      re.search(short_time_format_eol, df.loc[i - 1, 'text'])):
+                    rows_to_drop.append(i)
+                    continue
+                elif (re.match(long_time_format, df.loc[i, 'text']) and
+                        not re.match(long_time_format, df.loc[i - 1, 'text'])):
+                    rows_to_drop.append(i - 1)
+                    continue
+                elif (not re.match(long_time_format, df.loc[i, 'text']) and
+                        re.match(long_time_format, df.loc[i - 1, 'text'])):
+                    rows_to_drop.append(i)
+                    continue
+
+            if current_text == "X" and previous_text != "X":
                 rows_to_drop.append(i - 1)
             elif current_text != "X" and previous_text == "X":
                 rows_to_drop.append(i)

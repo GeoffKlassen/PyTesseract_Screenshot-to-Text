@@ -8,10 +8,10 @@ So far:
 import pytesseract
 from ConvenienceVariables import *
 
-coding_location = 'uni'  # uni or home
+coding_location = 'home'  # uni or home
 
 # Based on the coding location, the directory where pytesseract is installed and the name of the PC will change
-if coding_location == 'uni':
+if coding_location == 'lab':
     pc_user = 'gbk546'
     pytesseract.pytesseract.tesseract_cmd = r'C:\Users\gbk546\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'
 elif coding_location == 'home':

@@ -415,11 +415,11 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+',
     df_words = df_words.replace({remove_chars: ''}, regex=True)
     df_words = df_words.replace({r'é': 'e'}, regex=True)  # For app name "Pokémon GO", etc.
     df_words = df_words.replace({r'^[xX]+\s?[xX]*$': 'X'}, regex=True)
-    # df_words = df_words[~((df_words['text'] == 'X') & (df_words['left'] < int(0.15 * img.shape[1])))]
     df_words = df_words[df_words['conf'] > 0]
     df_words = df_words.fillna('')
     df_words = df_words[(df_words['text'] != '') & (df_words['text'] != ' ')]
     df_words['text'] = (df_words['text'].apply(ensure_text_is_string))
+    df_words['text'] = df_words['text'].apply(lambda x: re.sub(r'(?<=[26G\s][aApP])([mM])(?=[126G])', r'\1 ', x))
     df_words = df_words[~df_words['text'].str.contains('^[aemu]+$')] if df_words.shape[0] > 0 else df_words
 
     # Sometimes tesseract misreads (Italian) "Foto" as "mele"/"melee"
@@ -475,7 +475,7 @@ def show_image(df, img, draw_boxes=True):
     img_height, img_width = img.shape
 
     img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-    scale = min(2, 0.85 * screen_height / img_height)  # Ensures the image fits on the screen
+    scale = min(1, 0.85 * screen_height / img_height)  # Ensures the image fits on the screen
     df[['left', 'width', 'top', 'height']] = df[['left', 'width', 'top', 'height']].astype(int)
 
     if draw_boxes:
@@ -874,10 +874,11 @@ def extract_app_info(screenshot, image, coordinates, scale):
                                                     (truncated_initial_scan['top'] > crop_top) &
                                                     (truncated_initial_scan['right'] < crop_right) &
                                                     (truncated_initial_scan['top'] < crop_bottom) &
-                                                    ((truncated_initial_scan['text'].str.isdigit()) |
+                                                    (((truncated_initial_scan['text'].str.isdigit()) |
                                                      (truncated_initial_scan['text'].str.fullmatch(time_format_long)) |
-                                                     (truncated_initial_scan['text'].str.fullmatch(MISREAD_TIME_FORMAT_IOS)) |
-                                                     (truncated_initial_scan['text'] == 'X'))]
+                                                     (truncated_initial_scan['text'].str.fullmatch(MISREAD_TIME_FORMAT_IOS)))
+                                                     if screenshot.device_os_detected == IOS else True) |
+                                                     (truncated_initial_scan['text'] == 'X')]
     truncated_initial_scan.loc[truncated_initial_scan.index, 'left'] = truncated_initial_scan['left'] - crop_left
     truncated_initial_scan.loc[truncated_initial_scan.index, 'top'] = truncated_initial_scan['top'] - crop_top
 
@@ -894,7 +895,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
     truncated_initial_scan[cols_to_scale] = truncated_initial_scan[cols_to_scale].apply(lambda x: x * scale).astype(int)
     overlapped_text = pd.concat([app_info_scan_1, truncated_initial_scan], ignore_index=True)
     app_info_scan_1 = iOS.consolidate_overlapping_text(overlapped_text) if screenshot.device_os_detected == IOS else (
-        Android.consolidate_overlapping_text(overlapped_text, time_format_eol))
+        Android.consolidate_overlapping_text(overlapped_text, screenshot))
     app_info_scan_1 = app_info_scan_1.sort_values(by=['top', 'left']).reset_index(drop=True)
 
     index_of_day_axis = next((idx for idx, row in app_info_scan_1.iterrows() if
@@ -967,7 +968,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
 
     app_info = pd.concat([app_info_scan_1, app_info_scan_2], ignore_index=True)
     app_info = iOS.consolidate_overlapping_text(app_info) if screenshot.device_os_detected == IOS else (
-        Android.consolidate_overlapping_text(app_info, time_format_eol))
+        Android.consolidate_overlapping_text(app_info, screenshot))
 
     if screenshot.device_os_detected == ANDROID and screenshot.android_version == GOOGLE:
         # Sometimes the text for 'rest of the day' isn't found on the initial scan, but it gets found in the app-info scan.
@@ -1073,8 +1074,8 @@ def update_eta(ss_start_time, idx):
         _min = int((sec / 60) % 60)
         _sec = int(sec % 60)
         if _hr > 0:
-            str_hr = str(_hr) + f", hour{'s' if _hr > 1 else ''}"
-            str_min = " " + str(((_min + 4) // 5) * 5) + " minutes"
+            str_hr = str(_hr) + f" hour{'s' if _hr > 1 else ''}"
+            str_min = (", " + str(((_min + 4) // 5) * 5) + " minutes") if _min > 0 else ""
         else:
             str_hr = ""
             if _min > 0:
@@ -1087,7 +1088,7 @@ def update_eta(ss_start_time, idx):
         elif _min >= 1:
             str_sec = ", " + (str(((_sec + 9) // 10) * 10) + " seconds") if _sec > 0 else ""
         else:
-            str_sec = str(_sec) + f" second{'s' if _sec > 1 else ''}"
+            str_sec = str(_sec) + f" second{'s' if _sec != 1 else ''}"
 
         str_time = str_hr + str_min + str_sec
 
@@ -1289,16 +1290,20 @@ if __name__ == '__main__':
     dir_name_in_progress = f"{CSVs}\\{today_ymd_hms} (log only)"
     logfile = f"{study_to_analyze[NAME]} output log.txt"
 
-    if not os.path.exists(CSVs):
-        os.makedirs(CSVs)
-    if not os.path.exists(f"{dir_name_in_progress}"):
-        os.makedirs(f"{dir_name_in_progress}")
-    sys.stdout = TeeOutput(f"{dir_name_in_progress}\\{logfile}")
-    print(f"Saving log to {dir_name_in_progress}\\{logfile}")
+    if save_log_and_CSVs:
+        if not os.path.exists(CSVs):
+            os.makedirs(CSVs)
+        if not os.path.exists(f"{dir_name_in_progress}"):
+            os.makedirs(f"{dir_name_in_progress}")
+        sys.stdout = TeeOutput(f"{dir_name_in_progress}\\{logfile}")
+        print(f"Saving log to {dir_name_in_progress}\\{logfile}")
 
     # Read in the list of URLs for the appropriate Study (as specified in RuntimeValues.py)
     url_list = pd.DataFrame()
+
+    image_lower_bound = 0 if image_lower_bound is None else image_lower_bound
     image_upper_bound = 0 if image_upper_bound is None else image_upper_bound
+
     num_urls_to_get = image_upper_bound  # Initialize
     full_analysis = True if image_lower_bound <= 1 else False # Initialize
     for survey in survey_list:
@@ -1991,79 +1996,80 @@ if __name__ == '__main__':
 
     print("Done.")
 
-    if ERR_DUPLICATE_DATA in all_screenshots_df.columns:
-        duplicate_screenshots_df = all_screenshots_df[all_screenshots_df[ERR_DUPLICATE_DATA].notna()]
-        # Count occurrences of each participant_id
-        if not duplicate_screenshots_df.empty:
-            print("Compiling duplicate screenshot info...", end='')
-            counts = duplicate_screenshots_df[PARTICIPANT_ID].value_counts()
-            # Filter rows where ERR_DUPLICATE_DATA equals "SAME USER" and count per PARTICIPANT_ID
-            same_user_counts = duplicate_screenshots_df[
-                duplicate_screenshots_df[ERR_DUPLICATE_DATA] == SAME_USER
-                ][PARTICIPANT_ID].value_counts()
+    if save_log_and_CSVs:
+        if ERR_DUPLICATE_DATA in all_screenshots_df.columns:
+            duplicate_screenshots_df = all_screenshots_df[all_screenshots_df[ERR_DUPLICATE_DATA].notna()]
+            # Count occurrences of each participant_id
+            if not duplicate_screenshots_df.empty:
+                print("Compiling duplicate screenshot info...", end='')
+                counts = duplicate_screenshots_df[PARTICIPANT_ID].value_counts()
+                # Filter rows where ERR_DUPLICATE_DATA equals "SAME USER" and count per PARTICIPANT_ID
+                same_user_counts = duplicate_screenshots_df[
+                    duplicate_screenshots_df[ERR_DUPLICATE_DATA] == SAME_USER
+                    ][PARTICIPANT_ID].value_counts()
 
-            # Filter rows where ERR_DUPLICATE_DATA equals "MULTIPLE USERS" and count per PARTICIPANT_ID
-            multiple_users_counts = duplicate_screenshots_df[
-                duplicate_screenshots_df[ERR_DUPLICATE_DATA] == MULTIPLE_USERS
-                ][PARTICIPANT_ID].value_counts()
+                # Filter rows where ERR_DUPLICATE_DATA equals "MULTIPLE USERS" and count per PARTICIPANT_ID
+                multiple_users_counts = duplicate_screenshots_df[
+                    duplicate_screenshots_df[ERR_DUPLICATE_DATA] == MULTIPLE_USERS
+                    ][PARTICIPANT_ID].value_counts()
 
-            # Combine the counts into a new DataFrame
-            counts_df = counts.to_frame(name='Total Duplicates')  # Convert the original counts into a DataFrame
-            counts_df[SAME_USER] = same_user_counts  # Add the "SAME USER" counts as a new column
-            counts_df[MULTIPLE_USERS] = multiple_users_counts  # Add the "MULTIPLE USERS" counts as a new column
+                # Combine the counts into a new DataFrame
+                counts_df = counts.to_frame(name='Total Duplicates')  # Convert the original counts into a DataFrame
+                counts_df[SAME_USER] = same_user_counts  # Add the "SAME USER" counts as a new column
+                counts_df[MULTIPLE_USERS] = multiple_users_counts  # Add the "MULTIPLE USERS" counts as a new column
 
-            # Replace NaN with 0 for cases where there were no rows for a specific condition
-            counts_df = counts_df.fillna(0)
+                # Replace NaN with 0 for cases where there were no rows for a specific condition
+                counts_df = counts_df.fillna(0)
 
-            # Ensure the columns are integers (optional, for cleaner display)
-            counts_df = counts_df.astype(int)
+                # Ensure the columns are integers (optional, for cleaner display)
+                counts_df = counts_df.astype(int)
 
-            # print(counts_df)
-            #
-            # # Convert the result to a DataFrame
-            # counts_df = counts.reset_index()
-            # counts_df.columns = [PARTICIPANT_ID, 'count']
+                # print(counts_df)
+                #
+                # # Convert the result to a DataFrame
+                # counts_df = counts.reset_index()
+                # counts_df.columns = [PARTICIPANT_ID, 'count']
 
-            counts_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} Duplicate Screenshot Info.csv")
-            print("Done.")
+                counts_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} Duplicate Screenshot Info.csv")
+                print("Done.")
 
-    print("Exporting CSVs...", end='')
-    all_screenshots_df.drop(columns=[HASHED], inplace=True)
-    all_screenshots_df_conf.drop(columns=[HASHED], inplace=True)
+        print("Exporting CSVs...", end='')
+        all_screenshots_df.drop(columns=[HASHED], inplace=True)
+        all_screenshots_df_conf.drop(columns=[HASHED], inplace=True)
 
-    all_ios_screenshots_df = all_screenshots_df[all_screenshots_df[DEVICE_OS] == IOS]
-    all_android_screenshots_df = all_screenshots_df[all_screenshots_df[DEVICE_OS] == ANDROID]
+        all_ios_screenshots_df = all_screenshots_df[all_screenshots_df[DEVICE_OS] == IOS]
+        all_android_screenshots_df = all_screenshots_df[all_screenshots_df[DEVICE_OS] == ANDROID]
 
-    all_screentime_screenshots_df = all_screenshots_df[all_screenshots_df[CATEGORY_DETECTED] == SCREENTIME]
-    all_pickups_screenshots_df = all_screenshots_df[(all_screenshots_df[CATEGORY_DETECTED] == PICKUPS) |
-                                                    (all_screenshots_df[CATEGORY_DETECTED] == UNLOCKS)]
-    all_notifications_screenshots_df = all_screenshots_df[all_screenshots_df[CATEGORY_DETECTED] == NOTIFICATIONS]
+        all_screentime_screenshots_df = all_screenshots_df[all_screenshots_df[CATEGORY_DETECTED] == SCREENTIME]
+        all_pickups_screenshots_df = all_screenshots_df[(all_screenshots_df[CATEGORY_DETECTED] == PICKUPS) |
+                                                        (all_screenshots_df[CATEGORY_DETECTED] == UNLOCKS)]
+        all_notifications_screenshots_df = all_screenshots_df[all_screenshots_df[CATEGORY_DETECTED] == NOTIFICATIONS]
 
-    all_participants_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} All Participants Temporal Data.csv")
-    all_screenshots_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} All Screenshots.csv")
-    all_screenshots_df_conf.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} All Confidence Values.csv")
+        all_participants_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} All Participants Temporal Data.csv")
+        all_screenshots_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} All Screenshots.csv")
+        all_screenshots_df_conf.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} All Confidence Values.csv")
 
-    all_ios_screenshots_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} iOS Data.csv")
-    all_android_screenshots_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} Android Data.csv")
+        all_ios_screenshots_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} iOS Data.csv")
+        all_android_screenshots_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} Android Data.csv")
 
-    all_screentime_screenshots_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} Screentime Data.csv")
-    all_pickups_screenshots_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} Pickups Data.csv")
-    all_notifications_screenshots_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} Notifications Data.csv")
+        all_screentime_screenshots_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} Screentime Data.csv")
+        all_pickups_screenshots_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} Pickups Data.csv")
+        all_notifications_screenshots_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} Notifications Data.csv")
 
-    all_times['actual_time_remaining'] = total_elapsed_time - all_times[ELAPSED_TIME]
-    all_times['relative_difference'] = all_times[ETA] / all_times['actual_time_remaining'] * 100
-    all_times.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} ETAs.csv")  # Mostly for interest's sake
+        all_times['actual_time_remaining'] = total_elapsed_time - all_times[ELAPSED_TIME]
+        all_times['relative_difference'] = all_times[ETA] / all_times['actual_time_remaining'] * 100
+        all_times.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} ETAs.csv")  # Mostly for interest's sake
 
-    print("Done.")
+        print("Done.")
 
-    today_ymd_hms_finished = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+        today_ymd_hms_finished = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
 
-    if full_analysis:
-        dir_name_finished = f"{CSVs}\\{today_ymd_hms_finished} FULL"
-    else:
-        dir_name_finished = f"{CSVs}\\{today_ymd_hms_finished}"
+        if full_analysis:
+            dir_name_finished = f"{CSVs}\\{today_ymd_hms_finished} FULL"
+        else:
+            dir_name_finished = f"{CSVs}\\{today_ymd_hms_finished}"
 
-    print("Closing log file.")
-    sys.stdout.close_log_file()
-    time.sleep(1)
-    os.rename(dir_name_in_progress, dir_name_finished)
+        print("Closing log file.")
+        sys.stdout.close_log_file()
+        time.sleep(1)
+        os.rename(dir_name_in_progress, dir_name_finished)
