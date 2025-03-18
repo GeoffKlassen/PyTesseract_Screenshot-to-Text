@@ -71,7 +71,7 @@ KEYWORDS_FOR_HOURS_AXIS = ['00 06', '06 12', '12 18',
 KEYWORDS_FOR_HOURS_AXIS_2 = {ENG: {"00", "06", "12", "18",  # Number only
                                    "AM", "PM", "6AM", "12PM", "6PM", "12AM",  # AM/PM included
                                    "am", "pm", "6am", "12pm", "6pm", "12am",  # am/pm included
-                                   "42", "48", "112", "GAM"},  # Common Misreadings
+                                   "42", "48", "112", "GAM", "GPM", "2PM", "2AM", "12PMs"},  # Common Misreadings
 
                              ITA: {"00", "06", "12", "18",  # Number only
                                    "AM", "PM", "6AM", "12PM", "6PM", "12AM",  # AM/PM included
@@ -183,11 +183,10 @@ def get_headings(screenshot, rescale_df=pd.DataFrame()):
 
         elif len(row_words.intersection(KEYWORDS_FOR_HOURS_AXIS_2[lang])) >= 2 and \
                 not bool(re.search(MISREAD_TIME_FORMAT_IOS, row_text)):
-            print(f"I found the hours axis with the new method! it is {row_text}")
             df.loc[i, HEADING_COLUMN] = HOURS_AXIS_HEADING
 
         elif re.search('|'.join(KEYWORDS_FOR_HOURS_AXIS), row_text, re.IGNORECASE):
-            print("Found hours with the OLD method")
+            print("Found hours with the regex method")
             df.loc[i, HEADING_COLUMN] = HOURS_AXIS_HEADING
 
         elif len(row_words.intersection(DAY_ABBREVIATIONS[lang])) >= 3:
@@ -408,15 +407,15 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
 
     if not headings_df.empty:
         # Take the closest heading (to the daily total) that's above where the daily total would appear
-        heading_row = headings_df[headings_df[HEADING_COLUMN] == category]
-        if not heading_row.empty:
+        category_heading_row = headings_df[headings_df[HEADING_COLUMN] == category]
+        if not category_heading_row.empty:
             screenshot.set_total_heading_found(True)
-            day_below_heading_row = headings_df[
-                (headings_df.index == heading_row.index[-1] + 1) & (headings_df[HEADING_COLUMN].isin([DAY_OR_WEEK_L_HEADING, DAY_OR_WEEK_C_HEADING]))]
-            if not day_below_heading_row.empty:
-                row_above_total = day_below_heading_row.iloc[0]
+            row_with_day_below_heading = headings_df[
+                (headings_df.index == category_heading_row.index[-1] + 1) & (headings_df[HEADING_COLUMN].eq(DAY_OR_WEEK_L_HEADING))]
+            if not row_with_day_below_heading.empty:
+                row_above_total = row_with_day_below_heading.iloc[0]
             else:
-                row_above_total = heading_row.iloc[-1]
+                row_above_total = category_heading_row.iloc[-1]
                 using_heading_row = True
         elif not rows_with_day_type.empty:
             if rows_with_day_type.shape[0] == 1:
@@ -431,20 +430,26 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
         if row_above_total.size > 0:
             index_to_start = row_above_total.name + 1
             crop_top = row_above_total['top'] + row_above_total['height']
+            str_crop_top = f"below '{row_above_total['text']}'"
             if using_heading_row:
                 # The heading row is higher than the day row, so when using the heading row as the reference,
                 # crop_top should be further down (on the screenshot)
+                str_crop_top = f"below '{row_above_total['text']}' (+2x height buffer)"
                 crop_top += 2 * row_above_total['height']
             elif row_above_total['left'] > (0.15 * screenshot.width):
+                str_crop_top = f"below '{row_above_total['text']}' (+1x height buffer)"
                 crop_top += row_above_total['height']
 
             # iOS shows the daily total in a larger font size than the headings,
             # so the crop region needs to be about 4x as tall as a heading
             # to increase the chance of the whole daily total falling within the crop region
-            crop_bottom = crop_top + (5 if screenshot.relative_day != WEEK else 4) * row_above_total['height']
+            crop_bottom = crop_top + (4 if screenshot.relative_day != WEEK else 4) * row_above_total['height']
             if only_one_day_row:
                 # The 'overlay' date row (at the top of the screen after scrolling) can sometimes be even further away
+                str_crop_bottom = f"6 heights of '{row_above_total['text']}' below top crop"
                 crop_bottom += 2 * row_above_total['height']
+            else:
+                str_crop_bottom = f"4 heights of '{row_above_total['text']}' below top crop"
 
         else:
             index_to_start = 0
@@ -452,6 +457,8 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
             # in such a way that the Daily Total value is the first row of text.
             crop_top = 0
             crop_bottom = crop_top + int(screenshot.width / 8)  # Daily Total height is usually < 8x screenshot_width.
+            str_crop_top = "(top of screenshot)"
+            str_crop_bottom = "(1/8th of screenshot width below top)"
 
         if df.shape[0] > index_to_start + 1:
             loop_number = 0
@@ -485,20 +492,30 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
         # is the first row of text.
         crop_top = 0
         crop_bottom = crop_top + int(screenshot.width / 8)  # Daily Total height is usually < 8x screenshot_width.
+        str_crop_top = "(top of screenshot)"
+        str_crop_bottom = "(1/8th of screenshot width below top)"
 
     crop_left = 0
     crop_right = int(0.6 * screenshot.width) if category == SCREENTIME else int(0.5 * screenshot.width)
     # Right edge of Daily Total is not likely more than 60% away from the left edge of the screenshot
+    str_crop_left = "(left of screenshot)"
+    str_crop_right = "(centre of screenshot)"
 
     cropped_image = img[crop_top:crop_bottom, crop_left:crop_right]
     if cropped_image.size == 0:
         print(f"Could not find suitable crop region for daily total {category}.")
         return daily_total_1st_scan, daily_total_1st_scan_conf
     else:
-        scale = 0.8  # Pytesseract sometimes fails to read very large text; scale down the cropped region incrementally
-                     # until either text is found or the scale factor gets too small.
+        print("\nCropping image to daily total:\n")
+        print(f"Top of daily total region: {str_crop_top}")
+        print(f"Bottom of daily total region: {str_crop_bottom}")
+        print(f"Left of daily total region: {str_crop_left}")
+        print(f"Right of daily total region: {str_crop_right}\n")
 
+        scale = 1.1  # Pytesseract sometimes fails to read very large text; scale down the cropped region incrementally
+                     # until either text is found or the scale factor gets too small.
         while True:
+            scale -= 0.1
             scaled_cropped_image = cv2.resize(cropped_image, None,
                                               fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
 
@@ -512,13 +529,13 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
             else:
                 _, rescan_df = OCRScript_v3.extract_text_from_image(scaled_cropped_image, cmd_config=r'--oem 3 --psm 6 outputbase digits')
 
-            scale -= 0.2
+            # For debugging.
+            if show_images_at_runtime:
+                OCRScript_v3.show_image(rescan_df, scaled_cropped_image)
+
             if scale <= 0.2 or rescan_df.shape[0] > 0:
                 break
 
-        # For debugging.
-        if show_images_at_runtime:
-            OCRScript_v3.show_image(rescan_df, scaled_cropped_image)
 
         # Initialize second scan values
         daily_total_2nd_scan = NO_TEXT
@@ -818,9 +835,9 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
                 # app_area_heading_not_found = True
                 # num_missed_app_values = 0
     print(
-        f"\nTop of crop region:  {("below '" + crop_top_heading) if crop_top_heading is not None else "(top of screenshot)"}")
+        f"\nTop of app region:  {("below '" + crop_top_heading) if crop_top_heading is not None else "(top of screenshot)"}")
     print(
-        f"Bottom of crop region:  {("above '" + crop_bottom_heading + "'") if crop_bottom_heading is not None else "(bottom of screenshot)"}")
+        f"Bottom of app region:  {("above '" + crop_bottom_heading + "'") if crop_bottom_heading is not None else "(bottom of screenshot)"}")
 
     # Look for text in the initial scan that would qualify as an app name
     app_area_text = text[(text['left'] > int(0.15*screenshot.width)) &

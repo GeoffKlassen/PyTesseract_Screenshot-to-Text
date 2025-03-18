@@ -43,10 +43,6 @@ class TeeOutput:
             self.log_file = None
 
 
-# Replace sys.stdout with your custom TeeOutput
-sys.stdout = TeeOutput(f"{study_to_analyze[NAME]} output log laptop.txt")
-
-
 def compile_list_of_urls(df, url_cols, num_urls_remaining,
                          date_col='Record Time', id_col='Participant ID', device_id_col='Device ID'):
     """Create a DataFrame of URLs from a provided DataFrame of survey responses.
@@ -93,7 +89,7 @@ def compile_list_of_urls(df, url_cols, num_urls_remaining,
                            IMG_RESPONSE_TYPE: img_response_type,
                            IMG_URL: url}
                 url_df = pd.concat([url_df, pd.DataFrame([new_row])], ignore_index=True)
-                if url_df.shape[0] >= num_urls_remaining:
+                if url_df.shape[0] >= num_urls_remaining > 0:
                     return url_df
 
     return url_df
@@ -272,6 +268,27 @@ def levenshtein_distance(s1, s2):
     return distances[-1]
 
 
+def screenshot_contains_unrelated_data(ss):
+    """
+
+    :param ss:
+    :return:
+    """
+    _text_df = ss.text.copy()
+    lang = ss.language
+    # moe = int(np.log(min(len(k) for k in KEYWORDS_FOR_UNRELATED_SCREENSHOTS[lang]))) + 1
+    # margin of error for text (number of characters two strings can differ by and still be considered the same text)
+
+    if any(_text_df['text'].apply(lambda x: any(levenshtein_distance(w, key) <= error_margin(w, key)
+                                                for key in KEYWORDS_FOR_UNRELATED_SCREENSHOTS[lang]
+                                                for w in [x[0:len(key)], x[-len(key):]]))):
+        print("Detected data irrelevant to the study.")
+        # One of the rows of text_df starts with one of the keywords for unrelated screenshots
+        return True
+
+    return False
+
+
 def get_date_regex(lang, fmt=DATE_FORMAT):
     """
     Creates the date regular expression to use when looking for text in a screenshot that matches a date format.
@@ -382,15 +399,13 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+',
     # We keep the 'é' character for the existence of app names like 'Pokémon GO'.
 
     def ensure_text_is_string(value):
-        try:
-            # Try converting the value to a float
-            number = float(value)
-            # If successful, return the whole number part as a string
-            return str(int(number))
-        except (ValueError, OverflowError):
-            # ValueError in case 'value' is not a number
-            # OverflowError in case 'value' is the word 'Infinity' (in which case, 'number' is now inf)
-            return str(value)
+        if isinstance(value, (int, float)):
+            value = str(int(value))
+        elif isinstance(value, str):
+            pass
+        else:
+            raise ValueError(f"'{value}' must be a string, integer, or float.")
+        return value
 
     # img = cv2.GaussianBlur(img, (7,7), 0)  # Might help finding the large totals, not sure how it affects headings
     if len(cmd_config) > 0:
@@ -404,8 +419,7 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+',
     df_words = df_words[df_words['conf'] > 0]
     df_words = df_words.fillna('')
     df_words = df_words[(df_words['text'] != '') & (df_words['text'] != ' ')]
-    # df_words['text'] = (df_words['text'].apply(ensure_text_is_string))
-    df_words['text'] = df_words['text'].astype(str)
+    df_words['text'] = (df_words['text'].apply(ensure_text_is_string))
     df_words = df_words[~df_words['text'].str.contains('^[aemu]+$')] if df_words.shape[0] > 0 else df_words
 
     # Sometimes tesseract misreads (Italian) "Foto" as "mele"/"melee"
@@ -1031,25 +1045,25 @@ def filter_common_misread_app_names(df):
 
     return df
 
+def convert_seconds_to_hms(sec):
+    _hr = int(sec / 3600)
+    _min = int((sec / 60) % 60)
+    _sec = int(sec % 60)
+    if _hr == 0:
+        str_hr = ""
+        str_min = str(_min) + ":"
+    else:
+        str_hr = str(_hr) + ":"
+        str_min = f"{'0' if _min < 10 else ''}{str(_min)}:"
+
+    str_sec = f"{'0' if _sec < 10 else ''}{str(_sec)}"
+
+    str_time = str_hr + str_min + str_sec
+
+    return str_time
+
 
 def update_eta(ss_start_time, idx):
-
-    def convert_elapsed_time_to_hms(sec):
-        _hr = int(sec / 3600)
-        _min = int((sec / 60) % 60)
-        _sec = int(sec % 60)
-        if _hr == 0:
-            str_hr = ""
-            str_min = str(_min) + ":"
-        else:
-            str_hr = str(_hr) + ":"
-            str_min = f"{'0' if _min < 10 else ''}{str(_min)}:"
-
-        str_sec = f"{'0' if _sec < 10 else ''}{str(_sec)}"
-
-        str_time = str_hr + str_min + str_sec
-
-        return str_time
 
     def convert_eta_to_string(sec):
         if sec >= 60:
@@ -1079,7 +1093,7 @@ def update_eta(ss_start_time, idx):
 
         return str_time
 
-    if idx == min(image_upper_bound, num_urls):
+    if idx == min(image_upper_bound, num_urls) and image_upper_bound > 0:
         return
 
     current_time = time.time()
@@ -1088,14 +1102,14 @@ def update_eta(ss_start_time, idx):
 
     print(f"Image processed in {round(ss_time, 3)} seconds.")
 
-    print(f"\n\nElapsed time:  {convert_elapsed_time_to_hms(elapsed_time_in_seconds)}")
+    print(f"\n\nElapsed time:  {convert_seconds_to_hms(elapsed_time_in_seconds)}")
 
     all_times.loc[idx, TIME] = ss_time
     all_times.loc[idx, ELAPSED_TIME] = elapsed_time_in_seconds
     all_times.loc[idx, DEVICE_OS] = url_list[DEVICE_OS][idx]
 
     if not all_times.empty:
-        image_index_limit = min(image_upper_bound, num_urls)
+        image_index_limit = min(image_upper_bound, num_urls) if image_upper_bound > 0 else num_urls
         all_ios_times = all_times.loc[url_list[DEVICE_OS] == IOS][TIME]
         all_android_times = all_times.loc[url_list[DEVICE_OS] == ANDROID][TIME]
 
@@ -1111,7 +1125,7 @@ def update_eta(ss_start_time, idx):
         avg_time = np.mean(all_times[TIME].tail(times_to_avg))
         avg_unknown_os_time = avg_time
 
-        images_remaining = url_list.loc[(idx <= url_list.index) & (url_list.index <= image_index_limit)]
+        images_remaining = url_list.loc[(idx < url_list.index) & (url_list.index <= image_index_limit)]
         num_images_left = len(images_remaining)
 
         num_ios_screentime_images_remaining = len(images_remaining[(images_remaining[DEVICE_OS] == IOS) &
@@ -1177,6 +1191,7 @@ def add_screenshot_info_to_master_df(screenshot, idx):
         # Find all other screenshots with the same hash
         matching_screenshots = all_screenshots_df[(all_screenshots_df[HASHED] == screenshot.text_hash) &
                                                   (all_screenshots_df[HASHED] is not None)]
+
         if not matching_screenshots.empty:
             num_duplicates = len(matching_screenshots) + 1
             # There are other screenshots with the same data
@@ -1194,14 +1209,18 @@ def add_screenshot_info_to_master_df(screenshot, idx):
                 same_or_other_user = MULTIPLE_USERS
             else:
                 same_or_other_user = SAME_USER
+
             for n in matching_screenshots.index:
+                if all_screenshots_df.loc[n, ERR_DUPLICATE_DATA] not in [SAME_USER, MULTIPLE_USERS]:
+                    all_screenshots_df.loc[n, REVIEW_COUNT] += 1
+                    all_screenshots_df_conf.loc[n, REVIEW_COUNT] += 1
+
                 all_screenshots_df.loc[n, ERR_DUPLICATE_DATA] = same_or_other_user
                 all_screenshots_df.loc[n, ERR_DUPLICATE_COUNTS] = num_duplicates
-                all_screenshots_df.loc[n, REVIEW_COUNT] += 1
 
                 all_screenshots_df_conf.loc[n, ERR_DUPLICATE_DATA] = same_or_other_user
                 all_screenshots_df_conf.loc[n, ERR_DUPLICATE_COUNTS] = num_duplicates
-                all_screenshots_df_conf.loc[n, REVIEW_COUNT] += 1
+
 
     for df, col_name in zip([all_screenshots_df, all_screenshots_df_conf], [[NAME, NUMBER], [NAME_CONF, NUMBER_CONF]]):
 
@@ -1224,6 +1243,7 @@ def add_screenshot_info_to_master_df(screenshot, idx):
 
         df.loc[idx, HASHED] = screenshot.text_hash
         df.loc[idx, REVIEW_COUNT] = len(screenshot.errors)
+
         for col in screenshot.data_row.columns:
             if col == ERR_CONFIDENCE:
                 df.loc[idx, col] = screenshot.num_values_low_conf
@@ -1263,9 +1283,24 @@ def set_empty_app_data_and_update(empty_data, screenshot, idx):
 
 if __name__ == '__main__':
 
+    # Create a filename to store the system log
+    now = datetime.now()
+    today_ymd_hms = now.strftime("%Y-%m-%d %H-%M-%S")
+    dir_name_in_progress = f"{CSVs}\\{today_ymd_hms} (log only)"
+    logfile = f"{study_to_analyze[NAME]} output log.txt"
+
+    if not os.path.exists(CSVs):
+        os.makedirs(CSVs)
+    if not os.path.exists(f"{dir_name_in_progress}"):
+        os.makedirs(f"{dir_name_in_progress}")
+    sys.stdout = TeeOutput(f"{dir_name_in_progress}\\{logfile}")
+    print(f"Saving log to {dir_name_in_progress}\\{logfile}")
+
     # Read in the list of URLs for the appropriate Study (as specified in RuntimeValues.py)
     url_list = pd.DataFrame()
-    num_urls_to_get = image_upper_bound
+    image_upper_bound = 0 if image_upper_bound is None else image_upper_bound
+    num_urls_to_get = image_upper_bound  # Initialize
+    full_analysis = True if image_lower_bound <= 1 else False # Initialize
     for survey in survey_list:
         print(f"Compiling URLs from {survey[CSV_FILE]}...", end='')
         survey_csv = pd.read_csv(survey[CSV_FILE])
@@ -1278,7 +1313,8 @@ if __name__ == '__main__':
         print(f"Done.\n{current_list.shape[0]} URLs {'found' if num_urls_to_get > current_list.shape[0] else 'taken'}.")
         url_list = pd.concat([url_list, current_list], ignore_index=True)
         num_urls_to_get -= current_list.shape[0]
-        if url_list.shape[0] >= image_upper_bound:
+        if url_list.shape[0] >= image_upper_bound > 0:
+            full_analysis = False
             print(f"URL list now contains {image_upper_bound} images. No further URLs needed.")
             break
 
@@ -1311,7 +1347,14 @@ if __name__ == '__main__':
     all_screenshots_df_conf = ScreenshotClass.initialize_data_row()
     participants = []
 
-    image_upper_bound = image_lower_bound if image_upper_bound < image_lower_bound else image_upper_bound
+    if image_upper_bound == 0:
+        image_upper_bound = num_urls
+    elif image_upper_bound < image_lower_bound:
+        image_upper_bound = image_lower_bound
+    else:
+        image_upper_bound = min(image_upper_bound, num_urls)
+
+    index = 0  # Initialize (used when saving CSVs to output folder)
     for index in url_list.index:
         if not (image_lower_bound <= index + 1 <= image_upper_bound):
             # Only extract data from the images within the bounds specified in RuntimeValues.py
@@ -1433,6 +1476,21 @@ if __name__ == '__main__':
         else:
             current_screenshot.add_error(ERR_LANGUAGE)
 
+        # Sometimes participants submit screenshots with irrelevant information, such as a screenshot of the survey
+        # question itself.  Such images have keywords that identify them as irrelevent (e.g., "Yesterday's screen time",
+        # "Yesterday's pickups", "Yesterday's notifications").
+
+        # Determine if the screenshot contains data mis-considered relevant by participant -- if so, skip it
+        if screenshot_contains_unrelated_data(current_screenshot):
+            current_screenshot.add_error(ERR_UNREADABLE_DATA)
+            current_screenshot.set_daily_total(NO_TEXT if study_category == SCREENTIME else NO_NUMBER)
+            if study_category == SCREENTIME:
+                current_screenshot.set_daily_total_minutes(NO_NUMBER)
+
+            set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
+            continue
+
+
         time_formats = Android.get_time_formats_in_lang(current_screenshot.language)
         time_format_short, time_format_long, time_format_eol = time_formats[0], time_formats[1], time_formats[2]
 
@@ -1488,14 +1546,14 @@ if __name__ == '__main__':
             """
 
             # Determine if the screenshot contains data mis-considered relevant by participant -- if so, skip it
-            if Android.screenshot_contains_unrelated_data(current_screenshot):
-                current_screenshot.add_error(ERR_UNREADABLE_DATA)
-                current_screenshot.set_daily_total(NO_TEXT if study_category == SCREENTIME else NO_NUMBER)
-                if study_category == SCREENTIME:
-                    current_screenshot.set_daily_total_minutes(NO_NUMBER)
-
-                set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
-                continue
+            # if Android.screenshot_contains_unrelated_data(current_screenshot):
+            #     current_screenshot.add_error(ERR_UNREADABLE_DATA)
+            #     current_screenshot.set_daily_total(NO_TEXT if study_category == SCREENTIME else NO_NUMBER)
+            #     if study_category == SCREENTIME:
+            #         current_screenshot.set_daily_total_minutes(NO_NUMBER)
+            #
+            #     set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
+            #     continue
 
             if day_type is None and date_in_screenshot is not None:
                 print(f"Determining day type based on number of days between submitted date "
@@ -1966,7 +2024,7 @@ if __name__ == '__main__':
             # counts_df = counts.reset_index()
             # counts_df.columns = [PARTICIPANT_ID, 'count']
 
-            counts_df.to_csv(f"{study_to_analyze[NAME]} Duplicate Screenshot Info.csv")
+            counts_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} Duplicate Screenshot Info.csv")
             print("Done.")
 
     print("Exporting CSVs...", end='')
@@ -1981,19 +2039,31 @@ if __name__ == '__main__':
                                                     (all_screenshots_df[CATEGORY_DETECTED] == UNLOCKS)]
     all_notifications_screenshots_df = all_screenshots_df[all_screenshots_df[CATEGORY_DETECTED] == NOTIFICATIONS]
 
-    all_participants_df.to_csv(f"{study_to_analyze[NAME]} All Participants Temporal Data.csv")
-    all_screenshots_df.to_csv(f"{study_to_analyze[NAME]} All Screenshots.csv")
-    all_screenshots_df_conf.to_csv(f"{study_to_analyze[NAME]} All Confidence Values.csv")
+    all_participants_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} All Participants Temporal Data.csv")
+    all_screenshots_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} All Screenshots.csv")
+    all_screenshots_df_conf.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} All Confidence Values.csv")
 
-    all_ios_screenshots_df.to_csv(f"{study_to_analyze[NAME]} iOS Data.csv")
-    all_android_screenshots_df.to_csv(f"{study_to_analyze[NAME]} Android Data.csv")
+    all_ios_screenshots_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} iOS Data.csv")
+    all_android_screenshots_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} Android Data.csv")
 
-    all_screentime_screenshots_df.to_csv(f"{study_to_analyze[NAME]} Screentime Data.csv")
-    all_pickups_screenshots_df.to_csv(f"{study_to_analyze[NAME]} Pickups Data.csv")
-    all_notifications_screenshots_df.to_csv(f"{study_to_analyze[NAME]} Notifications Data.csv")
+    all_screentime_screenshots_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} Screentime Data.csv")
+    all_pickups_screenshots_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} Pickups Data.csv")
+    all_notifications_screenshots_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} Notifications Data.csv")
 
     all_times['actual_time_remaining'] = total_elapsed_time - all_times[ELAPSED_TIME]
     all_times['relative_difference'] = all_times[ETA] / all_times['actual_time_remaining'] * 100
-    all_times.to_csv(f"{study_to_analyze[NAME]} ETAs.csv")  # Mostly for interest's sake
+    all_times.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} ETAs.csv")  # Mostly for interest's sake
 
     print("Done.")
+
+    today_ymd_hms_finished = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+
+    if full_analysis:
+        dir_name_finished = f"{CSVs}\\{today_ymd_hms_finished} FULL"
+    else:
+        dir_name_finished = f"{CSVs}\\{today_ymd_hms_finished}"
+
+    print("Closing log file.")
+    sys.stdout.close_log_file()
+    time.sleep(1)
+    os.rename(dir_name_in_progress, dir_name_finished)

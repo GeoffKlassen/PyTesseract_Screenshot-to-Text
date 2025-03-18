@@ -138,3 +138,14 @@ DAY_ABBREVIATIONS = {  # TODO Verify these!
           "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"}           # Full words
 }
 # Used to find rows of text that are 'Day' rows (i.e. contain at least 3 of these abbreviation words)
+
+KEYWORDS_FOR_UNRELATED_SCREENSHOTS = {ITA: ['USO BATTERIA', 'Benessere digitale'],
+                                      ENG: ['BATTERY USE', 'BATTERY USAGE',
+                                            'Digital wellbeing', 'Digital Wellbeing & parental',
+                                            'No limit', 'Manage notifications', 'Weekly report',
+                                            'TAKE PHOTO'],  # 'TAKE PHOTO' appears in each Avicenna study question that
+                                                            # asks participants to upload a screenshot
+                                      GER: ['TODO FILL THIS IN'],
+                                      FRA: ['TODO FILL THIS IN']}
+# Some screenshots show only Battery Usage info; these screenshots do not contain any of the requested info.
+

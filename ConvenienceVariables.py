@@ -226,3 +226,5 @@ DAILY_TOTAL = 'daily_total'
 # APP, NAME, NUMBER = 'App', 'Name', 'Number'  # Already defined above
 HASHED = 'hashed'
 REVIEW_COUNT = 'review_count'
+
+CSVs = "CSVs"

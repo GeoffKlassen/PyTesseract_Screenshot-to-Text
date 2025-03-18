@@ -172,35 +172,6 @@ KEYWORDS_FOR_SHOW_SITES_YOU_VISIT = {ITA: ['Mostra i siti visitati'],
 # "Show sites you visit" can appear in the Google version of Dashboard, under the Chrome app (if it's in the app list).
 # Thus, it can be mistaken for an app name, so we need to ignore it.
 
-KEYWORDS_FOR_UNRELATED_SCREENSHOTS = {ITA: ['USO BATTERIA', 'Benessere digitale'],
-                                      ENG: ['BATTERY USE', 'BATTERY USAGE',
-                                            'Digital wellbeing', 'Digital Wellbeing & parental',
-                                            'No limit', 'Manage notifications', 'Weekly report'],
-                                      GER: ['TODO FILL THIS IN'],
-                                      FRA: ['TODO FILL THIS IN']}
-# Some screenshots show only Battery Usage info; these screenshots do not contain any of the requested info.
-
-
-def screenshot_contains_unrelated_data(ss):
-    """
-
-    :param ss:
-    :return:
-    """
-    text_df = ss.text
-    lang = ss.language
-    moe = int(np.log(min(len(k) for k in KEYWORDS_FOR_UNRELATED_SCREENSHOTS[lang]))) + 1
-    # margin of error for text (number of characters two strings can differ by and still be considered the same text)
-    
-    if any(text_df['text'].apply(lambda x: min(OCRScript_v3.levenshtein_distance(w, key)
-                                               for key in KEYWORDS_FOR_UNRELATED_SCREENSHOTS[lang]
-                                               for w in [x[0:len(key)], x[-len(key):]])) < moe):
-        print("Detected data irrelevant to the study.")
-        # One of the rows of text_df starts with one of the keywords for unrelated screenshots
-        return True
-
-    return False
-
 
 def get_time_formats_in_lang(lang):
     """
@@ -1075,10 +1046,10 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
         return image, [None, None, None, None]
 
     else:
-        print(f"Top of crop region:  {crop_top_text}")
-        print(f"Bottom of crop region:  {crop_bottom_text}")
-        print(f"Left of crop region:  {crop_left_text}")
-        print(f"Right of crop region:  {crop_right_text}")
+        print(f"Top of app region:  {crop_top_text}")
+        print(f"Bottom of app region:  {crop_bottom_text}")
+        print(f"Left of app region:  {crop_left_text}")
+        print(f"Right of app region:  {crop_right_text}")
         return cropped_image, [crop_top, crop_left, crop_bottom, crop_right]
 
 

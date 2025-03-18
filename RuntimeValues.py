@@ -12,7 +12,7 @@ from LanguageDictionaries import *
     As of Feb 10, 2025, there are 2 preset studies available: HappyB2.0 and BCH.
 """
 
-study_to_analyze = studies[1]
+study_to_analyze = studies[0]
 # Use studies[0] for the HappyB2.0 study (pre-launch prep)
 # Use studies[1] for the HappyB2.0 study (2024 Aug-Dec)
 # Use studies[2] for the BCH study
@@ -63,7 +63,11 @@ conf_limit = 80
 ERR_CONFIDENCE = f"ERR Values below {int(conf_limit)}% confidence"
 
 image_lower_bound = 1
-image_upper_bound = 1000
+# Lowest file index to analyze when running the code
+image_upper_bound = None
+# Highest file index to analyze when running the code
+#     (if 0 or None, then no upper bound is used)
+
 #   553 for HappyB2.0 (pre-launch)
 # 19313 for HappyB2.0 2024 Aug-Dec (1387 + 2349 + 15577)  (First two surveys: 1387 + 2349 = 3736)
 #   452 for BCH study

@@ -4,13 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4e170b4d-2af2-47c5-9e6d-e8a288c22989" name="Changes" comment="Trying out a new ETA calculation, based only on the 50 most recent screenshots (of each OS version), instead of averaging ALL of them.">
-      <change beforePath="$PROJECT_DIR$/.idea/OCRScript_v3.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/OCRScript_v3.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/OCRScript_v3.py" beforeDir="false" afterPath="$PROJECT_DIR$/OCRScript_v3.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/RuntimeValues.py" beforeDir="false" afterPath="$PROJECT_DIR$/RuntimeValues.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iOSFunctions.py" beforeDir="false" afterPath="$PROJECT_DIR$/iOSFunctions.py" afterDir="false" />
-    </list>
+    <list default="true" id="4e170b4d-2af2-47c5-9e6d-e8a288c22989" name="Changes" comment="New method of detecting hours axis seems to be working just as well as the old method.&#10;&#10;Also, found out why '00 06 12 18' was being replaced with '0 6 12 18' --- it has to do with the 'ensure_text_is_string' function in the extract_text_from_image function -- that function converted each word to an integer (if possible), then back to a string." />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -36,7 +30,7 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "Python.AndroidFunctions.executor": "Debug",
-    "Python.OCRScript_v3.executor": "Debug",
+    "Python.OCRScript_v3.executor": "Run",
     "Python.RuntimeValues.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
@@ -121,14 +115,35 @@
       <option name="project" value="LOCAL" />
       <updated>1741999208666</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="New method of detecting hours axis seems to be working just as well as the old method.&#10;&#10;Also, found out why '00 06 12 18' was being replaced with '0 6 12 18' --- it has to do with the 'ensure_text_is_string' function in the extract_text_from_image function -- that function converted each word to an integer (if possible), then back to a string.">
+      <option name="closed" value="true" />
+      <created>1742200385490</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1742200385490</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="1. Added 'relative difference' to ETA csv&#10;&#10;2. Added columns for 'same user' and 'different user' counts to Duplicate Screenshot Info csv&#10;&#10;3. When showing images on screen, program now uses the current screen's height as a metric for how much to scale the image (so it fits on the screen).&#10;&#10;4. Set maximum error_margin for two strings to be 7&#10;&#10;5. Program now outputs a CSV of the confidence values of the data (as well as the data itself)&#10;&#10;6. In AndroidFunctions.py: getting headings now uses two forms of a filtered row text (hashes instead of numbers, and that plus no spaces) in comparing row text to heading keywords. Helps to catch more headings." />
     <MESSAGE value="Added 'updated_df' that prints to console whenever new data is compared to existing data (for a participant-day-category)" />
     <MESSAGE value="Trying out a new ETA calculation, based only on the 50 most recent screenshots (of each OS version), instead of averaging ALL of them." />
-    <option name="LAST_COMMIT_MESSAGE" value="Trying out a new ETA calculation, based only on the 50 most recent screenshots (of each OS version), instead of averaging ALL of them." />
+    <MESSAGE value="New method of detecting hours axis seems to be working just as well as the old method.&#10;&#10;Also, found out why '00 06 12 18' was being replaced with '0 6 12 18' --- it has to do with the 'ensure_text_is_string' function in the extract_text_from_image function -- that function converted each word to an integer (if possible), then back to a string. The problem is now resolved, and the HOURS AXIS detection method no longer needs to include searches for '0' and '6', it can just include '00' and '06' (since that's how the hours row may appear on certain iOS screenshots)." />
+    <MESSAGE value="New method of detecting hours axis seems to be working just as well as the old method.&#10;&#10;Also, found out why '00 06 12 18' was being replaced with '0 6 12 18' --- it has to do with the 'ensure_text_is_string' function in the extract_text_from_image function -- that function converted each word to an integer (if possible), then back to a string. The problem is now resolved, and the HOURS AXIS detection method no longer needs to include searches for '0' and '6', it can just include '00' and '06' (since that's how the hours row may appear on certain iOS screenshots)." />
+    <option name="LAST_COMMIT_MESSAGE" value="New method of detecting hours axis seems to be working just as well as the old method.&#10;&#10;Also, found out why '00 06 12 18' was being replaced with '0 6 12 18' --- it has to do with the 'ensure_text_is_string' function in the extract_text_from_image function -- that function converted each word to an integer (if possible), then back to a string. The problem is now resolved, and the HOURS AXIS detection method no longer needs to include searches for '0' and '6', it can just include '00' and '06' (since that's how the hours row may appear on certain iOS screenshots)." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
