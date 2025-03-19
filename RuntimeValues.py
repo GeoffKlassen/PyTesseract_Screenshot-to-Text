@@ -12,7 +12,7 @@ from LanguageDictionaries import *
     As of Feb 10, 2025, there are 2 preset studies available: HappyB2.0 and BCH.
 """
 
-study_to_analyze = studies[2]
+study_to_analyze = studies[0]
 # Use studies[0] for the HappyB2.0 study (pre-launch prep)
 # Use studies[1] for the HappyB2.0 study (2024 Aug-Dec)
 # Use studies[2] for the BCH study
@@ -69,10 +69,10 @@ image_upper_bound = None
 # 19313 for HappyB2.0 2024 Aug-Dec (1387 + 2349 + 15577)  (First two surveys: 1387 + 2349 = 3736)
 #   452 for BCH study
 
-show_images_at_runtime = False
+show_images_at_runtime = True
 # If True, images of the screenshots will be shown during runtime (mostly for debugging).
 
-save_log_and_CSVs = True
+save_log_and_CSVs = False
 # If True, CSVs and an output log will be created and saved to a dated folder
 
 

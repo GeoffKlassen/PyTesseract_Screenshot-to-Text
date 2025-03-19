@@ -746,6 +746,9 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
 
         # Slice the DataFrame to remove rows above that index
         headings_df = headings_df.loc[index_to_keep:]
+        print(headings_df.iloc[0]['text'])
+        crop_top = min(screenshot.height - 1, int(headings_df.iloc[0]['top'] + 10*headings_df.iloc[0]['height']))
+        #  New default crop_top should be below the main heading a fair way (so that we skip over the daily total).
 
     headings_above_df = headings_df[headings_df[HEADING_COLUMN].isin(headings_above)]
     headings_below_df = headings_df[headings_df[HEADING_COLUMN].eq(heading_below)]

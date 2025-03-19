@@ -4,7 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4e170b4d-2af2-47c5-9e6d-e8a288c22989" name="Changes" comment="1. In extract_text_from_image, added a new regex replacement for hours rows, where the hours values appear as one word (e.g., 12AM6AM). They should be spaced apart in order for the code to find them as words and identify the row as an HOURS AXIS.&#10;&#10;2.Added a boolean for save_log_and_CSVs to RuntimeValues.py.&#10;&#10;3. Made sure MISREAD_TIME_FORMAT_IOS cannot match a time like 73 minutes or 1 hour 493 minutes.&#10;&#10;4. In extract_app_info, now allowing the truncated_initial_scan dataframe to include confident app names in the app area for Android screenshots only.&#10;&#10;5. When consolidating overlapping text (in the app area), if one row matches a long time format but the previous row doesn't, then the previous row is dropped (and vice versa)." />
+    <list default="true" id="4e170b4d-2af2-47c5-9e6d-e8a288c22989" name="Changes" comment="1. In extract_text_from_image, added a new regex replacement for hours rows, where the hours values appear as one word (e.g., 12AM6AM). They should be spaced apart in order for the code to find them as words and identify the row as an HOURS AXIS.&#10;&#10;2.Added a boolean for save_log_and_CSVs to RuntimeValues.py.&#10;&#10;3. Made sure MISREAD_TIME_FORMAT_IOS cannot match a time like 73 minutes or 1 hour 493 minutes.&#10;&#10;4. In extract_app_info, now allowing the truncated_initial_scan dataframe to include confident app names in the app area for Android screenshots only.&#10;&#10;5. When consolidating overlapping text (in the app area), if one row matches a long time format but the previous row doesn't, then the previous row is dropped (and vice versa).">
+      <change beforePath="$PROJECT_DIR$/.idea/OCRScript_v3.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/OCRScript_v3.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RuntimeValues.py" beforeDir="false" afterPath="$PROJECT_DIR$/RuntimeValues.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/iOSFunctions.py" beforeDir="false" afterPath="$PROJECT_DIR$/iOSFunctions.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -27,17 +32,17 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Python.AndroidFunctions.executor": "Debug",
-    "Python.OCRScript_v3.executor": "Run",
-    "Python.RuntimeValues.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "master",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.AndroidFunctions.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.OCRScript_v3.executor&quot;: &quot;Run&quot;,
+    &quot;Python.RuntimeValues.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager">
     <configuration name="OCRScript_v3" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="OCRScript_v3" />
@@ -171,6 +176,11 @@
           <url>file://$PROJECT_DIR$/ParticipantClass.py</url>
           <line>465</line>
           <option name="timeStamp" value="30" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/iOSFunctions.py</url>
+          <line>727</line>
+          <option name="timeStamp" value="32" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
