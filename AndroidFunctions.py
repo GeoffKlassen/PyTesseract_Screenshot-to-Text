@@ -559,24 +559,23 @@ def filter_time_text(text, conf, hr_f, min_f):
         """
         # Replaces a 'misread' digit with the 'actual' digit, but only if it is followed by a time word/character
         # (hours or minutes) in the relevant language
-        pattern = re.compile(''.join([r"(?<![^0-9tailsh\s\b])", misread, r"(?=\s?[0-9tails]{0,2}\s?(", hr_f, "|", min_f, "))"]), flags=re.IGNORECASE)
+        pattern = re.compile(''.join([r"(?<![^0-9tailsh\s\b])", misread, r"(?=\s?[0-9tailsz]{0,2}\s?(", hr_f, "|", min_f, "))"]), flags=re.IGNORECASE)
         # Note: Don't look behind for r if searching to replace an s, otherwise 'hrs' will become 'hr5'
         filtered_str = re.sub(pattern, actual, s)
         return filtered_str
 
     text2 = re.sub(r"bre|bra", "hrs", text)
     text2 = re.sub(r"Zhe|zhe", "2hr", text2)
-    text2 = re.sub(r"br|Ar", "hr", text2)
     text2 = re.sub(r"(?<=[\d\s])ming$", "mins", text2)
     text2 = re.sub(r"ii", "11", text2, re.IGNORECASE)
     text2 = re.sub(r"5S(?=\s?h)", "5", text2, re.IGNORECASE)
 
-    text2 = re.sub(r"((?<=\d\s)tr)|((?<=\d)tr)", "hr", text2)
-    text2 = re.sub(r"((?<=\d\s)hy)|((?<=\d)hy)", "hr", text2)
-    text2 = re.sub(r"((?<=\d\s)ty)|((?<=\d)ty)", "hr", text2)
-    text2 = re.sub(r"((?<=\d\s)he)|((?<=\d)he)", "hr", text2)
-    text2 = re.sub(r"((?<=\d\s)by)|((?<=\d)by)", "hr", text2)
-    text2 = re.sub(r"((?<=\d\s)kr)|((?<=\d)kr)", "hr", text2)
+    text2 = re.sub(r"((?<=\d\s)tr|hy|ty|he|by|kr|br|Ar)|((?<=\d)tr|hy|ty|he|by|kr|br|Ar)", "hr", text2)
+    # text2 = re.sub(r"((?<=\d\s)hy)|((?<=\d)hy)", "hr", text2)
+    # text2 = re.sub(r"((?<=\d\s)ty)|((?<=\d)ty)", "hr", text2)
+    # text2 = re.sub(r"((?<=\d\s)he)|((?<=\d)he)", "hr", text2)
+    # text2 = re.sub(r"((?<=\d\s)by)|((?<=\d)by)", "hr", text2)
+    # text2 = re.sub(r"((?<=\d\s)kr)|((?<=\d)kr)", "hr", text2)
     text2 = re.sub(r"(7(?=\d))", "1", text2)
     text2 = re.sub(r"(8(?=\d))", "3", text2)  # Might be better to replace 8's with 5's? Have to investigate
     text2 = text2.replace('hr.', 'hr')
@@ -682,7 +681,16 @@ def get_daily_total_and_confidence(screenshot, image, category):
 
         row_above_total = headings_df[headings_df[HEADING_COLUMN] == category].iloc[0]
         crop_top = min([screenshot.height, row_above_total['top'] + (3 * row_above_total['height'])])
-        crop_bottom = min([screenshot.height, crop_top + (7 * row_above_total['height'])])
+        crop_right = int(0.65 * screenshot.width)
+        if not df[df.index == row_above_total.name + 1].empty:
+            crop_bottom = screenshot.height  # Initialize
+            possible_total_row = df[df.index == row_above_total.name + 1].iloc[0]
+            if (possible_total_row['top'] - (row_above_total['top'] + row_above_total['height']) < 0.1 * screenshot.width
+                    and possible_total_row['height'] > row_above_total['height']):
+                crop_bottom = possible_total_row['top'] + int(1.5 * possible_total_row['height'])
+                print("Success yes success")
+        else:
+            crop_bottom = min([screenshot.height, crop_top + (6 * row_above_total['height'])])
 
         print(f"Daily total not found, but found row above total: '{row_above_total['text']}'. Cropping image below this row for rescan.")
         cropped_scan = rescan_cropped_area(image, crop_top, crop_bottom, crop_left, crop_right)

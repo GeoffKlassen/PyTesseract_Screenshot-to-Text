@@ -668,9 +668,9 @@ def get_total_pickups_2nd_location(screenshot, img):
         total_pickups_1st_scan, total_pickups_1st_scan_conf = filter_time_or_number_text(last_word_in_row,
                                                                                          last_word_in_row_conf,
                                                                                          value_format)
-        print(f"Total pickups found in 2nd location: {total_pickups_1st_scan} (conf = {total_pickups_1st_scan_conf:.4f}).")
+        print(f"Total pickups (2nd location), initial scan: {total_pickups_1st_scan} (conf = {total_pickups_1st_scan_conf:.4f}).")
     except:
-        print("Total pickups in 2nd location not found on first scan.")
+        print("Total pickups (2nd location), initial scan: N/A).")
         total_pickups_1st_scan = NO_NUMBER
         total_pickups_1st_scan_conf = NO_CONF
 
@@ -699,10 +699,10 @@ def get_total_pickups_2nd_location(screenshot, img):
         if value_found:
             total_pickups_2nd_scan = value_found[-1]
             total_pickups_2nd_scan_conf = round(rescan_words.iloc[-1]['conf'], 4)
-            print(f"Total pickups found in 2nd location (rescan): {total_pickups_2nd_scan} "
+            print(f"Total pickups (2nd location), cropped scan: {total_pickups_2nd_scan} "
                   f"(conf = {total_pickups_2nd_scan_conf:.4f}).")
         else:
-            print("Total pickups not found in 2nd location (rescan).")
+            print("Total pickups (2nd location), cropped scan: N/A")
             total_pickups_2nd_scan = NO_NUMBER
             total_pickups_2nd_scan_conf = NO_CONF
 
