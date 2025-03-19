@@ -243,7 +243,6 @@ MARGIN_OF_ERROR = {5: 0,
                    30: 6
                    }
 
-
 def error_margin(text1, text2=None):
     t = str(text1) if text2 is None else min(str(text1), str(text2), key=len)
     for key in MARGIN_OF_ERROR:
@@ -428,7 +427,7 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é.]+'
     df_words = df_words.replace({r'^[xX]+\s?[xX]*$': 'X'}, regex=True)
     df_words = df_words[df_words['conf'] > 0]
     df_words = df_words.fillna('')
-    df_words = df_words[(df_words['text'] != '') & (df_words['text'] != ' ')]
+    df_words = df_words[~df_words['text'].isin(['', ' ', '.'])]
     df_words['text'] = (df_words['text'].apply(ensure_text_is_string))
     df_words['text'] = df_words['text'].apply(lambda x: re.sub(r'(?<=[26G\s][aApP])([mM])(?=[126G])', r'\1 ', x))
 
@@ -437,7 +436,7 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é.]+'
         df_words = df_words[~df_words['text'].str.contains('^[aemu]+$')]
         # Remove words that only contain aemu's (these words are often misreadings of the graph 'dash' lines as words)
         
-        df_words = df_words[~(df_words['text'] == "cai")]
+        df_words = df_words[~(df_words['text'].isin(["cai", "c.ai"]))]
         # The icon for the app name "Character.AI" is the text 'c.ai'
 
         df_words['next_text'] = df_words['text'].shift(-1)
@@ -546,11 +545,16 @@ def determine_language_of_image(participant, df):
     if df.shape[0] <= 1:
         print(f"No text detected. {backup_lang_msg}")
         return backup_lang, False
-    for key, _list in LANGUAGE_KEYWORDS.items():
-        for val in _list:
-            if df['text'].str.contains(val).any():
-                print(f"Language keyword detected: '{val}'. Setting language to {key}.")
-                return key, True
+    for _dict in [LANGUAGE_KEYWORDS.items(),
+                  KEYWORDS_FOR_TODAY.items(),
+                  KEYWORDS_FOR_WEEKDAY_NAMES.items(),
+                  KEYWORDS_FOR_WEEK.items(),
+                  KEYWORDS_FOR_UNRELATED_SCREENSHOTS.items()]:
+        for key, _list in _dict:
+            for val in _list:
+                if len(val) > 3 and df['text'].str.contains(val, case=False).any():
+                    print(f"Language keyword detected: '{val}'. Setting language to {key}.")
+                    return key, True
 
     print(f"No language keywords detected. {backup_lang_msg}")
     return backup_lang, user_lang_exists
@@ -901,24 +905,8 @@ def extract_app_info(screenshot, image, coordinates, scale):
 
     _, app_info_scan_1 = extract_text_from_image(image, remove_chars=remove_chars)
 
-    # If the first text found in the cropped image is too far down/right in the image to be app info, then consider the
-    # cropped region to NOT contain app info.
-    # if screenshot.device_os_detected == IOS and not app_info_scan_1.empty and \
-    #         (app_info_scan_1['top'][0] > 5 * app_info_scan_1['height'][0] or
-    #          not re.fullmatch(MISREAD_TIME_OR_NUMBER_FORMAT, app_info_scan_1['text'][0]) and (
-    #                  app_info_scan_1['left'][0] > int(0.25 * image.shape[1]) or
-    #                  abs(app_info_scan_1['left'][0] + app_info_scan_1['width'][0]) < int(0.02 * image.shape[1]))):
-    #     # First found row of text is more than 5x its own height from the top of the cropped image; or
-    #     # First found row of text is not a time/number and either:
-    #     #     it starts too far from the left edge of the cropped image, or
-    #     #     it's too close to the right edge of the cropped image
-    #
-    #     print("First text found in cropped region is too far down/right. App-level data not found.")
-    #     screenshot.add_error(ERR_APP_DATA)
-    #     return empty_text
-
-    """Sometimes the cropped rescan misses app numbers that were found on the initial scan.
-                    Merge these app numbers from the initial scan into the rescan."""
+    """Sometimes the cropped rescan misses app times/numbers that were found on the initial scan.
+                    Merge these app times/numbers from the initial scan into the rescan."""
     # Select only numbers from the initial scan that have high confidence (above keep_text_conf)
     # and that lie in the 'app info' cropped region
     # text.loc[text['text'].str.match(r'^[xX]+\s?[xX]*$'), 'text'] = 'X'
@@ -927,18 +915,21 @@ def extract_app_info(screenshot, image, coordinates, scale):
     truncated_initial_scan = truncated_initial_scan[(truncated_initial_scan['left'] > crop_left) &
                                                     (truncated_initial_scan['top'] > crop_top) &
                                                     (truncated_initial_scan['right'] < crop_right) &
-                                                    (truncated_initial_scan['top'] < crop_bottom)] # &
-                                                    # (((truncated_initial_scan['text'].str.isdigit()) |
-                                                    #  (truncated_initial_scan['text'].str.fullmatch(time_format_long)) |
-                                                    #  (truncated_initial_scan['text'].str.fullmatch(MISREAD_TIME_FORMAT_IOS)))
-                                                    #  if screenshot.device_os_detected == IOS else True)]
+                                                    (truncated_initial_scan['top'] < crop_bottom) &
+                                                    (((truncated_initial_scan['text'].str.isdigit()) |
+                                                     (truncated_initial_scan['text'].str.fullmatch(time_format_long)) |
+                                                     (truncated_initial_scan['text'].str.fullmatch(MISREAD_TIME_FORMAT_IOS))))]
+                                                     # if screenshot.device_os_detected == IOS else True)]
     truncated_initial_scan.loc[truncated_initial_scan.index, 'left'] = truncated_initial_scan['left'] - crop_left
     truncated_initial_scan.loc[truncated_initial_scan.index, 'top'] = truncated_initial_scan['top'] - crop_top
 
-    print(f"\nInitial scan's app info in crop region, where conf > {keep_text_conf}%, plus any instances of X (Twitter):")
-    print(truncated_initial_scan[['left', 'top', 'width', 'height', 'conf', 'text']])
+    times_or_numbers = "times" if screenshot.category_detected == SCREENTIME else "numbers"
+    print(f"\nInitial scan's app {times_or_numbers} "
+          f"in crop region, where conf > {keep_text_conf}%, plus any instances of X (Twitter):")
+    print(truncated_initial_scan[['left', 'top', 'width', 'height', 'conf', 'text']]
+          if not truncated_initial_scan.empty else "None")
     if show_images_at_runtime:
-        show_image(truncated_initial_scan, image, window_name="Confident text from initial scan")
+        show_image(truncated_initial_scan, image, window_name=f"Confident {times_or_numbers} from initial scan")
 
     if app_info_scan_1['text'].eq("X").any() and truncated_initial_scan['text'].eq("X").any():
         # If both the initial scan and the first cropped scan found the app name 'X',
@@ -1121,7 +1112,9 @@ def convert_seconds_to_hms(sec):
 def update_eta(ss_start_time, idx):
 
     def convert_eta_to_string(sec):
-        if sec >= 60:
+        if sec > 3600:
+            sec = ((sec + 299) // 300) * 300
+        elif sec >= 60:
             sec = ((sec + 9) // 10) * 10
 
         _hr = int(sec / 3600)
@@ -1342,15 +1335,20 @@ if __name__ == '__main__':
     now = datetime.now()
     today_ymd_hms = now.strftime("%Y-%m-%d %H-%M-%S")
     dir_name_in_progress = f"{CSVs}\\{today_ymd_hms} (log only)"
-    logfile = f"{study_to_analyze[NAME]} output log.txt"
+    logfile = f"output log.txt"
 
     if save_log_and_CSVs:
+        print(f"\nSaving log to {dir_name_in_progress}\\{logfile}\n")
         if not os.path.exists(CSVs):
             os.makedirs(CSVs)
         if not os.path.exists(f"{dir_name_in_progress}"):
             os.makedirs(f"{dir_name_in_progress}")
         sys.stdout = TeeOutput(f"{dir_name_in_progress}\\{logfile}")
-        print(f"Saving log to {dir_name_in_progress}\\{logfile}")
+    else:
+        print("\n"
+              "***                                          ***\n"
+              "***   NOTE: CSVs and log will not be saved   ***\n"
+              "***                                          ***\n")
 
     # Read in the list of URLs for the appropriate Study (as specified in RuntimeValues.py)
     url_list = pd.DataFrame()
@@ -1515,6 +1513,7 @@ if __name__ == '__main__':
         # If there was text found, we can keep going
         print("Text found in initial scan:")
         print(text_df[['left', 'top', 'width', 'height', 'conf', 'text']])
+        print()
         current_screenshot.set_text(text_df)
         current_screenshot.set_words_df(text_df_single_words)
 
@@ -1532,7 +1531,7 @@ if __name__ == '__main__':
             current_screenshot.add_error(ERR_LANGUAGE)
 
         # Sometimes participants submit screenshots with irrelevant information, such as a screenshot of the survey
-        # question itself.  Such images have keywords that identify them as irrelevent (e.g., "Yesterday's screen time",
+        # question itself.  Such images have keywords that identify them as irrelevant (e.g., "Yesterday's screen time",
         # "Yesterday's pickups", "Yesterday's notifications").
 
         # Determine if the screenshot contains data mis-considered relevant by participant -- if so, skip it
@@ -1651,7 +1650,7 @@ if __name__ == '__main__':
 
             daily_total, daily_total_conf = Android.get_daily_total_and_confidence(screenshot=current_screenshot,
                                                                                    image=bw_image_scaled,
-                                                                                   heading=dashboard_category)
+                                                                                   category=dashboard_category)
             if dashboard_category != SCREENTIME and daily_total_conf != NO_CONF:
                 try:
                     daily_total = str(int(daily_total))
@@ -1676,9 +1675,9 @@ if __name__ == '__main__':
                                                                              screenshot=current_screenshot)
                 dtm = (" (" + str(daily_total_minutes) + " minutes)") if daily_total_conf != NO_CONF else ""
                 current_screenshot.set_daily_total_minutes(daily_total_minutes)
-                print(f"Daily total {dashboard_category}: {dt}{dtm}\n")
+                print(f"\nDaily total {dashboard_category}: {dt}{dtm}\n")
             else:
-                print(f"Daily total {dashboard_category}: {dt}\n")
+                print(f"\nDaily total {dashboard_category}: {dt}\n")
 
             # For Samsung_2021 and 2018 versions of the dashboard, the Screentime heading and Notifications heading
             # both have subheadings ('most used' and 'most notifications', respectively).
@@ -1773,7 +1772,7 @@ if __name__ == '__main__':
 
                 print("\nApp data found:")
                 print(app_data[[NAME, NUMBER, MINUTES]])
-                print(f"Daily total {dashboard_category}: {dt}{dtm}\n")
+                print(f"\nDaily total {dashboard_category}: {dt}{dtm}\n")
                 if current_screenshot.daily_total_minutes is not None and \
                         current_screenshot.daily_total_minutes != NO_NUMBER:
                     sum_app_minutes = app_data[app_data[MINUTES] != NO_CONF][MINUTES].astype(int).sum()
@@ -1840,7 +1839,7 @@ if __name__ == '__main__':
                 daily_total_minutes = iOS.convert_text_time_to_minutes(daily_total, current_screenshot)
 
                 dtm = (" (" + str(daily_total_minutes) + " minutes)") if daily_total_conf != NO_CONF else ""
-                print("Daily " + ('total ' if current_screenshot.relative_day != WEEK else 'average ') + f"{dashboard_category}: {dt}{dtm}\n")
+                print("\nDaily " + ('total ' if current_screenshot.relative_day != WEEK else 'average ') + f"{dashboard_category}: {dt}{dtm}\n")
 
                 current_screenshot.set_daily_total_minutes(daily_total_minutes)
                 headings_above_applist = [MOST_USED_HEADING,  # Main
@@ -1870,7 +1869,7 @@ if __name__ == '__main__':
 
             elif dashboard_category == NOTIFICATIONS:
                 current_screenshot.set_daily_total(daily_total, daily_total_conf)
-                print(f"Daily total {dashboard_category}: {dt}\n")
+                print(f"\nDaily total {dashboard_category}: {dt}\n")
 
                 headings_above_applist = [HOURS_AXIS_HEADING,  # Main
                                           DAYS_AXIS_HEADING, DAY_OR_WEEK_C_HEADING, DATE_C_HEADING]  # Backups

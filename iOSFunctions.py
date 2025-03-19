@@ -84,6 +84,7 @@ KEYWORDS_FOR_HOURS_AXIS_2 = {ENG: {"00", "06", "12", "18",  # Number only
                                    "AM", "PM", "6AM", "12PM", "6PM", "12AM",  # AM/PM included
                                    "GAM"}
                             }
+AM_PM = "AM|PM"
 
 
 """
@@ -181,8 +182,9 @@ def get_headings(screenshot, rescale_df=pd.DataFrame()):
                  for keyword in KEYWORDS_FOR_NOTIFICATIONS[lang]):
             df.loc[i, HEADING_COLUMN] = NOTIFICATIONS_HEADING
 
-        elif len(row_words.intersection(KEYWORDS_FOR_HOURS_AXIS_2[lang])) >= 2 and \
-                not bool(re.search(MISREAD_TIME_FORMAT_IOS, row_text)):
+        elif (len(row_words.intersection(KEYWORDS_FOR_HOURS_AXIS_2[lang])) >= 2
+                and not bool(re.search(MISREAD_TIME_FORMAT_IOS, row_text))
+              or len(re.findall(AM_PM, row_text, flags=re.IGNORECASE)) >= 2):
             df.loc[i, HEADING_COLUMN] = HOURS_AXIS_HEADING
 
         elif re.search('|'.join(KEYWORDS_FOR_HOURS_AXIS), row_text, re.IGNORECASE):
@@ -235,11 +237,11 @@ def get_dashboard_category(screenshot):
     if heads_df[HEADING_COLUMN].str.fullmatch(SCREENTIME_HEADING).any() or (
             # Found screentime heading; or
 
-            heads_df[HEADING_COLUMN].str.fullmatch(HOURS_AXIS_HEADING).any() and (
-            text_df[text_df.index < heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].index[0]][
-                'text'].str.contains(MISREAD_TIME_FORMAT_IOS).any() or (
-            heads_df[HEADING_COLUMN].str.fullmatch(LIMITS_HEADING).any() and
-            heads_df[heads_df[HEADING_COLUMN] == LIMITS_HEADING].index[0] >
+            heads_df[HEADING_COLUMN].str.fullmatch(HOURS_AXIS_HEADING).any()
+            and (text_df[text_df.index < heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].index[0]][
+                  'text'].str.contains(MISREAD_TIME_FORMAT_IOS).any()
+                 or (heads_df[HEADING_COLUMN].str.fullmatch(LIMITS_HEADING).any()
+                     and heads_df[heads_df[HEADING_COLUMN] == LIMITS_HEADING].index[0] >
             heads_df[heads_df[HEADING_COLUMN] == HOURS_AXIS_HEADING].index[0]))) or (
             # Found hours axis and either:
             #   there's a row with a screentime above the hours axis, or
@@ -392,8 +394,6 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
     headings_df = screenshot.headings_df
     rows_with_day_type = screenshot.rows_with_day_type
 
-    print(f"Searching for total {category}:")
-
     # Initialize first scan values
     daily_total_1st_scan = NO_TEXT
     daily_total_1st_scan_conf = NO_CONF
@@ -506,7 +506,7 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
         print(f"Could not find suitable crop region for daily total {category}.")
         return daily_total_1st_scan, daily_total_1st_scan_conf
     else:
-        print("\nCropping image to daily total:\n")
+        print("Cropping image to daily total:\n")
         print(f"Top of daily total region: {str_crop_top}")
         print(f"Bottom of daily total region: {str_crop_bottom}")
         print(f"Left of daily total region: {str_crop_left}")
@@ -560,9 +560,9 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
                     break
 
         if daily_total_1st_scan_conf != NO_CONF:
-            print(f"Total {category}, 1st scan: {daily_total_1st_scan} (conf = {daily_total_1st_scan_conf:.4f})")
+            print(f"Total {category}, initial scan: {daily_total_1st_scan} (conf = {daily_total_1st_scan_conf:.4f})")
         if daily_total_2nd_scan_conf != NO_CONF:
-            print(f"Total {category}, 2nd scan: {daily_total_2nd_scan} (conf = {daily_total_2nd_scan_conf:.4f})")
+            print(f"Total {category}, cropped scan: {daily_total_2nd_scan} (conf = {daily_total_2nd_scan_conf:.4f})")
 
         val_format = MISREAD_TIME_FORMAT_IOS if category == SCREENTIME else MISREAD_NUMBER_FORMAT
         is_number = False if category == SCREENTIME else True
@@ -746,14 +746,13 @@ def crop_image_to_app_area(screenshot, headings_above, heading_below):
 
         # Slice the DataFrame to remove rows above that index
         headings_df = headings_df.loc[index_to_keep:]
-        print(headings_df.iloc[0]['text'])
         crop_top = min(screenshot.height - 1, int(headings_df.iloc[0]['top'] + 10*headings_df.iloc[0]['height']))
         #  New default crop_top should be below the main heading a fair way (so that we skip over the daily total).
 
     headings_above_df = headings_df[headings_df[HEADING_COLUMN].isin(headings_above)]
     headings_below_df = headings_df[headings_df[HEADING_COLUMN].eq(heading_below)]
 
-    print("Cropping image to app area:")
+    print("\nCropping image to app area:")
 
     for attempt in range(1, 3):
         # Search for crop_top and crop_bottom

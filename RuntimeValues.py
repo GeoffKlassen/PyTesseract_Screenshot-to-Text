@@ -61,7 +61,7 @@ ERR_CONFIDENCE = f"ERR Values below {int(conf_limit)}% confidence"
 
 image_lower_bound = 1
 # Lowest file index to analyze when running the code
-image_upper_bound = None
+image_upper_bound = 500
 # Highest file index to analyze when running the code
 #     (if 0 or None, then no upper bound is used)
 
@@ -69,11 +69,10 @@ image_upper_bound = None
 # 19313 for HappyB2.0 2024 Aug-Dec (1387 + 2349 + 15577)  (First two surveys: 1387 + 2349 = 3736)
 #   452 for BCH study
 
-show_images_at_runtime = True
+show_images_at_runtime = False
 # If True, images of the screenshots will be shown during runtime (mostly for debugging).
 
 save_log_and_CSVs = False
 # If True, CSVs and an output log will be created and saved to a dated folder
 
-
-# FIle 16 in BCH study - "Super Slime Simulator" app name found in initial scan but not on any of the subsequent scans
+# 7145 - colour correction fail?

@@ -31,10 +31,10 @@ Dictionaries included:
 
 from ConvenienceVariables import *
 
-LANGUAGE_KEYWORDS = {ENG: ['Screen time', 'SCREEN', 'Updated', 'Yesterday', 'yesterday', 'Today', 'View more', 'today',
+LANGUAGE_KEYWORDS = {ENG: ['Screen time', 'SCREEN', 'Updated', 'Yesterday', 'yesterday', 'View more',
                            'received', 'Unlocks', 'unlocks', 'Digital Wellbeing', 'View all', 'Show sites',
-                           'Set limits for', 'Set timers for', 'Activity details', 'Activity history'],
-                     ITA: ['Tempo di utilizzo''utilizzo', 'dello schermo', ' leri ', '\bleri\b', 'notifiche',
+                           'Set limits for', 'Set timers for', 'Activity details', 'details', 'Activity history'],
+                     ITA: ['Tempo di utilizzo''utilizzo', 'dello schermo', '\bleri\b', 'notifiche',
                            'NOTIFICHE', 'UTILIZZATE', 'DOPO', 'ricevute', 'sblocchi', 'Sblocchi', 'blocchi', 'volte',
                            'batteria', 'atteria', 'Oggi'],
                      GER: ['Gestern', 'Heute', 'Benachrichtigungen', 'Entsperrungen'],
@@ -48,7 +48,10 @@ or, if that's not available, the study's default language as set in RuntimeValue
 Note: The strings found in the image must match these keywords EXACTLY (no levenshtein_distance applied), which is why
 there are several 'misspellings' included. The reason for the exact match is that some of the keywords are quite short,
 such as 'today', 'volte', 'Oggi', 'fois', and 'Hier', so we don't want any misread words or other strings to give us
-false positives. """
+false positives. 
+
+Several of the dictionaries below are also used as keywords to detect screenshot language, such as KEYWORDS_FOR_TODAY,
+KEYWORDS_FOR_WEEKDAY_NAMES, etc, with the condition that the value in the dictionary must be longer than 3 characters.`"""
 
 
 """
