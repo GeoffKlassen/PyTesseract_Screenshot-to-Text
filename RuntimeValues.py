@@ -12,7 +12,7 @@ from LanguageDictionaries import *
     As of Feb 10, 2025, there are 2 preset studies available: HappyB2.0 and BCH.
 """
 
-study_to_analyze = studies[0]
+study_to_analyze = studies[2]
 # Use studies[0] for the HappyB2.0 study (pre-launch prep)
 # Use studies[1] for the HappyB2.0 study (2024 Aug-Dec)
 # Use studies[2] for the BCH study
@@ -74,3 +74,6 @@ show_images_at_runtime = False
 
 save_log_and_CSVs = True
 # If True, CSVs and an output log will be created and saved to a dated folder
+
+
+# FIle 16 in BCH study - "Super Slime Simulator" app name found in initial scan but not on any of the subsequent scans

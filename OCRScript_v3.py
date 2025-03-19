@@ -195,7 +195,6 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
     brown_bg_threshold = 65  # 160
     white_bg_threshold = 170
     average_pixel_colour = np.mean(image)
-    print(f"Average pixel colour is: {average_pixel_colour}")
     if average_pixel_colour > white_bg_threshold:
         bg_colour = WHITE
         screenshot.set_bg_colour(WHITE)
@@ -246,11 +245,10 @@ MARGIN_OF_ERROR = {5: 0,
 
 
 def error_margin(text1, text2=None):
-    t = text1 if text2 is None else min(text1, text2, key=len)
+    t = str(text1) if text2 is None else min(str(text1), str(text2), key=len)
     for key in MARGIN_OF_ERROR:
         if len(t) <= key:
             return MARGIN_OF_ERROR[key]
-    # _m = max(0, round(3.5 * np.log(max(1.0, 0.35 * len(t) - 0.7))))
     return 7
 
 
@@ -396,7 +394,7 @@ def merge_df_rows_by_line_num(df):
     return df_nearby_rows_combined
 
 
-def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+', is_initial_scan=False):
+def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é.]+', is_initial_scan=False):
     """
 
     :param img:
@@ -425,9 +423,6 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+',
     else:
         df_words = pytesseract.image_to_data(img, output_type='data.frame')
 
-    df_words['next_text'] = df_words['text'].shift(-1)
-    df_words['next_line_num'] = df_words['line_num'].shift(-1)
-
     df_words = df_words.replace({remove_chars: ''}, regex=True)
     df_words = df_words.replace({r'é': 'e'}, regex=True)  # For app name "Pokémon GO", etc.
     df_words = df_words.replace({r'^[xX]+\s?[xX]*$': 'X'}, regex=True)
@@ -444,16 +439,21 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+',
         
         df_words = df_words[~(df_words['text'] == "cai")]
         # The icon for the app name "Character.AI" is the text 'c.ai'
-        
+
+        df_words['next_text'] = df_words['text'].shift(-1)
+        df_words['next_line_num'] = df_words['line_num'].shift(-1)
+
         df_words = df_words[~((df_words['text'].str.len() == 1) &
                               (df_words['next_text'].isin(valid_day_abbreviations)) &
                               (df_words['line_num'].eq(df_words['next_line_num'])))]
         # This command helps to remove the leading '<' character from a GOOGLE date row, which causes the row's
         # centre to be shifted to the left, meaning it wouldn't line up with the other centred headings on the screenshot
         # (all headings on Google dashboard are centred in the image, which is used to set the Android version)
+        df_words.drop(columns=['next_text', 'next_line_num'], inplace=True)
 
-    # Sometimes tesseract misreads (Italian) "Foto" as "mele"/"melee"
     df_words['text'] = df_words['text'].replace({r'^melee$|^mele$': 'Foto'}, regex=True)
+    # Sometimes tesseract misreads (Italian) "Foto" as "mele"/"melee"
+
     df_words.reset_index(drop=True, inplace=True)
 
     # To avoid multiple instances of the app name "X" getting merged into one, remove any duplicated row with "X" text
@@ -476,31 +476,28 @@ def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é]+',
                                                                     df_words.loc[idx, 'height']))
 
     df_words.drop(index=x_rows_to_drop, inplace=True)
-    df_words.drop(columns=['next_text', 'next_line_num'], inplace=True)
     df_words.reset_index(drop=True, inplace=True)
 
     df_lines = merge_df_rows_by_line_num(df_words)
 
-    # ...or misreads ".AI" as ".Al"
     df_lines['text'] = df_lines['text'].replace({'.Al': '.AI'})
     df_lines['text'] = df_lines['text'].replace({'openal.com': 'OpenAI.com'})
+    # Sometimes 'AI' gets misread as 'Al' or 'al'
 
-    # def add_one_to_hr(_s):
-    #     if bool(re.search(r"^hr\s", _s)):
-    #         return "1 " + _s
-    #     return _s
-    # df_lines['text'] = df_lines['text'].apply(add_one_to_hr)
+    df_words['text'] = df_words['text'].replace({"M essages": "Messages"})
+    # Sometimes on iOS, 'M' and 'essages' get read as their own words
 
     return df_words, df_lines
 
 
-def show_image(df, img, draw_boxes=True):
+def show_image(df, img, draw_boxes=True, window_name=''):
     """
     Opens a new window of the image currently being analyzed for data. Press any key to close the window.
 
     :param df: The dataframe that contains text extracted from the image (img) 
     :param img: The image from which the text in df is extracted
     :param draw_boxes: If True, coloured boxes are drawn around the text located in img.
+    :param window_name:
     :return: None
     """
     img_height, img_width = img.shape
@@ -527,7 +524,7 @@ def show_image(df, img, draw_boxes=True):
     print(df[['left', 'top', 'width', 'height', 'conf', 'text']])
 
     scaled_img = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
-    cv2.imshow("Text found in image", scaled_img)
+    cv2.imshow(window_name if window_name != '' else "Text found in image", scaled_img)
     # if cv2.waitKey(1000) & 0xFF == ord('q'):
     #     pass
     cv2.waitKey(0)
@@ -674,7 +671,7 @@ def get_day_type_in_screenshot(screenshot):
                              ((dev_os == ANDROID) |
                               (df['text'].str.contains(date_pattern, case=False)) |
                               (df['next_text'].str.contains(date_pattern, case=False))) & (
-                                     df['text'].apply(lambda x: any(levenshtein_distance(x, key) <= error_margin(x, key)
+                                     df['text'].apply(lambda x: all(levenshtein_distance(x, key) > error_margin(x, key)
                                                                     for key in
                                                                     Android.KEYWORDS_FOR_REST_OF_THE_DAY[lang])))]
 
@@ -813,6 +810,7 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_digits=False,
     if val_fmt is None:
         val_fmt = MISREAD_NUMBER_FORMAT if value_is_digits else MISREAD_TIME_FORMAT_IOS
 
+    string_distance = levenshtein_distance(str_text1, str_text2)
     format_name = NUMBER if value_is_digits else TIME
 
     print(f"Comparing scan 1: {t1} {c1}\n       vs scan 2: {t2} {c2}  --  ", end='')
@@ -824,6 +822,7 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_digits=False,
             elif str_text2 in str_text1:
                 print(f"{t1} contains {t2}. Keeping {t1}.")
                 return text1, conf1
+
         if bool(re.search(val_fmt, str_text1)) and not bool(re.search(val_fmt, str_text2)):
             print(f"Only {t1} matches a proper {format_name} format. Keeping {t1}.")
             return text1, conf1
@@ -836,6 +835,24 @@ def choose_between_two_values(text1, conf1, text2, conf2, value_is_digits=False,
         elif len(str_text1) < len(str_text2) and value_is_digits:
             print(f"{t2} has more characters than {t1}. Using {t2}.")
             return text2, conf2
+        elif string_distance <= error_margin(str_text1, str_text2):
+            print(f"{"Exact" if string_distance == 0 else "Fuzzy"} match.", end=" ")
+            if len(str_text1) > len(str_text2):
+                print(f"{t1} contains more characters. Using {t1}.")
+                return text1, max(conf1, conf2)
+            elif len(str_text1) > len(str_text2):
+                print(f"{t2} contains more characters. Using {t2}.")
+                return text2, max(conf1, conf2)
+            else:
+                if conf1 > conf2:
+                    print("1st scan has higher confidence. Keeping 1st scan.")
+                    return text1, conf1
+                elif conf1 < conf2:
+                    print("2nd scan has higher confidence. Using 2nd scan.")
+                    return text2, conf2
+                else:
+                    print("Confidence values are equal. Keeping first scan.")
+                    return text1, conf1
         else:
             if conf1 > conf2:
                 print("1st scan has higher confidence. Keeping 1st scan.")
@@ -878,7 +895,8 @@ def extract_app_info(screenshot, image, coordinates, scale):
     bg_colour = screenshot.bg_colour
     lang = get_best_language(screenshot)
     crop_top, crop_left, crop_bottom, crop_right = coordinates[0], coordinates[1], coordinates[2], coordinates[3]
-    remove_chars = r"[^a-zA-Z0-9+é:.!,()'&\-]+" if screenshot.device_os_detected == IOS else r"[^a-zA-Z0-9+é.!()'&\-]+"
+    # remove_chars = r"[^a-zA-Z0-9+é:.!,()'&\-]+" if screenshot.device_os_detected == IOS else r"[^a-zA-Z0-9+é.!()'&\-]+"
+    remove_chars = r"[^a-zA-Z0-9+é:!.,()'&\-]+" if screenshot.device_os_detected == IOS else r"[^a-zA-Z0-9+é!.()'&\-]+"
     # Android needs characters like commas (,) removed because they appear in screentime values
 
     _, app_info_scan_1 = extract_text_from_image(image, remove_chars=remove_chars)
@@ -909,18 +927,18 @@ def extract_app_info(screenshot, image, coordinates, scale):
     truncated_initial_scan = truncated_initial_scan[(truncated_initial_scan['left'] > crop_left) &
                                                     (truncated_initial_scan['top'] > crop_top) &
                                                     (truncated_initial_scan['right'] < crop_right) &
-                                                    (truncated_initial_scan['top'] < crop_bottom) &
-                                                    (((truncated_initial_scan['text'].str.isdigit()) |
-                                                     (truncated_initial_scan['text'].str.fullmatch(time_format_long)) |
-                                                     (truncated_initial_scan['text'].str.fullmatch(MISREAD_TIME_FORMAT_IOS)))
-                                                     if screenshot.device_os_detected == IOS else True) |
-                                                     (truncated_initial_scan['text'] == 'X')]
+                                                    (truncated_initial_scan['top'] < crop_bottom)] # &
+                                                    # (((truncated_initial_scan['text'].str.isdigit()) |
+                                                    #  (truncated_initial_scan['text'].str.fullmatch(time_format_long)) |
+                                                    #  (truncated_initial_scan['text'].str.fullmatch(MISREAD_TIME_FORMAT_IOS)))
+                                                    #  if screenshot.device_os_detected == IOS else True)]
     truncated_initial_scan.loc[truncated_initial_scan.index, 'left'] = truncated_initial_scan['left'] - crop_left
     truncated_initial_scan.loc[truncated_initial_scan.index, 'top'] = truncated_initial_scan['top'] - crop_top
 
-    print(f"\nInitial scan's app {'times' if screenshot.category_detected == SCREENTIME else 'numbers'} "
-          f"in crop region, where conf > {keep_text_conf}%, plus any instances of X (Twitter):")
+    print(f"\nInitial scan's app info in crop region, where conf > {keep_text_conf}%, plus any instances of X (Twitter):")
     print(truncated_initial_scan[['left', 'top', 'width', 'height', 'conf', 'text']])
+    if show_images_at_runtime:
+        show_image(truncated_initial_scan, image, window_name="Confident text from initial scan")
 
     if app_info_scan_1['text'].eq("X").any() and truncated_initial_scan['text'].eq("X").any():
         # If both the initial scan and the first cropped scan found the app name 'X',
@@ -943,7 +961,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
         image = cv2.rectangle(image, (0, 0), (screenshot.width, app_info_scan_1.iloc[0]['top']), bg_colour, -1)
 
     if show_images_at_runtime:
-        show_image(app_info_scan_1, image)
+        show_image(app_info_scan_1, image, window_name="Cropped scan 1")
 
     if screenshot.device_os_detected == ANDROID:
         if bg_colour == WHITE:
@@ -1000,7 +1018,7 @@ def extract_app_info(screenshot, image, coordinates, scale):
         app_info_scan_1 = app_info_scan_1[~(app_info_scan_1['text'] == "X")]
 
     if show_images_at_runtime:
-        show_image(app_info_scan_2, image_missed_text)
+        show_image(app_info_scan_2, image_missed_text, window_name="Searching for missed text")
 
     app_info = pd.concat([app_info_scan_1, app_info_scan_2], ignore_index=True)
     app_info = iOS.consolidate_overlapping_text(app_info) if screenshot.device_os_detected == IOS else (
@@ -1483,7 +1501,7 @@ if __name__ == '__main__':
         text_df_single_words, text_df = extract_text_from_image(bw_image_scaled, is_initial_scan=True)
 
         if show_images_at_runtime:
-            show_image(text_df, bw_image_scaled, draw_boxes=True)
+            show_image(text_df, bw_image_scaled, draw_boxes=True, window_name="Text found in initial scan")
 
         if text_df.shape[0] == 0:
             print(f"No text found.  Setting {current_screenshot.category_submitted} values to N/A.")
@@ -1725,7 +1743,7 @@ if __name__ == '__main__':
                 app_area_df = app_area_df[app_area_df['left'] < int(0.7 * app_area_crop_width)]
 
             if show_images_at_runtime:
-                show_image(app_area_df, scaled_cropped_image)
+                show_image(app_area_df, scaled_cropped_image, window_name="App info, final")
             # app_area_df['text'] = app_area_df['text'].apply(lambda x: 'X' if re.match(r'[xX]{2}', x) else x)
 
             print("\nText found in cropped app area:")
@@ -1947,7 +1965,7 @@ if __name__ == '__main__':
                 pd.concat([app_area_df, confident_text_from_prescan], ignore_index=True))
             # Divide the extracted app info into app names and their numbers
             if show_images_at_runtime:
-                show_image(app_area_2_df, scaled_cropped_image)
+                show_image(app_area_2_df, scaled_cropped_image, window_name="App info, final")
 
             # app_area_2_df['text'] = app_area_2_df['text'].apply(lambda x: 'X' if re.match(r'[xX]{2}', x) else x)
 

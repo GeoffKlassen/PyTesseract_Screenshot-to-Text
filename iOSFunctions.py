@@ -367,13 +367,13 @@ def filter_time_or_number_text(text, conf, f):
     text2 = text2.lower()
 
     # Remove any characters that aren't a digit or a 'time' character ('h' = hours, 'min' = minutes, 's' = seconds)
-    text2 = re.sub(r'[^0-9hmins]', '', text2)
+    text2 = re.sub(r'[^0-9hmins\s]', '', text2)
 
     # If the final filtered text is not a proper (string) value, then no (numeric) value can be extracted from it.
     if not re.match(PROPER_TIME_OR_NUMBER_FORMAT, text2, re.IGNORECASE):
         return NO_TEXT, NO_CONF
 
-    if text2 != text.replace(" ", ''):
+    if text2 != text:
         print(f"Replaced '{text}' with '{text2}'.")
 
     return text2, conf
@@ -531,9 +531,10 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
 
             # For debugging.
             if show_images_at_runtime:
-                OCRScript_v3.show_image(rescan_df, scaled_cropped_image)
+                OCRScript_v3.show_image(rescan_df, scaled_cropped_image,
+                                        window_name=f"Rescan for daily total, scale={scale:.1f}")
 
-            if scale <= 0.2 or rescan_df.shape[0] > 0:
+            if scale <= 0.3 or rescan_df.shape[0] > 0:
                 break
 
 
@@ -687,7 +688,7 @@ def get_total_pickups_2nd_location(screenshot, img):
     rescan_words, rescan_text_df = OCRScript_v3.extract_text_from_image(scaled_cropped_image)
 
     if show_images_at_runtime:
-        OCRScript_v3.show_image(rescan_words, scaled_cropped_image)
+        OCRScript_v3.show_image(rescan_words, scaled_cropped_image, window_name="Rescan for total pickups, 2nd location")
 
     # Initialize the 2nd scan values
     total_pickups_2nd_scan = NO_NUMBER
@@ -989,7 +990,7 @@ def erase_value_bars_and_icons(screenshot, df, image):
         return
 
     if show_images_at_runtime:
-        OCRScript_v3.show_image(df, image)
+        OCRScript_v3.show_image(df, image, window_name="Prescan for iOS value bars")
 
     image_height = image.shape[0]
     image_width = image.shape[1]
@@ -1103,6 +1104,9 @@ def consolidate_overlapping_text(df):
         current_num_digits = len(re.findall(r'\d', df['text'][i]))
         prev_num_digits = len(re.findall(r'\d', df['text'][i - 1]))
 
+        current_text = df.loc[i, 'text']
+        previous_text = df.loc[i - 1, 'text']
+
         if calculate_overlap(current_textbox, prev_textbox) > 0.3:
             # If two text boxes overlap by at least 30%, consider them to be two readings of the same text.
             # This if-block determines which row of text to keep, and which to discard.
@@ -1110,18 +1114,28 @@ def consolidate_overlapping_text(df):
                 rows_to_drop.append(i)
             elif df.loc[i, 'left'] != 0 and df.loc[i - 1, 'left'] == 0:
                 rows_to_drop.append(i - 1)
-            elif re.search(MISREAD_TIME_FORMAT_IOS, df.loc[i, 'text']) and not re.search(MISREAD_TIME_FORMAT_IOS, df.loc[i - 1, 'text']):
+            elif re.search(MISREAD_TIME_FORMAT_IOS, current_text) and not re.search(MISREAD_TIME_FORMAT_IOS, previous_text):
                 rows_to_drop.append(i - 1)
-            elif not re.search(MISREAD_TIME_FORMAT_IOS, df.loc[i, 'text']) and re.search(MISREAD_TIME_FORMAT_IOS, df.loc[i - 1, 'text']):
+            elif not re.search(MISREAD_TIME_FORMAT_IOS, current_text) and re.search(MISREAD_TIME_FORMAT_IOS, previous_text):
                 rows_to_drop.append(i)
-            elif re.match(MISREAD_TIME_FORMAT_IOS, df.loc[i, 'text']) and not re.match(MISREAD_TIME_FORMAT_IOS, df.loc[i - 1, 'text']):
+            elif re.match(MISREAD_TIME_FORMAT_IOS, current_text) and not re.match(MISREAD_TIME_FORMAT_IOS, previous_text):
                 rows_to_drop.append(i - 1)
-            elif not re.match(MISREAD_TIME_FORMAT_IOS, df.loc[i, 'text']) and re.match(MISREAD_TIME_FORMAT_IOS, df.loc[i - 1, 'text']):
+            elif not re.match(MISREAD_TIME_FORMAT_IOS, current_text) and re.match(MISREAD_TIME_FORMAT_IOS, previous_text):
                 rows_to_drop.append(i)
             elif current_text == "X" and prev_text != "X":
                 rows_to_drop.append(i - 1)
             elif current_text != "X" and prev_text == "X":
                 rows_to_drop.append(i)
+            elif OCRScript_v3.levenshtein_distance(current_text, previous_text) < OCRScript_v3.error_margin(current_text, previous_text):
+                if len(current_text) > len(previous_text):
+                    rows_to_drop.append(i - 1)
+                elif len(current_text) < len(previous_text):
+                    rows_to_drop.append(i)
+                else:
+                    if df.loc[i, 'conf'] >= df.loc[i - 1, 'conf']:
+                        rows_to_drop.append(i - 1)
+                    else:
+                        rows_to_drop.append(i)
             elif current_num_digits > prev_num_digits:
                 rows_to_drop.append(i - 1)
             elif current_num_digits < prev_num_digits:
@@ -1180,7 +1194,7 @@ def get_app_names_and_numbers(screenshot, crop_img, df, category, max_apps):
         prev_row_type = ''
         num_missed_app_values = 0
         for i in df.index:
-            cleaned_text = re.sub(r'\W+', '', df['text'][i])
+            cleaned_text = re.sub(r'[^\w\s]', '', df['text'][i])
             if re.match(value_format, cleaned_text, re.IGNORECASE):
                 row_text = str(cleaned_text)
             else:
@@ -1190,7 +1204,17 @@ def get_app_names_and_numbers(screenshot, crop_img, df, category, max_apps):
             row_top = df['top'][i]
             row_left = df['left'][i]
 
-            row_text = ' '.join(row_text.split()[1:]) if (len(row_text.split()) > 1 and row_left <= 2 and len(row_text.split()[0]) <= 2) else row_text
+            if len(row_text.split()) > 1:
+                row_text_first_word = row_text.split()[0]
+                row_text_without_first_word = ' '.join(row_text.split()[1:])
+                if (row_left <= 2
+                            and len(row_text_first_word) <= 2  # Icon misread as word
+                        or re.match(MISREAD_TIME_OR_NUMBER_FORMAT, row_text_without_first_word)
+                            and not re.match(MISREAD_TIME_FORMAT_IOS, row_text_without_first_word)
+                            and len(row_text_first_word) == 1
+                            and row_left < int(0.1 * crop_width)):  # Value bar misread
+                    print(f"Adjustment: Row text '{row_text}' replaced with '{row_text_without_first_word}'")
+                    row_text = row_text_without_first_word
 
             # row_height > 0.75 * df['height'].mean() and \
             if row_left < int(0.5 * crop_width) and (len(row_text) >= 3 or row_text == 'X') and \
