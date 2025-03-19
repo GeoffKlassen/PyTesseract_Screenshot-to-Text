@@ -1418,8 +1418,9 @@ if __name__ == '__main__':
             continue
 
         min_url_index = min(num_urls, image_upper_bound)
-        print("\n======================================================"
-              "========================================================\n")
+        print(f"\n=========================================="
+              f"{"   output not saved   " if save_log_and_CSVs is False else "======================"}"
+              f"==========================================\n")
         print(f"File {index + 1} of {min_url_index}: {url_list[IMG_URL][index]}")
 
         screenshot_time_start = time.time()

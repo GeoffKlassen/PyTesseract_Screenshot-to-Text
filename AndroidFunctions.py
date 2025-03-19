@@ -590,6 +590,7 @@ def filter_time_text(text, conf, hr_f, min_f):
     text2 = replace_misread_digit('(s|S)', '5', text2)
     text2 = replace_misread_digit('(o|O)', '0', text2)
     text2 = replace_misread_digit('(b)', '6', text2)
+    text2 = replace_misread_digit('(?<=\\d)z(?=\\d)|(?<=\\d{2})z|z(?=\\d{2})', '', text2)
     text2 = replace_misread_digit('(Z)', '2', text2)
 
     text2 = re.sub(r"[^0-9a-zA-Z\s]", '', text2)
@@ -652,14 +653,15 @@ def get_daily_total_and_confidence(screenshot, image, category):
         total_value_row = headings_df[headings_df[HEADING_COLUMN] == total_heading].iloc[0]
         total_value_1st_scan = total_value_row['text']
         total_value_1st_scan_conf = round(total_value_row['conf'], 4)
-        print(f"Total {category}, initial scan: {total_value_1st_scan} (conf = {total_value_1st_scan_conf:.4f})")
 
         crop_top = max(0, total_value_row['top'] - int(0.5 * total_value_row['height']))
         crop_bottom = min(total_value_row['top'] + total_value_row['height'] + int(0.5 * total_value_row['height']), screenshot.height)
         crop_left = max(0, total_value_row['left'] - int(0.5 * total_value_row['height']))
         crop_right = min(total_value_row['left'] + total_value_row['width'] + int(0.5 * total_value_row['height']), screenshot.width)
 
+        print("Found daily total; cropping image to this area for rescan.")
         cropped_scan = rescan_cropped_area(image, crop_top, crop_bottom, crop_left, crop_right)
+
     elif android_version == GOOGLE and not (day_rows.empty or date_rows.empty):
         total_value_1st_scan = NO_TEXT
         total_value_1st_scan_conf = NO_CONF
@@ -670,6 +672,8 @@ def get_daily_total_and_confidence(screenshot, image, category):
         crop_top = max([0, row_below_total['top'] - (4 * row_below_total['height'])])
         crop_bottom = row_below_total['top']
 
+        print(f"\nDaily total not found, but found row below total: '{rows_below_total['text']}'. Cropping image above this row for rescan.")
+
         cropped_scan = rescan_cropped_area(image, crop_top, crop_bottom, crop_left, crop_right)
 
     elif android_version == SAMSUNG_2021 and not headings_df[headings_df[HEADING_COLUMN] == category].empty:
@@ -678,8 +682,9 @@ def get_daily_total_and_confidence(screenshot, image, category):
 
         row_above_total = headings_df[headings_df[HEADING_COLUMN] == category].iloc[0]
         crop_top = min([screenshot.height, row_above_total['top'] + (3 * row_above_total['height'])])
-        crop_bottom = max([screenshot.height, crop_top + (6 * row_above_total['height'])])
+        crop_bottom = min([screenshot.height, crop_top + (7 * row_above_total['height'])])
 
+        print(f"Daily total not found, but found row above total: '{row_above_total['text']}'. Cropping image below this row for rescan.")
         cropped_scan = rescan_cropped_area(image, crop_top, crop_bottom, crop_left, crop_right)
 
     elif android_version == VERSION_2018 and not headings_df[headings_df[HEADING_COLUMN] == category].empty:
@@ -691,24 +696,37 @@ def get_daily_total_and_confidence(screenshot, image, category):
         crop_bottom = max([screenshot.height, crop_top + (4 * row_above_total['height'])])
         crop_right = int(0.5 * screenshot.width)
 
+        print(f"Daily total not found, but found row above total: '{row_above_total['text']}'. Cropping image below this row for rescan.")
         cropped_scan = rescan_cropped_area(image, crop_top, crop_bottom, crop_left, crop_right)
+
     else:
         # Since Samsung 2024 version has no headings, it is not possible to select a suitable crop area
         # to rescan for totals when the desired 'total' row is not found
         total_value_1st_scan = NO_TEXT
         total_value_1st_scan_conf = NO_CONF
+
+        print("Daily total not found; cannot crop for rescan without reference headings.")
         cropped_scan = df.drop(df.index)
 
     cropped_scan = cropped_scan[cropped_scan['left'] + crop_left < int(0.5 * screenshot.width)]
     # Daily totals are always either centred or left-aligned. Sometimes a vertical 'hours axis' value gets misread as
     # a time value; these vertical axes appear on the right edge of the Google dashboard.
 
+    dt = f"'{total_value_1st_scan}'" if total_value_1st_scan_conf != NO_CONF else "N/A"
+    dt_conf = f" (conf = {total_value_1st_scan_conf:.4f})" if total_value_1st_scan_conf != NO_CONF else ""
+
+    print(f"\nTotal {category}, initial scan: {dt}{dt_conf}")
+
     if not cropped_scan.empty:
         total_value_2nd_scan = cropped_scan.iloc[0]['text']
         total_value_2nd_scan_conf = round(cropped_scan.iloc[0]['conf'], 4)
-        print(f"Total {category}, cropped scan: {total_value_2nd_scan} (conf = {total_value_2nd_scan_conf:.4f})")
+
+        dt2 = f"'{total_value_2nd_scan}'" if total_value_2nd_scan_conf != NO_CONF else "N/A"
+        dt2_conf = f" (conf = {total_value_2nd_scan_conf:.4f})" if total_value_2nd_scan_conf != NO_CONF else ""
+
+        print(f"Total {category}, cropped scan: {dt2}{dt2_conf}")
     else:
-        print(f"Total {category} not found on 2nd scan.")
+        print(f"Total {category}, cropped scan: N/A")
         total_value_2nd_scan = NO_TEXT
         total_value_2nd_scan_conf = NO_CONF
 
