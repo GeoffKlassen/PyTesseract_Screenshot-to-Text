@@ -916,9 +916,10 @@ def extract_app_info(screenshot, image, coordinates, scale):
                                                     (truncated_initial_scan['top'] > crop_top) &
                                                     (truncated_initial_scan['right'] < crop_right) &
                                                     (truncated_initial_scan['top'] < crop_bottom) &
-                                                    (((truncated_initial_scan['text'].str.isdigit()) |
+                                                    ((truncated_initial_scan['text'].str.isdigit()) |
                                                      (truncated_initial_scan['text'].str.fullmatch(time_format_long)) |
-                                                     (truncated_initial_scan['text'].str.fullmatch(MISREAD_TIME_FORMAT_IOS))))]
+                                                     (truncated_initial_scan['text'].str.fullmatch(MISREAD_TIME_FORMAT_IOS)) |
+                                                     (truncated_initial_scan['text'] == 'X'))]
                                                      # if screenshot.device_os_detected == IOS else True)]
     truncated_initial_scan.loc[truncated_initial_scan.index, 'left'] = truncated_initial_scan['left'] - crop_left
     truncated_initial_scan.loc[truncated_initial_scan.index, 'top'] = truncated_initial_scan['top'] - crop_top
@@ -1354,7 +1355,12 @@ if __name__ == '__main__':
     url_list = pd.DataFrame()
 
     image_lower_bound = 0 if image_lower_bound is None else image_lower_bound
-    image_upper_bound = 0 if image_upper_bound is None else image_upper_bound
+    if image_upper_bound is None:
+        image_upper_bound = 0
+    elif 0 < image_upper_bound < image_lower_bound:
+        image_upper_bound = image_lower_bound
+    else:
+        image_upper_bound = image_upper_bound
 
     num_urls_to_get = image_upper_bound  # Initialize
     full_analysis = True if image_lower_bound <= 1 else False # Initialize
@@ -1771,7 +1777,7 @@ if __name__ == '__main__':
                             screenshot=current_screenshot)
                 app_data[MINUTES] = app_data[MINUTES].astype(int)
 
-                print("\nApp data found:")
+                print("\nScreenshot data:")
                 print(app_data[[NAME, NUMBER, MINUTES]])
                 print(f"\nDaily total {dashboard_category}: {dt}{dtm}\n")
                 if current_screenshot.daily_total_minutes is not None and \
@@ -1781,7 +1787,7 @@ if __name__ == '__main__':
                         current_screenshot.add_error(ERR_TOTAL_BELOW_APP_SUM)
 
             else:
-                print("\nApp data found:")
+                print("\nScreenshot data:")
                 print(app_data[[NAME, NUMBER]])
                 print(f"Daily total {dashboard_category}: {dt}\n")
                 if current_screenshot.daily_total is not None and \
@@ -1946,11 +1952,12 @@ if __name__ == '__main__':
 
             value_format = MISREAD_TIME_FORMAT_IOS if dashboard_category == SCREENTIME else MISREAD_NUMBER_FORMAT
             confident_text_from_prescan = \
-                cropped_prescan_df[(cropped_prescan_df['right'] > 0.05 * scaled_cropped_filtered_image.shape[1]) &
-                                   ((cropped_prescan_df['conf'] > 80) |
-                                    ((cropped_prescan_df['text'].str.fullmatch(value_format)) & (
-                                            cropped_prescan_df['conf'] > 50))) |
-                                   (cropped_prescan_df['text'].str.fullmatch('X'))]
+                cropped_prescan_df[(cropped_prescan_df.index >= (0 if app_area_df.empty else app_area_df.index[0])) &
+                                   ((cropped_prescan_df['right'] > 0.05 * scaled_cropped_filtered_image.shape[1]) &
+                                    ((cropped_prescan_df['conf'] > 80) |
+                                     ((cropped_prescan_df['text'].str.fullmatch(value_format)) &
+                                      (cropped_prescan_df['conf'] > 50))) |
+                                    (cropped_prescan_df['text'].str.fullmatch('X')))]
 
             if app_area_df['text'].eq("X").any() and confident_text_from_prescan['text'].eq("X").any():
                 # If both the initial scan and the first cropped scan found the app name 'X',
@@ -1970,7 +1977,10 @@ if __name__ == '__main__':
             # app_area_2_df['text'] = app_area_2_df['text'].apply(lambda x: 'X' if re.match(r'[xX]{2}', x) else x)
 
             print("\nText found in cropped app area:")
-            print(app_area_2_df[['left', 'top', 'width', 'height', 'conf', 'text']])
+            if not app_area_2_df.empty:
+                print(app_area_2_df[['left', 'top', 'width', 'height', 'conf', 'text']])
+            else:
+                print("None")
 
             # if dashboard_category is None and current_screenshot.category_detected is not None:
             #     # Sometimes there is screentime data in an image but the category is not detected.
@@ -1993,14 +2003,14 @@ if __name__ == '__main__':
                             str_time=app_data.loc[i, NUMBER],
                             screenshot=current_screenshot)
                 app_data[MINUTES] = app_data[MINUTES].astype(int)
-                print("\nApp data found:")
+                print("\nScreenshot data:")
                 print(app_data[[NAME, NUMBER, MINUTES]])
                 print("Daily " + ('total ' if current_screenshot.relative_day != WEEK else 'average ') + f"{dashboard_category}: {dt}{dtm}\n")
 
                 # iOS Daily screentime can exceed the sum of the app times. Do not flag iOS screentime images.
 
             else:
-                print("\nApp data found:")
+                print("\nScreenshot data:")
                 print(app_data[[NAME, NUMBER]])
                 print("Daily " + ('total ' if current_screenshot.relative_day != WEEK else 'average ') + f"{dashboard_category}: {dt}\n")
                 if current_screenshot.daily_total is not None and current_screenshot.daily_total != NO_TEXT:

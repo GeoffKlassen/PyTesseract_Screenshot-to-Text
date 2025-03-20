@@ -187,10 +187,6 @@ def get_headings(screenshot, rescale_df=pd.DataFrame()):
               or len(re.findall(AM_PM, row_text, flags=re.IGNORECASE)) >= 2):
             df.loc[i, HEADING_COLUMN] = HOURS_AXIS_HEADING
 
-        elif re.search('|'.join(KEYWORDS_FOR_HOURS_AXIS), row_text, re.IGNORECASE):
-            print("Found hours with the regex method")
-            df.loc[i, HEADING_COLUMN] = HOURS_AXIS_HEADING
-
         elif len(row_words.intersection(DAY_ABBREVIATIONS[lang])) >= 3:
             df.loc[i, HEADING_COLUMN] = DAYS_AXIS_HEADING
 
@@ -1182,7 +1178,7 @@ def get_app_names_and_numbers(screenshot, crop_img, df, category, max_apps):
     app_names = empty_name_row.copy()
     app_numbers = empty_number_row.copy()
     if df.empty:
-        print("No text found in cropped image.")
+        # print("No text found in cropped image.")
         screenshot.add_error(ERR_APP_DATA)
     elif "today at" in df['text'].iloc[-1]:  # Need to start a Dictionary of strings like this in all languages
         print("Final row of text contains 'today at'. No app-level data present.")
