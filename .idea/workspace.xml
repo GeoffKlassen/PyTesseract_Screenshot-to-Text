@@ -8,8 +8,9 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/LanguageDictionaries.py" beforeDir="false" afterPath="$PROJECT_DIR$/LanguageDictionaries.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/OCRScript_v3.py" beforeDir="false" afterPath="$PROJECT_DIR$/OCRScript_v3.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ParticipantClass.py" beforeDir="false" afterPath="$PROJECT_DIR$/ParticipantClass.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/RuntimeValues.py" beforeDir="false" afterPath="$PROJECT_DIR$/RuntimeValues.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iOSFunctions.py" beforeDir="false" afterPath="$PROJECT_DIR$/iOSFunctions.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Studies.py" beforeDir="false" afterPath="$PROJECT_DIR$/Studies.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -184,17 +185,17 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/ParticipantClass.py</url>
-          <line>469</line>
+          <line>472</line>
           <option name="timeStamp" value="28" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/ParticipantClass.py</url>
-          <line>415</line>
+          <line>418</line>
           <option name="timeStamp" value="29" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/ParticipantClass.py</url>
-          <line>465</line>
+          <line>468</line>
           <option name="timeStamp" value="30" />
         </line-breakpoint>
       </breakpoints>

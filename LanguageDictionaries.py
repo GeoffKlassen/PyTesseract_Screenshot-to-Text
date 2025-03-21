@@ -126,7 +126,7 @@ DAY_ABBREVIATIONS = {  # TODO Verify these!
     ENG: {"M", "T", "W", "F", "S", "w", "s",  # Single letters
           "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun",  # 3 letters
           "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",  # Full words
-          "SS"},  # Common misreadings
+          "SS", "Ww", "5"},  # Common misreadings
 
     ITA: {"L", "M", "G", "V", "S", "D", "s",                                                 # Single letters
           "lun",    "mar",     "mer",       "gio",     "ven",     "sab",    "dom",           # 3 letters

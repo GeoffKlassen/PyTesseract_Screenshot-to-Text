@@ -8,7 +8,7 @@ So far:
 import pytesseract
 from ConvenienceVariables import *
 
-coding_location = 'lab'  # lab or home
+coding_location = 'home'  # lab or home
 
 # Based on the coding location, the directory where pytesseract is installed and the name of the PC will change
 if coding_location == 'lab':

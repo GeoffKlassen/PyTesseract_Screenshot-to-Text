@@ -125,6 +125,9 @@ class Participant:
             # If the date cannot be detected from the screenshot, we cannot guarantee which date the data are for.
             print("Date not detected. Screenshot data will not be added to participant's temporal data.")
             return
+        elif (ss.date_detected - ss.date_submitted).days > 0:
+            print("Date detected is after date submitted. Screenshot data will not be added to participant's temporal data.")
+            return
         elif category is None:
             # If the category is not detected, we cannot guarantee what category the data are for.
             print("Category not detected. Screenshot data will not be added to participant's temporal data.")

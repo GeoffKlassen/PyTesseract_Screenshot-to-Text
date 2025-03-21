@@ -393,7 +393,7 @@ def merge_df_rows_by_line_num(df):
     return df_nearby_rows_combined
 
 
-def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é.]+', is_initial_scan=False):
+def extract_text_from_image(img, cmd_config='', remove_chars='[^a-zA-Z0-9+é.\\-]+', is_initial_scan=False):
     """
 
     :param img:
@@ -577,15 +577,16 @@ def get_best_language(screenshot):
         return default_language
 
 
-def get_date_in_screenshot(screenshot):
+def get_date_in_screenshot(screenshot, alt_text=pd.DataFrame):
     """
     Checks if any text found in the given screenshot matches the appropriate date pattern based on the language of the
     image. If there's a match, return it.
     :param screenshot: The screenshot to search for a date.
+    :param alt_text:
     :return: The date-format value of the date found in the screenshot text (if any), otherwise 'None'.
     """
     empty_df = pd.DataFrame()
-    df = screenshot.text
+    df = screenshot.text if alt_text.empty else alt_text
     lang = get_best_language(screenshot)
     # Different languages display dates in different formats. Create the correct regex pattern for the date.
     date_pattern = get_date_regex(lang)
@@ -627,10 +628,61 @@ def get_date_in_screenshot(screenshot):
         if month_numeric:
             # Construct the complete date with the year
             complete_date = date_object.replace(year=int(screenshot.date_submitted.year), month=month_numeric)
+            print(f"Date text detected: '{date_row_text}'.  ", end="")
+
             if (screenshot.date_submitted - complete_date.date()).days < 0:
-                # In case a screenshot of a previous year is submitted after the new year, correct the year.
-                complete_date = date_object.replace(year=(int(screenshot.date_submitted.year) - 1))
-            print(f"Date text detected: '{date_row_text}'.  Setting date to {complete_date.date()}.")
+                if (screenshot.date_submitted - complete_date.date()).days > -10:
+                    # Sometimes the last digit of the date is misread (e.g., 'Sept 10' may be misread as 'Sept 16').
+                    # In such cases, the year is correct but the day number needs to be corrected.
+                    print(f"Date detected appears to be misread;", end=" ")
+                    wrong_date = complete_date.date()
+
+                    if screenshot.relative_day == TODAY:
+                        print(f"replacing {complete_date.date()} with {screenshot.date_submitted}.")
+                        return screenshot.date_submitted, dates_df
+
+                    elif screenshot.relative_day == YESTERDAY:
+                        yesterdays_date = current_screenshot.date_submitted - timedelta(days=1)
+                        print(f"replacing {complete_date.date()} with {yesterdays_date}.")
+                        return yesterdays_date, dates_df
+
+                    if day_detected[-1] == '5':
+                        # '3' misread as '5', '13' misread as '15', or '23' misread as '25' (handwriting font on Google)
+                        date_object = datetime.strptime(
+                            f"{int(day_detected) - 2} {month_detected} {datetime.now().year}",
+                            "%d %b %Y")
+                        complete_date = date_object.replace(year=int(screenshot.date_submitted.year),
+                                                            month=month_numeric)
+                    elif day_detected[-1] == '6' and len(day_detected) == 2:
+                        # '10' misread as '16', or '20' misread as '26'. Dates read as '6' cannot be a misreading of '0'.
+                        date_object = datetime.strptime(f"{int(day_detected) - 6} {month_detected} {datetime.now().year}",
+                                                        "%d %b %Y")
+                        complete_date = date_object.replace(year=int(screenshot.date_submitted.year),
+                                                            month=month_numeric)
+                    elif day_detected[-1] == '7':
+                        date_object = datetime.strptime(
+                            f"{int(day_detected) - 6} {month_detected} {datetime.now().year}",
+                            "%d %b %Y")
+                        complete_date = date_object.replace(year=int(screenshot.date_submitted.year),
+                                                            month=month_numeric)
+                    elif day_detected[-1] == '8':
+                        date_object = datetime.strptime(
+                            f"{int(day_detected) - 5} {month_detected} {datetime.now().year}",
+                            "%d %b %Y")
+                        complete_date = date_object.replace(year=int(screenshot.date_submitted.year),
+                                                            month=month_numeric)
+
+                    if wrong_date == complete_date.date():
+                        print("could not determine correct date.")
+                        return None, dates_df
+
+                    print(f"replacing {wrong_date} with {complete_date.date()}.")
+                    return complete_date.date(), dates_df
+
+                else:
+                    # In case a screenshot of a previous year is submitted after the new year, correct the year.
+                    complete_date = date_object.replace(year=(int(screenshot.date_submitted.year) - 1))
+            print(f"Setting date to {complete_date.date()}.")
             return complete_date.date(), dates_df
         else:
             print("Invalid month abbreviation.")
@@ -1495,18 +1547,20 @@ if __name__ == '__main__':
                                      fx=screenshot_scale_factor,
                                      fy=screenshot_scale_factor,
                                      interpolation=cv2.INTER_AREA)
-        if screenshot_scale_factor == 1 and ksize is not None:
-            bw_image_scaled = cv2.GaussianBlur(bw_image_scaled, ksize=ksize, sigmaX=0)
+        if screenshot_scale_factor == 1:
+            bw_image_scaled_smoothed = cv2.GaussianBlur(bw_image_scaled, ksize=ksize, sigmaX=0)
+        else:
+            bw_image_scaled_smoothed = bw_image_scaled
 
         # current_screenshot.set_scale_factor(screenshot_scale_factor)
         current_screenshot.set_images(grey_image_scaled, bw_image, screenshot_scale_factor)
         current_screenshot.set_dimensions(grey_image_scaled.shape)
 
         # Extract the text (if any) that can be found in the image.
-        text_df_single_words, text_df = extract_text_from_image(bw_image_scaled, is_initial_scan=True)
+        text_df_single_words, text_df = extract_text_from_image(bw_image_scaled_smoothed, is_initial_scan=True)
 
         if show_images_at_runtime:
-            show_image(text_df, bw_image_scaled, draw_boxes=True, window_name="Text found in initial scan")
+            show_image(text_df, bw_image_scaled_smoothed, draw_boxes=True, window_name="Text found in initial scan")
 
         if text_df.shape[0] == 0:
             print(f"No text found.  Setting {current_screenshot.category_submitted} values to N/A.")
@@ -1555,11 +1609,6 @@ if __name__ == '__main__':
         time_formats = Android.get_time_formats_in_lang(current_screenshot.language)
         time_format_short, time_format_long, time_format_eol = time_formats[0], time_formats[1], time_formats[2]
 
-        # Determine the date in the screenshot
-        date_in_screenshot, rows_with_date = get_date_in_screenshot(current_screenshot)
-        current_screenshot.set_date_detected(date_in_screenshot)
-        current_screenshot.set_rows_with_date(rows_with_date)
-
         # Determine if the screenshot contains 'daily' data ('today', 'yesterday', etc.) or 'weekly' data
         day_type, rows_with_day_type = get_day_type_in_screenshot(current_screenshot)
         if day_type is not None:
@@ -1567,6 +1616,11 @@ if __name__ == '__main__':
             current_screenshot.set_rows_with_day_type(rows_with_day_type)
         else:
             current_screenshot.add_error(ERR_DAY_TEXT)
+
+        # Determine the date in the screenshot
+        date_in_screenshot, rows_with_date = get_date_in_screenshot(current_screenshot)
+        current_screenshot.set_date_detected(date_in_screenshot)
+        current_screenshot.set_rows_with_date(rows_with_date)
 
         # Sometimes, the Device ID extracted from the Metadata is 16 hexadecimal digits long (which correlates with
         # Android images), but the screenshot is iOS, and iPhones have 32-digit hexadecimal Device IDs.
@@ -1645,6 +1699,33 @@ if __name__ == '__main__':
             android_version = Android.get_android_version(current_screenshot)
             current_screenshot.set_android_version(android_version)
 
+            # Sometimes the date in Google dashboard images is not read. Since it always appears below the Days axis,
+            # we can search for it again with that location as a reference.
+            if (current_screenshot.date_detected is None
+                    and current_screenshot.android_version == GOOGLE):
+                    # and not headings_df[headings_df[HEADING_COLUMN].eq(DAYS_AXIS_HEADING)].empty):
+
+                print("\nAdjusting image and searching for date again.")
+                # row_with_days_axis = headings_df[headings_df[HEADING_COLUMN].eq(DAYS_AXIS_HEADING)].iloc[0]
+                #
+                # crop_left, crop_right = int(0.3*current_screenshot.width), int(0.7*current_screenshot.width)
+                # crop_top, crop_bottom = int(row_with_days_axis['top'] + row_with_days_axis['height']), current_screenshot.height
+                # image_cropped_to_find_date = bw_image_scaled_smoothed[crop_top:crop_bottom, crop_left:crop_right]
+                threshold = 90 if current_screenshot.bg_colour == BLACK else 220
+                _, bw_image_new = cv2.threshold(grey_image, threshold, 255, cv2.THRESH_BINARY)
+
+                _, date_text_df = extract_text_from_image(bw_image_new)
+                if show_images_at_runtime:
+                    show_image(date_text_df, bw_image_new, window_name="Rescan for date text")
+
+                date_in_screenshot, _ = get_date_in_screenshot(current_screenshot, alt_text=date_text_df)
+                current_screenshot.set_date_detected(date_in_screenshot)
+                # Note: Cannot call set_rows_with_date with the row that is returned from this function call,
+                # because its location in the screenshot would have given it a lower index than it will have in
+                # this cropped rescan. If the Android functions get_daily_total_and_confidence and crop_image_to_app_area
+                # can be modified to use the pixel location of rows_with_date rather than its index,
+                # then we can use the rows_with-day_type that is returned from the above function call.
+
             dashboard_category, category_was_detected = get_dashboard_category(current_screenshot)
             if category_was_detected:
                 current_screenshot.set_category_detected(dashboard_category)
@@ -1656,7 +1737,7 @@ if __name__ == '__main__':
                     dashboard_category = current_screenshot.category_submitted
 
             daily_total, daily_total_conf = Android.get_daily_total_and_confidence(screenshot=current_screenshot,
-                                                                                   image=bw_image_scaled,
+                                                                                   image=bw_image_scaled_smoothed,
                                                                                    category=dashboard_category)
             if dashboard_category != SCREENTIME and daily_total_conf != NO_CONF:
                 try:
@@ -1715,7 +1796,7 @@ if __name__ == '__main__':
 
             # Crop the image to the app-specific region
             cropped_image, crop_coordinates = (
-                Android.crop_image_to_app_area(image=bw_image_scaled,
+                Android.crop_image_to_app_area(image=bw_image_scaled_smoothed,
                                                headings_above_apps=headings_above_apps,
                                                screenshot=current_screenshot,
                                                time_format_short=time_format_short))
@@ -1830,7 +1911,7 @@ if __name__ == '__main__':
                 current_screenshot.add_error(ERR_CATEGORY)
 
             daily_total, daily_total_conf = iOS.get_daily_total_and_confidence(current_screenshot,
-                                                                               bw_image_scaled,
+                                                                               bw_image_scaled_smoothed,
                                                                                dashboard_category)
             current_screenshot.set_daily_total(daily_total, daily_total_conf)
             if daily_total_conf == NO_CONF:
@@ -1856,7 +1937,7 @@ if __name__ == '__main__':
             elif dashboard_category == PICKUPS:
 
                 daily_total_2nd_loc, daily_total_2nd_loc_conf = iOS.get_total_pickups_2nd_location(current_screenshot,
-                                                                                                   bw_image_scaled)
+                                                                                                   bw_image_scaled_smoothed)
                 print("Comparing both locations for total pickups:")
                 daily_total, daily_total_conf = choose_between_two_values(daily_total, daily_total_conf,
                                                                           daily_total_2nd_loc, daily_total_2nd_loc_conf,
