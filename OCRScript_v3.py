@@ -1670,20 +1670,6 @@ if __name__ == '__main__':
             #     set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
             #     continue
 
-            if day_type is None and date_in_screenshot is not None:
-                print(f"Determining day type based on number of days between submitted date "
-                      f"({current_screenshot.date_submitted}) and date in screenshot ({date_in_screenshot}):")
-                if current_screenshot.date_submitted == date_in_screenshot:
-                    day_type = TODAY
-                elif current_screenshot.date_submitted == date_in_screenshot + timedelta(days=1):
-                    day_type = YESTERDAY
-                elif current_screenshot.date_submitted == date_in_screenshot + timedelta(days=2):
-                    day_type = DAY_BEFORE_YESTERDAY
-                elif current_screenshot.date_submitted > date_in_screenshot:
-                    day_type = DAY_OF_THE_WEEK
-                print(f"Screenshot set to '{day_type}'.")
-                current_screenshot.set_relative_day(day_type)
-
             # Get headings from screenshot text
             headings_df = android_headings_df
             if headings_df.shape[0] > 0:
@@ -1725,6 +1711,20 @@ if __name__ == '__main__':
                 # this cropped rescan. If the Android functions get_daily_total_and_confidence and crop_image_to_app_area
                 # can be modified to use the pixel location of rows_with_date rather than its index,
                 # then we can use the rows_with-day_type that is returned from the above function call.
+
+            if day_type is None and date_in_screenshot is not None:
+                print(f"Determining day type based on number of days between submitted date "
+                      f"({current_screenshot.date_submitted}) and date in screenshot ({date_in_screenshot}):")
+                if current_screenshot.date_submitted == date_in_screenshot:
+                    day_type = TODAY
+                elif current_screenshot.date_submitted == date_in_screenshot + timedelta(days=1):
+                    day_type = YESTERDAY
+                elif current_screenshot.date_submitted == date_in_screenshot + timedelta(days=2):
+                    day_type = DAY_BEFORE_YESTERDAY
+                elif current_screenshot.date_submitted > date_in_screenshot:
+                    day_type = DAY_OF_THE_WEEK
+                print(f"Screenshot set to '{day_type}'.")
+                current_screenshot.set_relative_day(day_type)
 
             dashboard_category, category_was_detected = get_dashboard_category(current_screenshot)
             if category_was_detected:

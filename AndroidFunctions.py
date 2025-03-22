@@ -401,11 +401,14 @@ def get_android_version(screenshot):
                                   KEYWORDS_FOR_2018_UNLOCKS[img_lang])
 
     just_totals_days_and_dates = heads_df[heads_df[HEADING_COLUMN].isin([TOTAL_SCREENTIME,
-                                                                        TOTAL_NOTIFICATIONS,
-                                                                        TOTAL_UNLOCKS,
-                                                                        DAY_NAME_HEADING,
-                                                                        DATE_C_HEADING,
-                                                                        DATE_L_HEADING])]
+                                                                         TOTAL_NOTIFICATIONS,
+                                                                         TOTAL_UNLOCKS,
+                                                                         SCREENTIME_HEADING,
+                                                                         UNLOCKS_HEADING,
+                                                                         NOTIFICATIONS_HEADING,
+                                                                         DAY_NAME_HEADING,
+                                                                         DATE_C_HEADING,
+                                                                         DATE_L_HEADING])]
     if heads_df.empty:
         # count the number of rows that match a time/notifications/unlocks format
         text_df = screenshot.text
@@ -680,6 +683,7 @@ def get_daily_total_and_confidence(screenshot, image, category):
         total_value_1st_scan_conf = NO_CONF
 
         row_above_total = headings_df[headings_df[HEADING_COLUMN] == category].iloc[0]
+
         crop_top = min([screenshot.height, row_above_total['top'] + (3 * row_above_total['height'])])
         crop_right = int(0.65 * screenshot.width)
         if not df[df.index == row_above_total.name + 1].empty:
@@ -688,7 +692,6 @@ def get_daily_total_and_confidence(screenshot, image, category):
             if (possible_total_row['top'] - (row_above_total['top'] + row_above_total['height']) < 0.1 * screenshot.width
                     and possible_total_row['height'] > row_above_total['height']):
                 crop_bottom = possible_total_row['top'] + int(1.5 * possible_total_row['height'])
-                print("Success yes success")
         else:
             crop_bottom = min([screenshot.height, crop_top + (6 * row_above_total['height'])])
 

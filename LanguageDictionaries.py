@@ -65,7 +65,9 @@ MONTH_ABBREVIATIONS = {ENG: ['jan', 'feb', 'mar', 'apr', 'may',  'jun',  'jul', 
 ENGLISH_MONTHS = MONTH_ABBREVIATIONS[ENG]
 MONTH_MAPPING = {mon: ENGLISH_MONTHS.index(mon) + 1 for mon in ENGLISH_MONTHS}  # 1:January, 2:February, 3:March, etc.
 
-DATE_FORMAT = {ENG: [r'\d{1,2}\s?MMM', r'MMM[a-z]*\s?\d{1,2}'],
+DATE_FORMAT = {ENG: [r'\d{1,2}\s?MMM', r'MMM[a-z]*\.?\s?\d{1,2}'],  # Dates in English screenshots can appear as
+                                                                    # 12 Jan(uary), Jan(uary) 12, or Jan. 12 (with period)
+               # How long does it take to sync changes from my laptop to the lab computer
                ITA: [r'\d{1,2}\s?MMM'],
                GER: [r'\d{1,2}\s?MMM'],
                FRA: [r'\d{1,2}\s?MMM']}
@@ -125,6 +127,7 @@ KEYWORDS_FOR_DAY_BEFORE_YESTERDAY = {
 DAY_ABBREVIATIONS = {  # TODO Verify these!
     ENG: {"M", "T", "W", "F", "S", "w", "s",  # Single letters
           "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun",  # 3 letters
+          "Mon.", "Tue.", "Wed.", "Thu.", "Fri.", "Sat.", "Sun.",  # 3 letters with period
           "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",  # Full words
           "SS", "Ww", "5"},  # Common misreadings
 
@@ -133,7 +136,7 @@ DAY_ABBREVIATIONS = {  # TODO Verify these!
           "lunedi", "martedi", "mercoledi", "giovedi", "venerdi", "sabato", "domenica"},     # Full words
 
     GER: {"M", "D", "F", "S", "s",                                                           # Single letters
-          "Mo.",    "Di.",      "Mi.",      "Do.",        "Fr.",     "Sa.",     "So.",       # 2 letters plus period
+          "Mo.",    "Di.",      "Mi.",      "Do.",        "Fr.",     "Sa.",     "So.",       # 2 letters with period
           "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"},  # Full words
 
     FRA: {"L", "M", "J", "V", "S", "D", "s",                                                 # Single letters
