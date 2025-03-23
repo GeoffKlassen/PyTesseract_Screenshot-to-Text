@@ -418,7 +418,7 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
                 row_above_total = rows_with_day_type.iloc[0]
                 only_one_day_row = True
             else:
-                if rows_with_day_type.index[1] == rows_with_day_type.index[0] + 1:
+                if rows_with_day_type.index[1] <= rows_with_day_type.index[0] + 2:
                     row_above_total = rows_with_day_type.iloc[1]
                 else:
                     row_above_total = rows_with_day_type.iloc[0]
@@ -566,6 +566,10 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
                                                                            daily_total_2nd_scan, daily_total_2nd_scan_conf,
                                                                            value_is_digits=is_number,
                                                                            val_fmt=val_format)
+        if (not daily_tot in [NO_TEXT, NO_NUMBER]
+                and (len(str(daily_tot)) == 0
+                     or not bool(re.search('\\d', str(daily_tot))))):
+            print(f"Daily total has no digits. Resetting to N/A (conf = {NO_CONF}).")
 
         return daily_tot, daily_tot_conf
 

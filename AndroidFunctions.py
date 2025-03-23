@@ -766,7 +766,11 @@ def get_daily_total_and_confidence(screenshot, image, category):
         total_value_filtered, total_conf = filter_time_text(total_value, total_conf,
                                                             hours_format, minutes_format)
 
-    if any(OCRScript_v3.levenshtein_distance(total_value[-len(key):], key) <= OCRScript_v3.error_margin(key)
+    if len(total_value_filtered) == 0 or not bool(re.search('\\d', str(total_value_filtered))):
+        print(f"Daily total has no digits. Resetting to N/A (conf = {NO_CONF}).")
+        return NO_TEXT, NO_CONF
+
+    elif any(OCRScript_v3.levenshtein_distance(total_value[-len(key):], key) <= OCRScript_v3.error_margin(key)
            for key in KEYWORDS_FOR_YESTERDAY[img_lang]):
         print("Daily total found ends in 'yesterday'. Could not find daily total.")
         return NO_TEXT, NO_CONF
@@ -780,7 +784,7 @@ def get_daily_total_and_confidence(screenshot, image, category):
              for key in GOOGLE_LESS_THAN_1_MINUTE[img_lang]):
         return '0 ' + KEYWORDS_FOR_MINUTES[img_lang][0], total_conf
 
-    if total_heading == "total " + SCREENTIME and total_value != total_value_filtered:
+    if category == SCREENTIME and total_value != total_value_filtered:
         print(f"Filtered total: replaced '{total_value}' with '{total_value_filtered}'.")
 
     return total_value_filtered, total_conf

@@ -630,7 +630,11 @@ def get_date_in_screenshot(screenshot, alt_text=pd.DataFrame):
             complete_date = date_object.replace(year=int(screenshot.date_submitted.year), month=month_numeric)
             print(f"Date text detected: '{date_row_text}'.  ", end="")
 
-            if (screenshot.date_submitted - complete_date.date()).days < 0:
+            if (screenshot.date_submitted - complete_date.date()).days < -1:
+                # Grace period of one day to handle issues with time zones.
+                # E.G. the date submitted can appear as 2024-08-29 in the 'Record time' column of the URL CSV, but the
+                # screenshot can appear to be taken at 1am (user's local time) the next day. Such instances should not
+                # be flagged as 'wrong date'.
                 if (screenshot.date_submitted - complete_date.date()).days > -10:
                     # Sometimes the last digit of the date is misread (e.g., 'Sept 10' may be misread as 'Sept 16').
                     # In such cases, the year is correct but the day number needs to be corrected.
@@ -1707,7 +1711,7 @@ if __name__ == '__main__':
                 date_in_screenshot, _ = get_date_in_screenshot(current_screenshot, alt_text=date_text_df)
                 current_screenshot.set_date_detected(date_in_screenshot)
                 # Note: Cannot call set_rows_with_date with the row that is returned from this function call,
-                # because its location in the screenshot would have given it a lower index than it will have in
+                # because its location in the screenshot would have given it a lower index than it will have in the df from
                 # this cropped rescan. If the Android functions get_daily_total_and_confidence and crop_image_to_app_area
                 # can be modified to use the pixel location of rows_with_date rather than its index,
                 # then we can use the rows_with-day_type that is returned from the above function call.
