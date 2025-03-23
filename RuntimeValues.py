@@ -70,9 +70,9 @@ image_upper_bound = None
 # 19313 for HappyB2.0 2024 Aug-Dec (1387 + 2349 + 15577 = 19313)  (First two surveys: 1387 + 2349 = 3736)
 #   452 for BCH study
 
-show_images_at_runtime = False
+show_images_at_runtime = True
 # If True, images of the screenshots will be shown during runtime (mostly for debugging).
 
-save_log_and_CSVs = True
+save_log_and_CSVs = False
 # If True, CSVs and an output log will be created and saved to a dated folder
 # 15145 - Google version but not detected, total unlocks is wrong

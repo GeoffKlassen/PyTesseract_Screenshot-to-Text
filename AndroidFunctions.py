@@ -115,10 +115,14 @@ GOOGLE_NOTIFICATIONS_FORMATS = {ITA: ['# notifiche'],
                                 ENG: ['# notifications', '# notification'],
                                 GER: ['# Benachrichtigungen'],
                                 FRA: ['# notifications', '# notification']}
-GOOGLE_UNLOCKS_FORMATS = {ITA: ['# sblocchi', '# aperture'],
-                          ENG: ['# unlocks', 'Opened # times'],
-                          GER: ['# Entsperrungen', '# Mal geoffnet'],
-                          FRA: ['Déverrouillé # fois', 'Ouverte # fois']}
+GOOGLE_TOTAL_UNLOCKS_FORMATS = {ITA: ['# sblocchi'],
+                                ENG: ['# unlocks'],
+                                GER: ['# Entsperrungen'],
+                                FRA: ['Déverrouillé # fois']}
+GOOGLE_APP_UNLOCKS_FORMATS = {ITA: ['# aperture'],
+                              ENG: ['Opened # times'],
+                              GER: ['# Mal geoffnet'],
+                              FRA: ['Ouverte # fois']}
 
 SAMSUNG_NOTIFICATIONS_FORMATS = {ITA: ['# notifiche ricevute', "# ricevute"],
                                  ENG: ['# notifications', '# notification', '# received'],
@@ -311,7 +315,7 @@ def get_headings(screenshot, time_fmt_short):
 
         elif ((any(OCRScript_v3.levenshtein_distance(row_text_hash_digits_no_spaces, key.replace(' ', '')) <=
                    OCRScript_v3.error_margin(row_text_hash_digits_no_spaces, key.replace(' ', ''))
-                   for key in (GOOGLE_UNLOCKS_FORMATS[lang] + SAMSUNG_UNLOCKS_FORMAT[lang]))
+                   for key in (GOOGLE_TOTAL_UNLOCKS_FORMATS[lang] + SAMSUNG_UNLOCKS_FORMAT[lang]))
                and (df['left'][i] < 0.15 * screenshot.width
                    or abs(centre_of_row - (0.5 * screenshot.width)) < 0.1 * screenshot.width))
               and not df[HEADING_COLUMN].str.contains(TOTAL_UNLOCKS).any()):
@@ -415,7 +419,8 @@ def get_android_version(screenshot):
         text_df['text_with_digits_replaced'] = text_df['text'].str.replace(r'\d+', '#', regex=True)
         value_row_formats = (GOOGLE_SCREENTIME_FORMATS[img_lang] +
                              GOOGLE_NOTIFICATIONS_FORMATS[img_lang] +
-                             GOOGLE_UNLOCKS_FORMATS[img_lang])
+                             GOOGLE_TOTAL_UNLOCKS_FORMATS[img_lang] +
+                             GOOGLE_APP_UNLOCKS_FORMATS[img_lang])
 
         num_rows_with_app_numbers = count_matching_rows(text_df, value_row_formats, screenshot.width)
         if num_rows_with_app_numbers >= 2:
@@ -511,7 +516,7 @@ def get_dashboard_category(screenshot):
             and (text_df.shape[0] > heads_df[heads_df[HEADING_COLUMN] == UNLOCKS_HEADING].index[0] + 1
                 or heads_df[heads_df[HEADING_COLUMN] == UNLOCKS_HEADING].iloc[-1]['top'] < 0.9 * screenshot.height)
         or heads_df[HEADING_COLUMN].str.contains(TOTAL_UNLOCKS).any()
-        or count_matching_rows(text_df, GOOGLE_UNLOCKS_FORMATS[lang], screenshot.width) >= 2):
+        or count_matching_rows(text_df, GOOGLE_TOTAL_UNLOCKS_FORMATS[lang] + GOOGLE_APP_UNLOCKS_FORMATS[lang], screenshot.width) >= 2):
         # Found unlocks heading, and either:
         #     text_df has more data below the unlocks heading, or
         #     the unlocks heading is not too close to the bottom of the screenshot; or
@@ -766,7 +771,9 @@ def get_daily_total_and_confidence(screenshot, image, category):
         total_value_filtered, total_conf = filter_time_text(total_value, total_conf,
                                                             hours_format, minutes_format)
 
-    if len(total_value_filtered) == 0 or not bool(re.search('\\d', str(total_value_filtered))):
+    if (total_conf != NO_CONF
+            and (len(total_value_filtered) == 0
+                 or not bool(re.search('\\d', str(total_value_filtered))))):
         print(f"Daily total has no digits. Resetting to N/A (conf = {NO_CONF}).")
         return NO_TEXT, NO_CONF
 
@@ -868,7 +875,7 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
         # on different rows, aligned to the left.
         value_formats = (GOOGLE_SCREENTIME_FORMATS[lang] +
                          GOOGLE_NOTIFICATIONS_FORMATS[lang] +
-                         GOOGLE_UNLOCKS_FORMATS[lang] +
+                         GOOGLE_APP_UNLOCKS_FORMATS[lang] +
                          ["#" + KEYWORDS_FOR_HR[lang][-1] + "#" + KEYWORDS_FOR_MIN[lang][-1]] +
                          ["#" + KEYWORDS_FOR_MIN[lang][-1]])
 
@@ -1446,7 +1453,7 @@ def get_app_names_and_numbers(screenshot, df, category, max_apps, time_formats, 
                 # moe_unlocks = round(np.log(len(row_text)))
                 row_text_filtered = re.sub(r'\d+', '#', row_text)
                 if any(OCRScript_v3.levenshtein_distance(row_text_filtered, key) <= OCRScript_v3.error_margin(row_text_filtered, key)
-                       for key in GOOGLE_UNLOCKS_FORMATS[img_lang]):
+                       for key in GOOGLE_APP_UNLOCKS_FORMATS[img_lang]):
                     # Row text appears to be an unlocks value
 
                     try:
