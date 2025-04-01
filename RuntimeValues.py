@@ -61,7 +61,7 @@ conf_limit = 80  # If the final data from the screenshot has any values below th
                  #    then the screenshot will be flagged as such (the number of datums below this limit is also stored).
 ERR_CONFIDENCE = f"ERR Values below {int(conf_limit)}% confidence"
 
-image_lower_bound = 1
+image_lower_bound = 291
 # Lowest file index to analyze when running the code
 image_upper_bound = None
 # Highest file index to analyze when running the code
@@ -74,5 +74,5 @@ image_upper_bound = None
 show_images_at_runtime = False
 # If True, images of the screenshots will be shown during runtime (mostly for debugging).
 
-save_log_and_CSVs = False
+save_log_and_CSVs = True
 # If True, CSVs and an output log will be created and saved to a dated folder
