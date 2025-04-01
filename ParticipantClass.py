@@ -93,6 +93,9 @@ class Participant:
     def set_language(self, lang):
         self.language = lang
 
+    def set_device_os(self, dev_os):
+        self.device_os = dev_os
+
     def add_screenshot_data(self, ss):
         """
         Adds the information from a provided Screenshot object to the Participant's usage_data. If usage_data already
@@ -208,12 +211,14 @@ class Participant:
             existing_data_lineup_index = -1
             new_data_lineup_index = -1
             lineup_found = False
-            existing_data_contains_apps = False
+            existing_data_contains_apps, existing_data_contains_numbers = False, False
             for i in range(1, max_apps_per_category + 1):
                 # Loop through all the existing app names
                 if self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{NAME}'] == NO_TEXT:
                     continue
                 existing_data_contains_apps = True
+                if str(self.usage_data.loc[date_index, f'{category}_{APP}_{i}_{NUMBER}']) not in [str(NO_NUMBER), NO_TEXT]:
+                    existing_data_contains_numbers = True
                 for j in range(1, max_apps_per_category + 1):
                     # Loop through all the new app names.
                     if ss.app_data[NAME][j] == NO_TEXT:
@@ -290,9 +295,14 @@ class Participant:
                     return
 
             if existing_data_lineup_index == -1 or new_data_lineup_index == -1:
-                print("\nCould not determine where existing app-level data and new screenshot app-level data line up. "
-                      "Existing data remains unchanged.")
-                return
+                if not existing_data_contains_numbers:
+                    print("Existing app data does not contain any numbers.")
+                    existing_data_lineup_index = 1
+                    new_data_lineup_index = 1
+                else:
+                    print("\nCould not determine where existing app-level data and new screenshot app-level data line up. "
+                          "Existing data remains unchanged.")
+                    return
 
             max_lineup = max(existing_data_lineup_index, new_data_lineup_index)
             compare_df = pd.DataFrame(columns=['ex_name', 'ex_name_conf', 'ex_number', 'ex_number_conf',

@@ -165,6 +165,7 @@ study_bch = {NAME: "BCH",
              USER_ID_COLUMN: 'Participant ID',
              DATE_COLUMN: 'Record Time',
              DEVICE_ID_COLUMN: 'Device ID',
-             MAX_APPS: 8}
+             MAX_APPS: 8,
+             'local folder': 'Individual Participant Screenshots'}
 
 studies = [study_happyb2_0, study_happyb2_0_2024, study_happyb2_0_2025, study_bch]

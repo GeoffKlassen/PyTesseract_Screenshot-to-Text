@@ -5,9 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4e170b4d-2af2-47c5-9e6d-e8a288c22989" name="Changes" comment="If neither the date text nor the day text is found on the inital scan, but then the date is found on the date-rescan, we need to make sure to set the day_type based on the relative diffence between the submitted date and the detected date. Moved date detection to above the day_type detection so the day_type detection uses whatever date comes out of get_date_in_screenshot (which includes both the initial scan and a rescan if necessary).">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/OCRScript_v3.py" beforeDir="false" afterPath="$PROJECT_DIR$/OCRScript_v3.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/RuntimeValues.py" beforeDir="false" afterPath="$PROJECT_DIR$/RuntimeValues.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Studies.py" beforeDir="false" afterPath="$PROJECT_DIR$/Studies.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -36,6 +35,7 @@
     "Python.AndroidFunctions.executor": "Debug",
     "Python.OCRScript_v3.executor": "Run",
     "Python.RuntimeValues.executor": "Run",
+    "Python.Studies.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
     "git-widget-placeholder": "master",

@@ -112,7 +112,8 @@ DEVICE_ID = 'device_id'
 IS_RESEARCHER = 'is_researcher'
 RESPONSE_DATE = 'response_date'
 IMG_RESPONSE_TYPE = 'img_response_type'
-IMG_URL = 'img_url'
+IMG_PATH = 'img_path'
+LOCAL_FILE = 'local file'
 
 
 """

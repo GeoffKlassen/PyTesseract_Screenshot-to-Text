@@ -44,7 +44,7 @@ class TeeOutput:
 
 
 def compile_list_of_urls(df, url_cols, num_urls_remaining,
-                         date_col='Record Time', id_col='Participant ID', device_id_col='Device ID'):
+                         date_col='Record Time', id_col='Participant ID', device_id_col='Device ID', is_local_folder=False):
     """Create a DataFrame of URLs from a provided DataFrame of survey responses.
     :param df:                 The dataframe with columns that contain URLs
     :param url_cols:           A dictionary of column names for screentime URLs, pickups URLs, and notifications URLs
@@ -55,6 +55,8 @@ def compile_list_of_urls(df, url_cols, num_urls_remaining,
     :param device_id_col:      The name of the column in df that contains the ID of the device from which the user
                                responded (For Avicenna CSVs, this is usually 'Device ID')
     :param num_urls_remaining: The number of URLs left to fetch, in order to reach image_upper_bound
+    :param is_local_folder:       A boolean that indicates whether the provided dataframe df contains a list of local
+                               files; if false, then df should contain URLs
 
     :return: A DataFrame of image URLs, with their user ID, response date, and the category the image was submitted in.
 
@@ -62,40 +64,45 @@ def compile_list_of_urls(df, url_cols, num_urls_remaining,
     notifications. Because of this, the table provided from the study may have multiple columns of URLs (e.g. one column
     for each usage category, multiple columns for only one category, or multiple columns for all three categories).
     """
-    url_df = pd.DataFrame(columns=[PARTICIPANT_ID, DEVICE_ID, IS_RESEARCHER, RESPONSE_DATE, IMG_RESPONSE_TYPE, IMG_URL])
+    url_df = pd.DataFrame(columns=[PARTICIPANT_ID, DEVICE_ID, IS_RESEARCHER, RESPONSE_DATE, IMG_RESPONSE_TYPE, IMG_PATH, LOCAL_FILE])
 
     for _i in df.index:
-        user_id = df[id_col][_i]
-        dev_id = df[device_id_col][_i]
+        if is_local_folder:
+            # Try to get the user_id from the filename
+            pass
+        else:
+            user_id = df[id_col][_i]
+            dev_id = df[device_id_col][_i]
 
-        # Extract the response date from the date column, in date format
-        try:
-            response_date = datetime.strptime(str(df[date_col][_i])[0:10], "%Y-%m-%d")  # YYYY-MM-DD = 10 chars
-        except ValueError:  #
-            response_date = datetime.strptime("1999-01-01", "%Y-%m-%d")  # TODO: try None?
+            # Extract the response date from the date column, in date format
+            try:
+                response_date = datetime.strptime(str(df[date_col][_i])[0:10], "%Y-%m-%d")  # YYYY-MM-DD = 10 chars
+            except ValueError:  #
+                response_date = datetime.strptime("1999-01-01", "%Y-%m-%d")  # TODO: try None?
 
-        for key, col_list in url_cols.items():
-            for col_name in col_list:
-                url = str(df[col_name][_i])
-                img_response_type = key
-                if not url.startswith("https://file.avicennaresearch.com"):
-                    continue
-                # Note: For the Boston Children's Hospital data, all images are of type SCREENTIME
+            for key, col_list in url_cols.items():
+                for col_name in col_list:
+                    url = str(df[col_name][_i])
+                    img_response_type = key
+                    if not url.startswith("https://file.avicennaresearch.com"):
+                        continue
+                    # Note: For the Boston Children's Hospital data, all images are of type SCREENTIME
 
-                new_row = {PARTICIPANT_ID: user_id,
-                           DEVICE_ID: dev_id,
-                           IS_RESEARCHER: True if df.loc[_i, id_col] == IS_RESEARCHER else False,
-                           RESPONSE_DATE: response_date.date(),
-                           IMG_RESPONSE_TYPE: img_response_type,
-                           IMG_URL: url}
-                url_df = pd.concat([url_df, pd.DataFrame([new_row])], ignore_index=True)
-                if url_df.shape[0] >= num_urls_remaining > 0:
-                    return url_df, False
+                    new_row = {PARTICIPANT_ID: user_id,
+                               DEVICE_ID: dev_id,
+                               IS_RESEARCHER: True if df.loc[_i, id_col] == IS_RESEARCHER else False,
+                               RESPONSE_DATE: response_date.date(),
+                               IMG_RESPONSE_TYPE: img_response_type,
+                               IMG_PATH: url,
+                               LOCAL_FILE: is_local_folder}
+                    url_df = pd.concat([url_df, pd.DataFrame([new_row])], ignore_index=True)
+                    if url_df.shape[0] >= num_urls_remaining > 0:
+                        return url_df, False
 
     return url_df, True
 
 
-def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
+def load_and_process_image(screenshot, white_threshold=200, black_threshold=60, local_file=False):
     """
     Very helpful tutorial: https://techtutorialsx.com/2019/04/13/python-opencv-converting-image-to-black-and-white/
      Load the image from the file and some image processing to make the image "readable" for tesseract.
@@ -167,25 +174,31 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60):
             else:
                 img[mask > 0] = [0, 0, 0]  # Make all pixels in mask black
 
-    if use_downloaded_images or save_downloaded_images:
-        if not os.path.exists(dir_for_downloaded_images):
-            os.makedirs(dir_for_downloaded_images)
-        if not os.path.exists(f"{dir_for_downloaded_images}\\{screenshot.device_os_submitted}"):
-            os.makedirs(f"{dir_for_downloaded_images}\\{screenshot.device_os_submitted}")
-    img_local_path = os.path.join(dir_for_downloaded_images, screenshot.device_os_submitted, screenshot.filename)
-    img_temp_path = os.path.join(dir_for_downloaded_images, screenshot.device_os_submitted, "temp.jpg")
+    if local_file:
+        img_local_path = screenshot.url
+        image = Image.open(img_local_path)
+        image = image.convert('RGB')
+        image = np.array(image, dtype='uint8')
+    else:
+        if use_downloaded_images or save_downloaded_images:
+            if not os.path.exists(dir_for_downloaded_images):
+                os.makedirs(dir_for_downloaded_images)
+            if not os.path.exists(f"{dir_for_downloaded_images}\\{screenshot.device_os_submitted}"):
+                os.makedirs(f"{dir_for_downloaded_images}\\{screenshot.device_os_submitted}")
+        img_local_path = os.path.join(dir_for_downloaded_images, screenshot.device_os_submitted, screenshot.filename)
+        img_temp_path = os.path.join(dir_for_downloaded_images, screenshot.device_os_submitted, "temp.jpg")
 
-    if use_downloaded_images:
-        if os.path.exists(img_local_path):
-            print(f"Opening local image "
-                  f"'{dir_for_downloaded_images}\\{screenshot.device_os_submitted}\\{screenshot.filename}'...\n")
-            image = Image.open(img_local_path)
-            image = image.convert('RGB')
-            image = np.array(image, dtype='uint8')
+        if use_downloaded_images:
+            if os.path.exists(img_local_path):
+                print(f"Opening local image "
+                      f"'{dir_for_downloaded_images}\\{screenshot.device_os_submitted}\\{screenshot.filename}'...\n")
+                image = Image.open(img_local_path)
+                image = image.convert('RGB')
+                image = np.array(image, dtype='uint8')
+            else:
+                image = _download_image_from_avicenna(screenshot.url)
         else:
             image = _download_image_from_avicenna(screenshot.url)
-    else:
-        image = _download_image_from_avicenna(screenshot.url)
 
     if image.size == 0:
         # We'll just return the empty array...
@@ -690,7 +703,7 @@ def get_date_in_screenshot(screenshot, alt_text=pd.DataFrame):
             return complete_date.date(), dates_df
         else:
             print("Invalid month abbreviation.")
-    except ValueError:
+    except (ValueError, AttributeError):
         print("Invalid date format.")
 
     return None, empty_df
@@ -834,9 +847,9 @@ def get_os(dev_id, screenshot=None):
     W_ANDROID_CHROMEMOBILE      - Android Chrome browser
     W_ANDROID_FIREFOXMOBILE     - Android Firefox browser
     """
-    if not bool(re.compile(r'^[0-9a-fA-F]+$').match(dev_id)) and screenshot is not None:
-        screenshot.add_error(ERR_DEVICE_ID)
-    if dev_id is None:
+    if dev_id is None or not bool(re.compile(r'^[0-9a-fA-F]+$').match(dev_id)) and screenshot is not None:
+        if screenshot is not None:
+            screenshot.add_error(ERR_DEVICE_ID)
         return None
     elif len(dev_id) == 16 or ANDROID.upper() in dev_id:
         return ANDROID
@@ -1379,6 +1392,32 @@ def set_empty_app_data_and_update(empty_data, screenshot, idx):
     update_eta(screenshot_time_start, idx)
 
 
+def get_image_files(directory):
+    image_extensions = ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff')
+    image_files = pd.DataFrame(columns=[PARTICIPANT_ID, DEVICE_ID, IS_RESEARCHER, RESPONSE_DATE, IMG_RESPONSE_TYPE, IMG_PATH, LOCAL_FILE])
+
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if file.lower().endswith(image_extensions):
+                # Look for a participant ID in the filename
+                id_groups = re.findall(r'(?<=\s|_|-|\.)\d{5,6}(?=\s|_|-|\.|$)|^\d{5,6}(?=\s|_|-|\.|$)', file)
+                if id_groups:
+                    new_row = pd.DataFrame({PARTICIPANT_ID: [id_groups[0]],
+                                            DEVICE_ID: [None],
+                                            IS_RESEARCHER: [None],
+                                            RESPONSE_DATE: [datetime.today().date()],
+                                            IMG_RESPONSE_TYPE: [SCREENTIME if study_to_analyze == study_bch else None],
+                                            IMG_PATH: [os.path.join(root, file)],
+                                            LOCAL_FILE: True
+                                            })
+                    image_files = pd.concat([image_files, new_row], ignore_index=True)
+                else:
+                    pass
+
+    return image_files
+
+
+
 
 
 
@@ -1437,6 +1476,14 @@ if __name__ == '__main__':
             print(f"URL list now contains {image_upper_bound} images. No further URLs needed.")
             break
 
+    # If there are local files to use as well, compile a dataframe of them.
+    try:
+        if study_to_analyze['local folder']:
+            local_images_df = get_image_files(study_to_analyze['local folder'])
+            url_list = pd.concat([local_images_df, url_list], ignore_index=True)
+    except KeyError:
+        print("No local folder provided for additional images")
+
     num_urls = url_list.shape[0]
     print(f'Total URLs taken from all surveys: {num_urls}')
 
@@ -1483,7 +1530,7 @@ if __name__ == '__main__':
         print(f"\n=========================================="
               f"{"   output not saved   " if save_log_and_CSVs is False else "======================"}"
               f"==========================================\n")
-        print(f"File {index + 1} of {min_url_index}: {url_list[IMG_URL][index]}")
+        print(f"File {index + 1} of {min_url_index}: {url_list[IMG_PATH][index]}")
 
         screenshot_time_start = time.time()
         device_id = url_list[DEVICE_ID][index]
@@ -1493,12 +1540,14 @@ if __name__ == '__main__':
                                                         dev_id=device_id)
 
         current_screenshot = Screenshot(participant=current_participant,
-                                        url=url_list[IMG_URL][index],
+                                        url=url_list[IMG_PATH][index],
                                         device_id=device_id,
                                         date=url_list[RESPONSE_DATE][index],
                                         category=url_list[IMG_RESPONSE_TYPE][index])
         device_os = get_os(device_id, current_screenshot)
         current_screenshot.set_device_os(device_os)
+        if current_participant.device_os is None:
+            current_participant.set_device_os(device_os)
 
         print(current_screenshot)
 
@@ -1510,7 +1559,7 @@ if __name__ == '__main__':
         #     continue
 
         # Download the image (if not using local images) or open the local image
-        grey_image, bw_image = load_and_process_image(current_screenshot, white_threshold=220)  # 226
+        grey_image, bw_image = load_and_process_image(current_screenshot, white_threshold=220, local_file=url_list[LOCAL_FILE][index])  # 226
 
         # If screenshot cannot be downloaded, set data for its submitted category to N/A
         if grey_image.size == 0:
@@ -1639,16 +1688,23 @@ if __name__ == '__main__':
         num_iOS_headings = len(iOS_headings_df[iOS_headings_df[OS_COLUMN] == IOS])
         num_Android_headings = len(android_headings_df[android_headings_df[OS_COLUMN] == ANDROID])
 
-        if current_screenshot.device_os_submitted == ANDROID and num_iOS_headings > num_Android_headings:
-            print("Screenshot has Android-style Device ID but contains more iOS-specific headings. "
+        if (current_screenshot.device_os_submitted == ANDROID or current_screenshot.device_os_submitted is None) and num_iOS_headings > num_Android_headings:
+            print("Screenshot contains iOS-specific headings. "
                   f"Setting device OS to '{IOS}'.")
             current_screenshot.set_device_os_detected(IOS)
             current_screenshot.add_error(ERR_DEVICE_OS)
-        elif current_screenshot.device_os_submitted == IOS and num_Android_headings > num_iOS_headings:
-            print("Screenshot has iOS-style Device ID but contains more Android-specific headings. "
+            current_participant.set_device_os(IOS)
+
+        elif (current_screenshot.device_os_submitted == IOS or current_screenshot.device_os_submitted is None) and num_Android_headings > num_iOS_headings:
+            print("Screenshot contains Android-specific headings. "
                   f"Setting device OS to '{ANDROID}'.")
             current_screenshot.set_device_os_detected(ANDROID)
             current_screenshot.add_error(ERR_DEVICE_OS)
+            current_participant.set_device_os(ANDROID)
+
+        elif current_participant.device_os is not None:
+            print(f"Could not determine device OS by screenshot data. Setting device OS to participant default ({current_participant.device_os}).")
+            current_screenshot.set_device_os_detected(current_participant.device_os)
 
         if current_screenshot.device_os_detected == ANDROID:
             current_screenshot.set_time_formats(time_formats)
@@ -2009,6 +2065,7 @@ if __name__ == '__main__':
                                                                                 remove_chars="[^a-zA-Z0-9+é:.!,()'&-]+")
             cropped_prescan_words['text'] = cropped_prescan_words['text'].astype(str)
             cropped_prescan_df['text'] = cropped_prescan_df['text'].astype(str)
+            cropped_prescan_df = cropped_prescan_df[cropped_prescan_df['left'] > 2]
             cropped_prescan_words = cropped_prescan_words[
                 cropped_prescan_words['text'].str.fullmatch(r'[a-zA-Z0-9]+', na=False)]
             cropped_prescan_words = cropped_prescan_words[~((cropped_prescan_words['text'] == '2') &
