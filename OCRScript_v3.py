@@ -130,7 +130,7 @@ def load_and_process_image(screenshot, white_threshold=200, black_threshold=60, 
                 img = img.convert('RGB')  # We'll standardize the image to RGB format.
                 if save_downloaded_images:
                     img.save(img_local_path)
-                    print(f"Image saved to"
+                    print(f"Image saved to "
                           f"'{dir_for_downloaded_images}\\{screenshot.device_os_submitted}\\{screenshot.filename}'.")
                     img = Image.open(img_local_path)
                 else:
@@ -565,7 +565,7 @@ def determine_language_of_image(participant, df):
                   KEYWORDS_FOR_UNRELATED_SCREENSHOTS.items()]:
         for key, _list in _dict:
             for val in _list:
-                if len(val) > 3 and df['text'].str.contains(val, case=False).any():
+                if len(val) > 3 and df['text'].str.contains(rf'\b{val}\b', case=False).any():
                     print(f"Language keyword detected: '{val}'. Setting language to {key}.")
                     return key, True
 
@@ -847,7 +847,10 @@ def get_os(dev_id, screenshot=None):
     W_ANDROID_CHROMEMOBILE      - Android Chrome browser
     W_ANDROID_FIREFOXMOBILE     - Android Firefox browser
     """
-    if dev_id is None or not bool(re.compile(r'^[0-9a-fA-F]+$').match(dev_id)) and screenshot is not None:
+    if screenshot is not None and not bool(re.compile(r'^[0-9a-fA-F]+$').match(dev_id)):
+        screenshot.add_error(ERR_DEVICE_ID)
+
+    if dev_id is None:
         if screenshot is not None:
             screenshot.add_error(ERR_DEVICE_ID)
         return None
@@ -1303,7 +1306,7 @@ def add_screenshot_info_to_master_df(screenshot, idx):
     if screenshot.daily_total_conf == NO_CONF and \
             screenshot.app_data[NAME_CONF].eq(NO_CONF).all() and \
             screenshot.app_data[NUMBER_CONF].eq(NO_CONF).all():
-        # Do not hash screenshots that contain no daily total or app-level info.
+        # Do not hash screenshots that contain no daily total and no app-level info.
         pass
     else:
         # Find all other screenshots with the same hash
@@ -1312,6 +1315,8 @@ def add_screenshot_info_to_master_df(screenshot, idx):
 
         if not matching_screenshots.empty:
             num_duplicates = len(matching_screenshots) + 1
+            num_unique_users = (matching_screenshots[PARTICIPANT_ID].nunique() +
+                                (0 if screenshot.user_id in matching_screenshots[PARTICIPANT_ID].values else 1))
             # There are other screenshots with the same data
             screenshot.add_error(ERR_DUPLICATE_DATA)
             # screenshot.add_error(ERR_DUPLICATE_COUNTS)
@@ -1335,9 +1340,11 @@ def add_screenshot_info_to_master_df(screenshot, idx):
 
                 all_screenshots_df.loc[n, ERR_DUPLICATE_DATA] = same_or_other_user
                 all_screenshots_df.loc[n, ERR_DUPLICATE_COUNTS] = num_duplicates
+                all_screenshots_df.loc[n, ERR_USER_COUNT] = num_unique_users
 
                 all_screenshots_df_conf.loc[n, ERR_DUPLICATE_DATA] = same_or_other_user
                 all_screenshots_df_conf.loc[n, ERR_DUPLICATE_COUNTS] = num_duplicates
+                all_screenshots_df_conf.loc[n, ERR_USER_COUNT] = num_unique_users
 
 
     for df, col_name in zip([all_screenshots_df, all_screenshots_df_conf], [[NAME, NUMBER], [NAME_CONF, NUMBER_CONF]]):
@@ -1370,6 +1377,7 @@ def add_screenshot_info_to_master_df(screenshot, idx):
             elif col == ERR_DUPLICATE_DATA:
                 df.loc[idx, col] = same_or_other_user
                 df.loc[idx, ERR_DUPLICATE_COUNTS] = num_duplicates
+                df.loc[idx, ERR_USER_COUNT] = num_unique_users
             elif col.startswith(ERR):
                 df.loc[idx, col] = True
             else:
@@ -1688,26 +1696,33 @@ if __name__ == '__main__':
         num_iOS_headings = len(iOS_headings_df[iOS_headings_df[OS_COLUMN] == IOS])
         num_Android_headings = len(android_headings_df[android_headings_df[OS_COLUMN] == ANDROID])
 
-        if (current_screenshot.device_os_submitted == ANDROID or current_screenshot.device_os_submitted is None) and num_iOS_headings > num_Android_headings:
-            print("Screenshot contains iOS-specific headings. "
-                  f"Setting device OS to '{IOS}'.")
+        if num_iOS_headings > num_Android_headings:
             current_screenshot.set_device_os_detected(IOS)
-            current_screenshot.add_error(ERR_DEVICE_OS)
-            current_participant.set_device_os(IOS)
+            if not current_participant.device_os in [IOS, ANDROID]:
+                current_participant.set_device_os(IOS)
+            if current_screenshot.device_os_submitted == ANDROID or current_screenshot.device_os_submitted is None:
+                print("Screenshot contains iOS-specific headings. "
+                      f"Setting device OS to '{IOS}'.")
+                current_screenshot.add_error(ERR_DEVICE_OS)
 
-        elif (current_screenshot.device_os_submitted == IOS or current_screenshot.device_os_submitted is None) and num_Android_headings > num_iOS_headings:
-            print("Screenshot contains Android-specific headings. "
-                  f"Setting device OS to '{ANDROID}'.")
+        elif num_Android_headings > num_iOS_headings:
             current_screenshot.set_device_os_detected(ANDROID)
-            current_screenshot.add_error(ERR_DEVICE_OS)
-            current_participant.set_device_os(ANDROID)
+            if not current_participant.device_os in [IOS, ANDROID]:
+                current_participant.set_device_os(ANDROID)
+            if current_screenshot.device_os_submitted == IOS or current_screenshot.device_os_submitted is None:
+                print("Screenshot contains Android-specific headings. "
+                      f"Setting device OS to '{ANDROID}'.")
+                current_screenshot.add_error(ERR_DEVICE_OS)
+                current_participant.set_device_os(ANDROID)
 
-        elif current_participant.device_os is not None:
+        elif current_participant.device_os in [IOS, ANDROID] and current_screenshot.device_os_submitted is None:
             print(f"Could not determine device OS by screenshot data. Setting device OS to participant default ({current_participant.device_os}).")
             current_screenshot.set_device_os_detected(current_participant.device_os)
 
-        if current_screenshot.device_os_detected == ANDROID:
-            current_screenshot.set_time_formats(time_formats)
+        else:
+            current_screenshot.set_device_os_detected(device_os)
+
+
 
         """
             Here, the phone OS determines which branch of code we run to extract the daily total and app-level data.
@@ -1729,6 +1744,8 @@ if __name__ == '__main__':
             #
             #     set_empty_app_data_and_update(empty_app_data, current_screenshot, index)
             #     continue
+
+            current_screenshot.set_time_formats(time_formats)
 
             # Get headings from screenshot text
             headings_df = android_headings_df
@@ -2236,8 +2253,8 @@ if __name__ == '__main__':
                 print("Done.")
 
         print("Exporting CSVs...", end='')
-        all_screenshots_df.drop(columns=[HASHED], inplace=True)
-        all_screenshots_df_conf.drop(columns=[HASHED], inplace=True)
+        # all_screenshots_df.drop(columns=[HASHED], inplace=True)
+        # all_screenshots_df_conf.drop(columns=[HASHED], inplace=True)
 
         all_ios_screenshots_df = all_screenshots_df[all_screenshots_df[DEVICE_OS] == IOS]
         all_android_screenshots_df = all_screenshots_df[all_screenshots_df[DEVICE_OS] == ANDROID]

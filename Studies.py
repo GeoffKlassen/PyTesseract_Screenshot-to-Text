@@ -8,7 +8,7 @@ So far:
 import pytesseract
 from ConvenienceVariables import *
 
-coding_location = 'lab'  # lab or home
+coding_location = 'home'  # lab or home
 
 # Based on the coding location, the directory where pytesseract is installed and the name of the PC will change
 if coding_location == 'lab':
@@ -89,19 +89,19 @@ happyb2_daily_survey_android = {CSV_FILE: 'Screenshot Survey Android 2024, Uniqu
 """
     HappyB2.0 Aug-Dec 2024
 """
-happyb2_2025_baseline_survey = {CSV_FILE: 'study-3749-export-4-survey-responses-20973-2025-03-26-20-37-36.csv',
+happyb2_2025_baseline_survey = {CSV_FILE: 'study-3749-export-11-survey-responses-20973-2025-04-07-18-36-11.csv',
                                 URL_COLUMNS: {SCREEN_COLS: ['[24_IMG] iOS_screenshot_1_duration', '[28_IMG] Android_screenshot_1_duration'],
                                               PICKUP_COLS: ['[25_IMG] iOS_screenshot_2_unlocks', '[29_IMG] Android_screenshot_2_unlocks'],
                                               NOTIFY_COLS: ['[26_IMG] iOS_screenshot_3_notifications', '[30_IMG] Android_screenshot_3_notifications']
                                               }
                                 }
-happyb2_2025_daily_survey_ios = {CSV_FILE: 'study-3749-export-6-survey-responses-20976-2025-03-26-20-39-37.csv',
+happyb2_2025_daily_survey_ios = {CSV_FILE: 'study-3749-export-13-survey-responses-20976-2025-04-07-18-36-42.csv',
                                  URL_COLUMNS: {SCREEN_COLS: ['[2_IMG] iOS screentime'],
                                                PICKUP_COLS: ['[3_IMG] iOS unlocks'],
                                                NOTIFY_COLS: ['[4_IMG] iOS notifications']
                                               }
                                  }
-happyb2_2025_daily_survey_android = {CSV_FILE: 'study-3749-export-7-survey-responses-20977-2025-03-26-20-43-30.csv',
+happyb2_2025_daily_survey_android = {CSV_FILE: 'study-3749-export-14-survey-responses-20977-2025-04-07-18-36-58.csv',
                                      URL_COLUMNS: {SCREEN_COLS: ['[2_IMG] AndroidScreentime'],
                                                    PICKUP_COLS: ['[3_IMG] Android unlocks'],
                                                    NOTIFY_COLS: ['[4_IMG] Android notifications']

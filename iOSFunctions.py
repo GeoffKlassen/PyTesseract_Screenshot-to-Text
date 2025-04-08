@@ -546,7 +546,7 @@ def get_daily_total_and_confidence(screenshot, img, category=None):
                 row_text = rescan_df.loc[i]['text']
                 row_conf = round(rescan_df.loc[i]['conf'], 4)  # 4 decimal points of precision for the confidence value
                 if len(re.findall(value_pattern, row_text)) == 1 and \
-                        rescan_df.loc[i]['height'] > 0.01 * screenshot.height and \
+                        rescan_df.loc[i]['height'] > 0.01 * screenshot.height * scale and \
                         len(re.findall(r'AM|PM', row_text, re.IGNORECASE)) <= 1:
                     # The row text contains a (misread) value, and
                     # the height of that value's textbox is above a minimum threshold, and

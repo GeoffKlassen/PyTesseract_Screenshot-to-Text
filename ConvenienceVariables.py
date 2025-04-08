@@ -206,6 +206,7 @@ ERR_TOTAL_BELOW_APP_SUM = 'ERR Daily total less than app sum'
 ERR_MISREAD_TIME = 'ERR Misread time value'
 ERR_NOT_A_NUMBER = 'ERR Daily total not a number'
 ERR_DUPLICATE_COUNTS = 'ERR Duplicate data occurrences'
+ERR_USER_COUNT = 'ERR Num users with this image'
 SAME_USER = 'SAME USER'
 MULTIPLE_USERS = 'MULTIPLE USERS'
 

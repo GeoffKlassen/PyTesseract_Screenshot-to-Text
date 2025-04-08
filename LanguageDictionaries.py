@@ -148,8 +148,7 @@ DAY_ABBREVIATIONS = {  # TODO Verify these!
 KEYWORDS_FOR_UNRELATED_SCREENSHOTS = {ITA: ['USO BATTERIA', 'Benessere digitale'],
                                       ENG: ['BATTERY USE', 'BATTERY USAGE',
                                             'Digital wellbeing', 'Digital Wellbeing & parental',
-                                            'No limit', 'Manage notifications', 'Weekly report',
-                                            'Set time limits',
+                                            'Weekly report', 'Set time limits',
                                             'TAKE PHOTO'],  # 'TAKE PHOTO' appears in each Avicenna study question that
                                                             # asks participants to upload a screenshot
                                       GER: ['TODO FILL THIS IN'],

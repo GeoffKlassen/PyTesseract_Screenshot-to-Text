@@ -679,7 +679,7 @@ def get_daily_total_and_confidence(screenshot, image, category):
         crop_top = max([0, row_below_total['top'] - (4 * row_below_total['height'])])
         crop_bottom = row_below_total['top']
 
-        print(f"\nDaily total not found, but found row below total: '{rows_below_total['text']}'. Cropping image above this row for rescan.")
+        print(f"\nDaily total not found, but found row below total: '{row_below_total['text']}'. Cropping image above this row for rescan.")
 
         cropped_scan = rescan_cropped_area(image, crop_top, crop_bottom, crop_left, crop_right)
 
@@ -896,7 +896,7 @@ def crop_image_to_app_area(image, headings_above_apps, screenshot, time_format_s
         else:
             # Default values for crop_left and crop_right
             crop_left_text, crop_right_text = f"({android_version} default)", f"({android_version} default)"
-            crop_left = int(0.15 * screenshot.width)  # Crop out the app icon area (first 15% of screenshot.width)
+            crop_left = int(0.10 * screenshot.width)  # Crop out the app icon area (first 10% of screenshot.width)
             crop_right = int(0.79 * screenshot.width)  # Crop out the hourglass area (last 79% of screenshot.width)
 
             if not date_rows.empty:
