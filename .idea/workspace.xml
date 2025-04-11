@@ -4,15 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4e170b4d-2af2-47c5-9e6d-e8a288c22989" name="Changes" comment="If neither the date text nor the day text is found on the inital scan, but then the date is found on the date-rescan, we need to make sure to set the day_type based on the relative diffence between the submitted date and the detected date. Moved date detection to above the day_type detection so the day_type detection uses whatever date comes out of get_date_in_screenshot (which includes both the initial scan and a rescan if necessary).">
+    <list default="true" id="4e170b4d-2af2-47c5-9e6d-e8a288c22989" name="Changes" comment="Added column to final screenshot df that gives the number of user accounts that submitted the same screenshot (at least once). Useful for identifying fraudulent accounts.&#10;&#10;Changed default crop_left for Google dashboard version from 0.15*screenshot_width to 0.10*screenshot_width. Several images are more widescreen than a usual vertical screenshot (almost like they're from a computer screen or a tablet).">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/AndroidFunctions.py" beforeDir="false" afterPath="$PROJECT_DIR$/AndroidFunctions.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ConvenienceVariables.py" beforeDir="false" afterPath="$PROJECT_DIR$/ConvenienceVariables.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LanguageDictionaries.py" beforeDir="false" afterPath="$PROJECT_DIR$/LanguageDictionaries.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/OCRScript_v3.py" beforeDir="false" afterPath="$PROJECT_DIR$/OCRScript_v3.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/RuntimeValues.py" beforeDir="false" afterPath="$PROJECT_DIR$/RuntimeValues.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Studies.py" beforeDir="false" afterPath="$PROJECT_DIR$/Studies.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iOSFunctions.py" beforeDir="false" afterPath="$PROJECT_DIR$/iOSFunctions.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -39,7 +33,7 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "Python.AndroidFunctions.executor": "Debug",
-    "Python.OCRScript_v3.executor": "Debug",
+    "Python.OCRScript_v3.executor": "Run",
     "Python.RuntimeValues.executor": "Run",
     "Python.Studies.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
@@ -174,7 +168,15 @@
       <option name="project" value="LOCAL" />
       <updated>1742602139165</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="Added column to final screenshot df that gives the number of user accounts that submitted the same screenshot (at least once). Useful for identifying fraudulent accounts.&#10;&#10;Changed default crop_left for Google dashboard version from 0.15*screenshot_width to 0.10*screenshot_width. Several images are more widescreen than a usual vertical screenshot (almost like they're from a computer screen or a tablet).">
+      <option name="closed" value="true" />
+      <created>1744072546837</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1744072546837</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -200,7 +202,8 @@
     <MESSAGE value="1. When extracting text from an image, words that are just a single '.' are now discarded. Also, the app icon for the app named &quot;Character.AI&quot; is the text &quot;c.ai&quot; (or 'cai'), so that word will also be ignored.&#10;&#10;2. Broadened the search for language keywords by including more dictionaries in the search -- KEYWORDS_FOR_TODAY, KEYWORDS_FOR_WEEKDAY_NAMES, KEYWORDS_FOR_WEEK, and KEYWORDS_FOR_UNRELATED_SCREENSHOTS (with the condition that the dictionary value must be longer than 3 characters).&#10;&#10;3. Reverted to the old method of what text from the initial scan gets merged into the crop-area scan. Only digits and time formats (no app names). It was causing strange overlap words.&#10;&#10;4. Added warning message when save_log_and_CSVs is False. (Output will not be saved.)&#10;&#10;5. Added search for 'AM|PM' when detecting the heading HOURS AXIS. 2+ instances flags the row as an HOURS AXIS row. This should eliminate the need for the backup (old) regex method.&#10;&#10;6. Fixed misprint where the crop_top said it was &quot;below &lt;app name&gt;&quot; when the calculation set crop_top above the app name.&#10;&#10;7. Fixed error where last_index_headings could have no value if the only heading in headings_df was the SEE_ALL_N_APPS heading, which caused the program to crash." />
     <MESSAGE value="1. Sometimes the date text is misread as a later date (e.g., 'Sept 23' may be misread as 'Sept 28'). Code now checks for 'yesterday/today' text first, then (if it's found) uses it to correct misread dates; if it's not found, it uses common digit misreadings to correct the date (e.g. '1' misread as '7', '3' misread as '8', and '0' misread as '6').&#10;&#10;2. Re-searching for date text when no date text is found (for Google dashboard). Image is scanned at original size rather than resized.&#10;&#10;ParticipantClass.py also won't add data to a participant's temporal data if the detected date is later than the submitted date." />
     <MESSAGE value="If neither the date text nor the day text is found on the inital scan, but then the date is found on the date-rescan, we need to make sure to set the day_type based on the relative diffence between the submitted date and the detected date. Moved date detection to above the day_type detection so the day_type detection uses whatever date comes out of get_date_in_screenshot (which includes both the initial scan and a rescan if necessary)." />
-    <option name="LAST_COMMIT_MESSAGE" value="If neither the date text nor the day text is found on the inital scan, but then the date is found on the date-rescan, we need to make sure to set the day_type based on the relative diffence between the submitted date and the detected date. Moved date detection to above the day_type detection so the day_type detection uses whatever date comes out of get_date_in_screenshot (which includes both the initial scan and a rescan if necessary)." />
+    <MESSAGE value="Added column to final screenshot df that gives the number of user accounts that submitted the same screenshot (at least once). Useful for identifying fraudulent accounts.&#10;&#10;Changed default crop_left for Google dashboard version from 0.15*screenshot_width to 0.10*screenshot_width. Several images are more widescreen than a usual vertical screenshot (almost like they're from a computer screen or a tablet)." />
+    <option name="LAST_COMMIT_MESSAGE" value="Added column to final screenshot df that gives the number of user accounts that submitted the same screenshot (at least once). Useful for identifying fraudulent accounts.&#10;&#10;Changed default crop_left for Google dashboard version from 0.15*screenshot_width to 0.10*screenshot_width. Several images are more widescreen than a usual vertical screenshot (almost like they're from a computer screen or a tablet)." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

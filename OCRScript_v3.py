@@ -1641,7 +1641,9 @@ if __name__ == '__main__':
 
         # Create a hash for the text found in the initial scan, for comparison to other hashes to detect duplicate images
         all_text_in_one_string = ''.join(text_df['text'])
-        current_screenshot.set_hash(hashlib.md5(all_text_in_one_string.encode()).hexdigest())
+        all_conf_in_one_string = ''.join(text_df['conf'].apply(lambda x: f"{x:.4f}"))
+        all_ssdata_concatenated = ''.join([all_text_in_one_string, all_conf_in_one_string])
+        current_screenshot.set_hash(hashlib.md5(all_ssdata_concatenated.encode()).hexdigest())
 
         # Get the language of the image, and assign that language to the screenshot & user (if a language was detected)
         image_language, language_was_detected = determine_language_of_image(current_participant, text_df)
