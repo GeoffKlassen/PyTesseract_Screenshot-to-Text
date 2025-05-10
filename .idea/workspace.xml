@@ -4,9 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4e170b4d-2af2-47c5-9e6d-e8a288c22989" name="Changes" comment="Added column to final screenshot df that gives the number of user accounts that submitted the same screenshot (at least once). Useful for identifying fraudulent accounts.&#10;&#10;Changed default crop_left for Google dashboard version from 0.15*screenshot_width to 0.10*screenshot_width. Several images are more widescreen than a usual vertical screenshot (almost like they're from a computer screen or a tablet).">
+    <list default="true" id="4e170b4d-2af2-47c5-9e6d-e8a288c22989" name="Changes" comment="Changed hash computation; the hash for each screenshot is now computed from a string that concatenates the text and the confidence values (instead of just the text).">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/OCRScript_v3.py" beforeDir="false" afterPath="$PROJECT_DIR$/OCRScript_v3.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ParticipantClass.py" beforeDir="false" afterPath="$PROJECT_DIR$/ParticipantClass.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RuntimeValues.py" beforeDir="false" afterPath="$PROJECT_DIR$/RuntimeValues.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Studies.py" beforeDir="false" afterPath="$PROJECT_DIR$/Studies.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -33,6 +36,7 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "Python.AndroidFunctions.executor": "Debug",
+    "Python.Detecting Duplicate Screenshots with MSE.executor": "Run",
     "Python.OCRScript_v3.executor": "Run",
     "Python.RuntimeValues.executor": "Run",
     "Python.Studies.executor": "Run",
@@ -176,7 +180,15 @@
       <option name="project" value="LOCAL" />
       <updated>1744072546837</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="Changed hash computation; the hash for each screenshot is now computed from a string that concatenates the text and the confidence values (instead of just the text).">
+      <option name="closed" value="true" />
+      <created>1744406945515</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1744406945515</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -203,7 +215,8 @@
     <MESSAGE value="1. Sometimes the date text is misread as a later date (e.g., 'Sept 23' may be misread as 'Sept 28'). Code now checks for 'yesterday/today' text first, then (if it's found) uses it to correct misread dates; if it's not found, it uses common digit misreadings to correct the date (e.g. '1' misread as '7', '3' misread as '8', and '0' misread as '6').&#10;&#10;2. Re-searching for date text when no date text is found (for Google dashboard). Image is scanned at original size rather than resized.&#10;&#10;ParticipantClass.py also won't add data to a participant's temporal data if the detected date is later than the submitted date." />
     <MESSAGE value="If neither the date text nor the day text is found on the inital scan, but then the date is found on the date-rescan, we need to make sure to set the day_type based on the relative diffence between the submitted date and the detected date. Moved date detection to above the day_type detection so the day_type detection uses whatever date comes out of get_date_in_screenshot (which includes both the initial scan and a rescan if necessary)." />
     <MESSAGE value="Added column to final screenshot df that gives the number of user accounts that submitted the same screenshot (at least once). Useful for identifying fraudulent accounts.&#10;&#10;Changed default crop_left for Google dashboard version from 0.15*screenshot_width to 0.10*screenshot_width. Several images are more widescreen than a usual vertical screenshot (almost like they're from a computer screen or a tablet)." />
-    <option name="LAST_COMMIT_MESSAGE" value="Added column to final screenshot df that gives the number of user accounts that submitted the same screenshot (at least once). Useful for identifying fraudulent accounts.&#10;&#10;Changed default crop_left for Google dashboard version from 0.15*screenshot_width to 0.10*screenshot_width. Several images are more widescreen than a usual vertical screenshot (almost like they're from a computer screen or a tablet)." />
+    <MESSAGE value="Changed hash computation; the hash for each screenshot is now computed from a string that concatenates the text and the confidence values (instead of just the text)." />
+    <option name="LAST_COMMIT_MESSAGE" value="Changed hash computation; the hash for each screenshot is now computed from a string that concatenates the text and the confidence values (instead of just the text)." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -215,8 +228,8 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/OCRScript_v3.py</url>
-          <line>1316</line>
-          <option name="timeStamp" value="31" />
+          <line>1624</line>
+          <option name="timeStamp" value="33" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

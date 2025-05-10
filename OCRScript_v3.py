@@ -5,6 +5,7 @@ import ScreenshotClass
 from ScreenshotClass import Screenshot
 from ParticipantClass import Participant
 import os
+import glob
 import re
 import numpy as np
 import pandas as pd
@@ -842,7 +843,7 @@ def get_os(dev_id, screenshot=None):
     all Android device IDs in Avicenna CSVs appear as 16-digit hexadecimal (or sometimes alphanumeric) numbers.
     If a user submits a survey response via a web browser instead, the Device ID will reflect that browser:
 
-    W_MACOSX_SAFARI             - macOS (MacBook or iMac)
+    W_MACOSX_SAFARI             - macOS Safari browser (MacBook or iMac)
     W_IOS_MOBILESAFARI          - iOS Safari browser
     W_ANDROID_CHROMEMOBILE      - Android Chrome browser
     W_ANDROID_FIREFOXMOBILE     - Android Firefox browser
@@ -1302,6 +1303,9 @@ def add_screenshot_info_to_master_df(screenshot, idx):
     :param idx:
     :return:
     """
+    global all_screenshots_df
+    global all_screenshots_df_conf
+
     same_or_other_user, num_duplicates = None, None  # Initialize
     if screenshot.daily_total_conf == NO_CONF and \
             screenshot.app_data[NAME_CONF].eq(NO_CONF).all() and \
@@ -1346,6 +1350,13 @@ def add_screenshot_info_to_master_df(screenshot, idx):
                 all_screenshots_df_conf.loc[n, ERR_DUPLICATE_COUNTS] = num_duplicates
                 all_screenshots_df_conf.loc[n, ERR_USER_COUNT] = num_unique_users
 
+    if idx in all_screenshots_df.index:
+        # Create an empty row with NaN values
+        empty_row = pd.DataFrame([[""] * len(all_screenshots_df.columns)], columns=all_screenshots_df.columns)
+
+        # Insert the empty row
+        all_screenshots_df = pd.concat([all_screenshots_df.iloc[:idx], empty_row, all_screenshots_df.iloc[idx:]]).reset_index(drop=True)
+        all_screenshots_df_conf = pd.concat([all_screenshots_df_conf.iloc[:idx], empty_row, all_screenshots_df_conf.iloc[idx:]]).reset_index(drop=True)
 
     for df, col_name in zip([all_screenshots_df, all_screenshots_df_conf], [[NAME, NUMBER], [NAME_CONF, NUMBER_CONF]]):
 
@@ -1490,7 +1501,7 @@ if __name__ == '__main__':
             local_images_df = get_image_files(study_to_analyze['local folder'])
             url_list = pd.concat([local_images_df, url_list], ignore_index=True)
     except KeyError:
-        print("No local folder provided for additional images")
+        print("No local folder provided for additional images.")
 
     num_urls = url_list.shape[0]
     print(f'Total URLs taken from all surveys: {num_urls}')
@@ -1528,6 +1539,73 @@ if __name__ == '__main__':
     else:
         image_upper_bound = min(image_upper_bound, num_urls)
 
+
+    if full_analysis and use_last_full_analysis:
+        # Define the subdirectory
+        subdirectory = "CSVs"
+
+        # Get the absolute path of the subdirectory
+        cwd = os.getcwd()
+        target_dir = os.path.join(cwd, subdirectory)
+
+        # Find all folders that end with "FULL"
+        full_folders = [folder for folder in glob.glob(os.path.join(target_dir, "*FULL")) if os.path.isdir(folder)]
+
+        # Sort them alphabetically and get the last one
+        last_full_folder = sorted(full_folders)[-1] if full_folders else None
+
+
+        if last_full_folder:
+            print("Last FULL folder (alphabetically):", last_full_folder)
+            all_screenshots_csv = pd.read_csv(os.path.join(last_full_folder,
+                                                           ' '.join([study_to_analyze[NAME], "All Screenshots.csv"])
+                                                           ),
+                                              index_col=0)
+            all_screenshots_df = all_screenshots_csv
+
+            all_screenshots_conf_csv = pd.read_csv(os.path.join(last_full_folder,
+                                                           ' '.join([study_to_analyze[NAME], "All Confidence Values.csv"])
+                                                           ),
+                                              index_col=0)
+            all_screenshots_df_conf = all_screenshots_conf_csv
+
+
+            for index, row in all_screenshots_df.iterrows():
+                existing_participant = get_or_create_participant(users=participants,
+                                                                 user_id=row[PARTICIPANT_ID],
+                                                                 dev_id=row[DEVICE_ID])
+
+
+            all_participants_csv = pd.read_csv(os.path.join(last_full_folder,
+                                                            ' '.join([study_to_analyze[NAME], "All Participants Temporal Data.csv"])),
+                                               index_col=0)
+            all_participants_conf_csv = pd.read_csv(os.path.join(last_full_folder,
+                                                            ' '.join([study_to_analyze[NAME], "All Participants Temporal Data Confidence Values.csv"])),
+                                                    index_col=0)
+
+            for index in range(len(all_participants_csv)):
+                row_df = all_participants_csv.loc[[index]]
+                row_conf_df = all_participants_conf_csv.loc[[index]]
+                print(f"Loading data for {row_df[PARTICIPANT_ID][index]} {row_df[DATE_DETECTED][index]}...", end='')
+                matching_participants = [p for p in participants if p.user_id == row_df[PARTICIPANT_ID][index]]
+                if matching_participants:
+                    matching_participant = matching_participants[0]
+                    matching_participant.load_existing_data(row_df, row_conf_df)
+                    print("Loaded successfully.")
+        else:
+            print("No FULL folders found.")
+        # load the participant list from the last full analysis
+
+        # add all participants from the last full analysis to the list of participants in the current run
+
+        # load the CSV of screenshot data from the last full analysis
+
+        # use this as all_screenshots_df
+
+    else:
+        print("DId not enter the FULL folder check")
+        pass
+
     index = 0  # Initialize (used when saving CSVs to output folder)
     for index in url_list.index:
         if not (image_lower_bound <= index + 1 <= image_upper_bound):
@@ -1539,6 +1617,10 @@ if __name__ == '__main__':
               f"{"   output not saved   " if save_log_and_CSVs is False else "======================"}"
               f"==========================================\n")
         print(f"File {index + 1} of {min_url_index}: {url_list[IMG_PATH][index]}")
+
+        if all_screenshots_df[IMAGE_URL].isin([url_list[IMG_PATH][index]]).any():
+            print(f"Data extracted from this image already exists. Skipping.")
+            continue
 
         screenshot_time_start = time.time()
         device_id = url_list[DEVICE_ID][index]
@@ -2209,11 +2291,16 @@ if __name__ == '__main__':
 
     print("\nCompiling participants' temporal data...", end='')
     all_usage_dataframes = []  # Initialize
+    all_usage_conf_dataframes = []
     for p in participants:
         all_usage_dataframes.append(p.usage_data)
+        all_usage_conf_dataframes.append(p.usage_data_conf)
 
     all_participants_df = pd.concat(all_usage_dataframes, ignore_index=True)
     all_participants_df = all_participants_df.sort_values(by=[PARTICIPANT_ID, DATE_DETECTED]).reset_index(drop=True)
+
+    all_participants_conf_df = pd.concat(all_usage_conf_dataframes, ignore_index=True)
+    all_participants_conf_df = all_participants_conf_df.sort_values(by=[PARTICIPANT_ID, DATE_DETECTED]).reset_index(drop=True)
 
     print("Done.")
 
@@ -2267,6 +2354,8 @@ if __name__ == '__main__':
         all_notifications_screenshots_df = all_screenshots_df[all_screenshots_df[CATEGORY_DETECTED] == NOTIFICATIONS]
 
         all_participants_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} All Participants Temporal Data.csv")
+        all_participants_conf_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} All Participants Temporal Data Confidence Values.csv")
+
         all_screenshots_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} All Screenshots.csv")
         all_screenshots_df_conf.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} All Confidence Values.csv")
 

@@ -323,7 +323,7 @@ class Participant:
                     
                     Example:
                          Existing           New
-                             1               .          When i = 1, ex_index = 1 + 5 - 5 = 1 (existing app 1 goes here)
+                             1               .          When i = 1, ex_index  = 1 + 5 - 5 = 1 (existing app 1 goes here)
                              2               .
                              3               1          When i = 3, new_index = 3 + 3 - 5 = 1 (new app 1 goes here)
                              4               2
@@ -498,6 +498,14 @@ class Participant:
             print(f"Daily total {category}: {dt}\n")
 
         return
+
+    def load_existing_data(self, data, data_conf):
+        if len(self.usage_data) == 0:
+            self.usage_data = data
+            self.usage_data_conf = data_conf
+        else:
+            self.usage_data = pd.concat([self.usage_data, data], ignore_index=True)
+            self.usage_data_conf = pd.concat([self.usage_data_conf, data_conf], ignore_index=True)
 
     # def add_screentime_data(self):
     #     pass
