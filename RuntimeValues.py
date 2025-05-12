@@ -48,7 +48,7 @@ else:
 dir_for_downloaded_images = "Saved Images"  # Where to store downloaded images (a sub-folder within the CWD)
 use_downloaded_images = True  # If False, local copies of images are not used (all images are downloaded at runtime).
 save_downloaded_images = True  # If True, images downloaded at runtime are saved to a local folder for quicker access.
-use_last_full_analysis = True  # If True, the results from the previous full analysis will be used as a starting point.
+use_last_full_analysis = True  # If True, the results from the previous full analysis will be loaded and used as a starting point.
 #  This drastically reduces runtime, but it should be disabled if changes have been made to the code that affect how data
 #  is extracted, or what ERR columns are created.
 

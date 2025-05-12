@@ -1539,7 +1539,8 @@ if __name__ == '__main__':
     else:
         image_upper_bound = min(image_upper_bound, num_urls)
 
-
+    # When use_last_full_analysis is True, this block of code loads the most recent FULL analysis from the Output Files
+    # folder and uses it as a starting point for extracting data from the screenshot URLs.
     if full_analysis and use_last_full_analysis:
         # Define the subdirectory
         subdirectory = "CSVs"
@@ -1579,6 +1580,11 @@ if __name__ == '__main__':
             all_participants_csv = pd.read_csv(os.path.join(last_full_folder,
                                                             ' '.join([study_to_analyze[NAME], "All Participants Temporal Data.csv"])),
                                                index_col=0)
+            # Some columns get loaded as the wrong format.
+            # Change the PARTICIPANT_ID column to 'integer' format and change the DATE_DETECTED column to 'date' format.
+            all_participants_csv[PARTICIPANT_ID] = all_participants_csv[PARTICIPANT_ID].astype(int)
+            all_participants_csv[DATE_DETECTED] = pd.to_datetime(all_participants_csv[DATE_DETECTED])
+            all_participants_csv[DATE_DETECTED] = all_participants_csv[DATE_DETECTED].apply(lambda x: x.date())
             all_participants_conf_csv = pd.read_csv(os.path.join(last_full_folder,
                                                             ' '.join([study_to_analyze[NAME], "All Participants Temporal Data Confidence Values.csv"])),
                                                     index_col=0)
@@ -2297,6 +2303,10 @@ if __name__ == '__main__':
         all_usage_conf_dataframes.append(p.usage_data_conf)
 
     all_participants_df = pd.concat(all_usage_dataframes, ignore_index=True)
+
+    # for idx, value in all_participants_df[DATE_DETECTED].items():
+    #     print(f"Index: {idx}, Type: {type(value).__name__}")
+
     all_participants_df = all_participants_df.sort_values(by=[PARTICIPANT_ID, DATE_DETECTED]).reset_index(drop=True)
 
     all_participants_conf_df = pd.concat(all_usage_conf_dataframes, ignore_index=True)
