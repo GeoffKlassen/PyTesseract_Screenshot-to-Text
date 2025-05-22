@@ -48,13 +48,13 @@ else:
 dir_for_downloaded_images = "Saved Images"  # Where to store downloaded images (a sub-folder within the CWD)
 use_downloaded_images = True  # If False, local copies of images are not used (all images are downloaded at runtime).
 save_downloaded_images = True  # If True, images downloaded at runtime are saved to a local folder for quicker access.
-use_last_full_analysis = True  # If True, the results from the previous full analysis will be loaded and used as a starting point.
+use_last_full_analysis = False  # If True, the results from the previous full analysis will be loaded and used as a starting point.
 #  This drastically reduces runtime, but it should be disabled if changes have been made to the code that affect how data
 #  is extracted, or what ERR columns are created.
 
 # Login credentials for downloading images from www.avicennaresearch.com
-avicenna_user = "geoff.klassen@usask.ca"
-avicenna_password = "Phi1*618ah"
+avicenna_user = "geoff.klassen@usask.ca"  # Replace with your own Avicenna email
+avicenna_password = "Phi1*618ah"  # Replace with your own Avicenna password
 
 APP_AREA_SCALE_FACTOR = 1
 # In addition to the screenshot_scale_factor, this is how much to scale the cropped image
@@ -66,7 +66,7 @@ ERR_CONFIDENCE = f"ERR Values below {int(conf_limit)}% confidence"
 
 image_lower_bound = 1
 # Lowest file index to analyze when running the code
-image_upper_bound = None
+image_upper_bound = 50
 # Highest file index to analyze when running the code
 #     (if 0 or None, then no upper bound is used)
 

@@ -1306,49 +1306,43 @@ def add_screenshot_info_to_master_df(screenshot, idx):
     global all_screenshots_df
     global all_screenshots_df_conf
 
-    same_or_other_user, num_duplicates = None, None  # Initialize
-    if screenshot.daily_total_conf == NO_CONF and \
-            screenshot.app_data[NAME_CONF].eq(NO_CONF).all() and \
-            screenshot.app_data[NUMBER_CONF].eq(NO_CONF).all():
-        # Do not hash screenshots that contain no daily total and no app-level info.
-        pass
-    else:
-        # Find all other screenshots with the same hash
-        matching_screenshots = all_screenshots_df[(all_screenshots_df[HASHED] == screenshot.text_hash) &
-                                                  (all_screenshots_df[HASHED] is not None)]
-
-        if not matching_screenshots.empty:
-            num_duplicates = len(matching_screenshots) + 1
-            num_unique_users = (matching_screenshots[PARTICIPANT_ID].nunique() +
-                                (0 if screenshot.user_id in matching_screenshots[PARTICIPANT_ID].values else 1))
-            # There are other screenshots with the same data
-            screenshot.add_error(ERR_DUPLICATE_DATA)
-            # screenshot.add_error(ERR_DUPLICATE_COUNTS)
-            if not (ERR_DUPLICATE_DATA in all_screenshots_df.columns):
-                # Make sure the ERR_DUPLICATE_DATA and ERR_DUPLICATE_COUNTS columns exist
-                all_screenshots_df[ERR_DUPLICATE_DATA] = None
-                all_screenshots_df[ERR_DUPLICATE_COUNTS] = None
-
-                all_screenshots_df_conf[ERR_DUPLICATE_DATA] = None
-                all_screenshots_df_conf[ERR_DUPLICATE_COUNTS] = None
-
-            if not (matching_screenshots[PARTICIPANT_ID].eq(screenshot.user_id).all()):
-                same_or_other_user = MULTIPLE_USERS
-            else:
-                same_or_other_user = SAME_USER
-
-            for n in matching_screenshots.index:
-                if all_screenshots_df.loc[n, ERR_DUPLICATE_DATA] not in [SAME_USER, MULTIPLE_USERS]:
-                    all_screenshots_df.loc[n, REVIEW_COUNT] += 1
-                    all_screenshots_df_conf.loc[n, REVIEW_COUNT] += 1
-
-                all_screenshots_df.loc[n, ERR_DUPLICATE_DATA] = same_or_other_user
-                all_screenshots_df.loc[n, ERR_DUPLICATE_COUNTS] = num_duplicates
-                all_screenshots_df.loc[n, ERR_USER_COUNT] = num_unique_users
-
-                all_screenshots_df_conf.loc[n, ERR_DUPLICATE_DATA] = same_or_other_user
-                all_screenshots_df_conf.loc[n, ERR_DUPLICATE_COUNTS] = num_duplicates
-                all_screenshots_df_conf.loc[n, ERR_USER_COUNT] = num_unique_users
+    # same_or_other_user, num_duplicates, num_unique_users = None, None, None  # Initialize
+    # # Find all other screenshots with the same hash
+    # matching_screenshots = all_screenshots_df[(all_screenshots_df[HASHED] == screenshot.text_hash) &
+    #                                           (all_screenshots_df[HASHED] is not None)]
+    #
+    # if not matching_screenshots.empty:
+    #     num_duplicates = len(matching_screenshots) + 1
+    #     num_unique_users = (matching_screenshots[PARTICIPANT_ID].nunique() +
+    #                         (0 if screenshot.user_id in matching_screenshots[PARTICIPANT_ID].values else 1))
+    #     # There are other screenshots with the same data
+    #     screenshot.add_error(ERR_DUPLICATE_DATA)
+    #     # screenshot.add_error(ERR_DUPLICATE_COUNTS)
+    #     if not (ERR_DUPLICATE_DATA in all_screenshots_df.columns):
+    #         # Make sure the ERR_DUPLICATE_DATA and ERR_DUPLICATE_COUNTS columns exist
+    #         all_screenshots_df[ERR_DUPLICATE_DATA] = None
+    #         all_screenshots_df[ERR_DUPLICATE_COUNTS] = None
+    #
+    #         all_screenshots_df_conf[ERR_DUPLICATE_DATA] = None
+    #         all_screenshots_df_conf[ERR_DUPLICATE_COUNTS] = None
+    #
+    #     if not (matching_screenshots[PARTICIPANT_ID].eq(screenshot.user_id).all()):
+    #         same_or_other_user = MULTIPLE_USERS
+    #     else:
+    #         same_or_other_user = SAME_USER
+    #
+    #     for n in matching_screenshots.index:
+    #         if all_screenshots_df.loc[n, ERR_DUPLICATE_DATA] not in [SAME_USER, MULTIPLE_USERS]:
+    #             all_screenshots_df.loc[n, REVIEW_COUNT] += 1
+    #             all_screenshots_df_conf.loc[n, REVIEW_COUNT] += 1
+    #
+    #         all_screenshots_df.loc[n, ERR_DUPLICATE_DATA] = same_or_other_user
+    #         all_screenshots_df.loc[n, ERR_DUPLICATE_COUNTS] = num_duplicates
+    #         all_screenshots_df.loc[n, ERR_USER_COUNT] = num_unique_users
+    #
+    #         all_screenshots_df_conf.loc[n, ERR_DUPLICATE_DATA] = same_or_other_user
+    #         all_screenshots_df_conf.loc[n, ERR_DUPLICATE_COUNTS] = num_duplicates
+    #         all_screenshots_df_conf.loc[n, ERR_USER_COUNT] = num_unique_users
 
     if idx in all_screenshots_df.index:
         # Create an empty row with NaN values
@@ -1385,10 +1379,10 @@ def add_screenshot_info_to_master_df(screenshot, idx):
                 df.loc[idx, col] = screenshot.num_values_low_conf
             elif col == ERR_MISSING_VALUE:
                 df.loc[idx, col] = screenshot.num_missed_values
-            elif col == ERR_DUPLICATE_DATA:
-                df.loc[idx, col] = same_or_other_user
-                df.loc[idx, ERR_DUPLICATE_COUNTS] = num_duplicates
-                df.loc[idx, ERR_USER_COUNT] = num_unique_users
+            # elif col == ERR_DUPLICATE_DATA:
+            #     df.loc[idx, col] = same_or_other_user
+            #     df.loc[idx, ERR_DUPLICATE_COUNTS] = num_duplicates
+            #     df.loc[idx, ERR_USER_COUNT] = num_unique_users
             elif col.startswith(ERR):
                 df.loc[idx, col] = True
             else:
@@ -1626,6 +1620,9 @@ if __name__ == '__main__':
 
         if all_screenshots_df[IMAGE_URL].isin([url_list[IMG_PATH][index]]).any():
             print(f"Data extracted from this image already exists. Skipping.")
+
+            # This needs to be modified -- the program will not update the 'ERR Duplicate Screenshot' values
+            # for existing data rows, if new screenshots are duplicates of loaded ones.
             continue
 
         screenshot_time_start = time.time()
@@ -1727,11 +1724,21 @@ if __name__ == '__main__':
         current_screenshot.set_text(text_df)
         current_screenshot.set_words_df(text_df_single_words)
 
-        # Create a hash for the text found in the initial scan, for comparison to other hashes to detect duplicate images
-        all_text_in_one_string = ''.join(text_df['text'])
-        all_conf_in_one_string = ''.join(text_df['conf'].apply(lambda x: f"{x:.4f}"))
-        all_ssdata_concatenated = ''.join([all_text_in_one_string, all_conf_in_one_string])
-        current_screenshot.set_hash(hashlib.md5(all_ssdata_concatenated.encode()).hexdigest())
+        # Create a hash for the scaled grey image, for comparison to other hashes to detect duplicate images
+
+        # all_text_in_one_string = ''.join(text_df['text'])
+        # all_conf_in_one_string = ''.join(text_df['conf'].apply(lambda x: f"{x:.4f}"))
+        # all_ssdata_concatenated = ''.join([all_text_in_one_string, all_conf_in_one_string])
+        # current_screenshot.set_hash(hashlib.md5(all_ssdata_concatenated.encode()).hexdigest())
+
+        image_bytes = grey_image_scaled.tobytes()
+
+        # Create hash
+        hash_string = hashlib.sha256(image_bytes).hexdigest()
+
+        print("Image Hash:", hash_string)
+        current_screenshot.set_hash(hash_string)
+
 
         # Get the language of the image, and assign that language to the screenshot & user (if a language was detected)
         image_language, language_was_detected = determine_language_of_image(current_participant, text_df)
@@ -2295,6 +2302,38 @@ if __name__ == '__main__':
 
     all_screenshots_df.index += 1  # So that the index lines up with the file number
 
+    # Here we will compare the image hashes in all_screenshots_df to determine whether any images are duplicates
+    for i in all_screenshots_df.index:
+        user_id_for_current_row = all_screenshots_df[PARTICIPANT_ID][i]
+        matching_screenshots = all_screenshots_df[(all_screenshots_df[HASHED] == all_screenshots_df[HASHED][i]) &
+                                                  (all_screenshots_df.index != i) &
+                                                  (all_screenshots_df[HASHED] is not None)]
+        if not matching_screenshots.empty:
+            num_duplicates = len(matching_screenshots) + 1
+            num_unique_users = (matching_screenshots[PARTICIPANT_ID].nunique() +
+                                (0 if user_id_for_current_row in matching_screenshots[PARTICIPANT_ID].values else 1))
+            # There are other screenshots identical to the current one
+            if not (ERR_DUPLICATE_DATA in all_screenshots_df.columns):
+                # Make sure the ERR_DUPLICATE_DATA and ERR_DUPLICATE_COUNTS columns exist
+                all_screenshots_df[ERR_DUPLICATE_DATA] = None
+                all_screenshots_df[ERR_DUPLICATE_COUNTS] = None
+
+                all_screenshots_df_conf[ERR_DUPLICATE_DATA] = None
+                all_screenshots_df_conf[ERR_DUPLICATE_COUNTS] = None
+
+            if not (matching_screenshots[PARTICIPANT_ID].eq(user_id_for_current_row).all()):
+                same_or_other_user = MULTIPLE_USERS
+            else:
+                same_or_other_user = SAME_USER
+
+            all_screenshots_df.loc[i, ERR_DUPLICATE_DATA] = same_or_other_user
+            all_screenshots_df.loc[i, ERR_DUPLICATE_COUNTS] = num_duplicates
+            all_screenshots_df.loc[i, REVIEW_COUNT] += 1
+
+            all_screenshots_df_conf.loc[i, ERR_DUPLICATE_DATA] = same_or_other_user
+            all_screenshots_df_conf.loc[i, ERR_DUPLICATE_COUNTS] = num_duplicates
+            all_screenshots_df_conf.loc[i, REVIEW_COUNT] += 1
+
     print("\nCompiling participants' temporal data...", end='')
     all_usage_dataframes = []  # Initialize
     all_usage_conf_dataframes = []
@@ -2309,7 +2348,10 @@ if __name__ == '__main__':
 
     all_participants_df = all_participants_df.sort_values(by=[PARTICIPANT_ID, DATE_DETECTED]).reset_index(drop=True)
 
-    all_participants_conf_df = pd.concat(all_usage_conf_dataframes, ignore_index=True)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore")
+        all_participants_conf_df = pd.concat(all_usage_conf_dataframes, ignore_index=True)
+
     all_participants_conf_df = all_participants_conf_df.sort_values(by=[PARTICIPANT_ID, DATE_DETECTED]).reset_index(drop=True)
 
     print("Done.")

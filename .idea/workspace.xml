@@ -4,10 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4e170b4d-2af2-47c5-9e6d-e8a288c22989" name="Changes" comment="Added ability to read in existing data extracted from a previous run of the program.  This seems to work well, but the final 'temporal data' CSV is not sorted properly. A new data row got inserted at the top of its user_id section, when it should have been inserted at the bottom.">
+    <list default="true" id="4e170b4d-2af2-47c5-9e6d-e8a288c22989" name="Changes" comment="Fixed issue with all_participants_df not getting sorted by date properly. The issue was that, when the existing dataframe is loaded, the 'date_detected' column gets loaded in string format. Fixed the issue by converting the column to the date format from the datetime module. Sort now works properly.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/OCRScript_v3.py" beforeDir="false" afterPath="$PROJECT_DIR$/OCRScript_v3.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/RuntimeValues.py" beforeDir="false" afterPath="$PROJECT_DIR$/RuntimeValues.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Studies.py" beforeDir="false" afterPath="$PROJECT_DIR$/Studies.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -31,20 +32,20 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Python.AndroidFunctions.executor": "Debug",
-    "Python.Detecting Duplicate Screenshots with MSE.executor": "Run",
-    "Python.OCRScript_v3.executor": "Run",
-    "Python.RuntimeValues.executor": "Run",
-    "Python.Studies.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "master",
-    "last_opened_file_path": "C:/Users/geoff/OneDrive - University of Saskatchewan/Marking/CMPT 263 2024-25 Winter",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.AndroidFunctions.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.Detecting Duplicate Screenshots with MSE.executor&quot;: &quot;Run&quot;,
+    &quot;Python.OCRScript_v3.executor&quot;: &quot;Run&quot;,
+    &quot;Python.RuntimeValues.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Studies.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/geoff/OneDrive - University of Saskatchewan/Marking/CMPT 263 2024-25 Winter&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager">
     <configuration name="OCRScript_v3" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="OCRScript_v3" />
@@ -194,7 +195,15 @@
       <option name="project" value="LOCAL" />
       <updated>1746840632501</updated>
     </task>
-    <option name="localTasksCounter" value="14" />
+    <task id="LOCAL-00014" summary="Fixed issue with all_participants_df not getting sorted by date properly. The issue was that, when the existing dataframe is loaded, the 'date_detected' column gets loaded in string format. Fixed the issue by converting the column to the date format from the datetime module. Sort now works properly.">
+      <option name="closed" value="true" />
+      <created>1747074224106</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1747074224106</updated>
+    </task>
+    <option name="localTasksCounter" value="15" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -223,7 +232,8 @@
     <MESSAGE value="Added column to final screenshot df that gives the number of user accounts that submitted the same screenshot (at least once). Useful for identifying fraudulent accounts.&#10;&#10;Changed default crop_left for Google dashboard version from 0.15*screenshot_width to 0.10*screenshot_width. Several images are more widescreen than a usual vertical screenshot (almost like they're from a computer screen or a tablet)." />
     <MESSAGE value="Changed hash computation; the hash for each screenshot is now computed from a string that concatenates the text and the confidence values (instead of just the text)." />
     <MESSAGE value="Added ability to read in existing data extracted from a previous run of the program.  This seems to work well, but the final 'temporal data' CSV is not sorted properly. A new data row got inserted at the top of its user_id section, when it should have been inserted at the bottom." />
-    <option name="LAST_COMMIT_MESSAGE" value="Added ability to read in existing data extracted from a previous run of the program.  This seems to work well, but the final 'temporal data' CSV is not sorted properly. A new data row got inserted at the top of its user_id section, when it should have been inserted at the bottom." />
+    <MESSAGE value="Fixed issue with all_participants_df not getting sorted by date properly. The issue was that, when the existing dataframe is loaded, the 'date_detected' column gets loaded in string format. Fixed the issue by converting the column to the date format from the datetime module. Sort now works properly." />
+    <option name="LAST_COMMIT_MESSAGE" value="Fixed issue with all_participants_df not getting sorted by date properly. The issue was that, when the existing dataframe is loaded, the 'date_detected' column gets loaded in string format. Fixed the issue by converting the column to the date format from the datetime module. Sort now works properly." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
