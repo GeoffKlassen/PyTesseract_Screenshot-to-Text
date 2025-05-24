@@ -66,7 +66,7 @@ ERR_CONFIDENCE = f"ERR Values below {int(conf_limit)}% confidence"
 
 image_lower_bound = 1
 # Lowest file index to analyze when running the code
-image_upper_bound = 50
+image_upper_bound = None
 # Highest file index to analyze when running the code
 #     (if 0 or None, then no upper bound is used)
 

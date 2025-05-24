@@ -1349,7 +1349,7 @@ def add_screenshot_info_to_master_df(screenshot, idx):
         empty_row = pd.DataFrame([[""] * len(all_screenshots_df.columns)], columns=all_screenshots_df.columns)
 
         # Insert the empty row
-        all_screenshots_df = pd.concat([all_screenshots_df.iloc[:idx], empty_row, all_screenshots_df.iloc[idx:]]).reset_index(drop=True)
+        all_screenshots_df      = pd.concat([all_screenshots_df.iloc[:idx]     , empty_row, all_screenshots_df.iloc[idx:]]).reset_index(drop=True)
         all_screenshots_df_conf = pd.concat([all_screenshots_df_conf.iloc[:idx], empty_row, all_screenshots_df_conf.iloc[idx:]]).reset_index(drop=True)
 
     for df, col_name in zip([all_screenshots_df, all_screenshots_df_conf], [[NAME, NUMBER], [NAME_CONF, NUMBER_CONF]]):
@@ -2300,9 +2300,11 @@ if __name__ == '__main__':
 
     total_elapsed_time = time.time() - start_time
 
+    all_screenshots_df = all_screenshots_df.reset_index(drop=True)
     all_screenshots_df.index += 1  # So that the index lines up with the file number
 
     # Here we will compare the image hashes in all_screenshots_df to determine whether any images are duplicates
+    print("\nComparing image hashes for duplicates...", end="")
     for i in all_screenshots_df.index:
         user_id_for_current_row = all_screenshots_df[PARTICIPANT_ID][i]
         matching_screenshots = all_screenshots_df[(all_screenshots_df[HASHED] == all_screenshots_df[HASHED][i]) &
@@ -2328,13 +2330,17 @@ if __name__ == '__main__':
 
             all_screenshots_df.loc[i, ERR_DUPLICATE_DATA] = same_or_other_user
             all_screenshots_df.loc[i, ERR_DUPLICATE_COUNTS] = num_duplicates
+            all_screenshots_df.loc[i, ERR_USER_COUNT] = num_unique_users
             all_screenshots_df.loc[i, REVIEW_COUNT] += 1
 
             all_screenshots_df_conf.loc[i, ERR_DUPLICATE_DATA] = same_or_other_user
             all_screenshots_df_conf.loc[i, ERR_DUPLICATE_COUNTS] = num_duplicates
+            all_screenshots_df_conf.loc[i, ERR_USER_COUNT] = num_unique_users
             all_screenshots_df_conf.loc[i, REVIEW_COUNT] += 1
 
-    print("\nCompiling participants' temporal data...", end='')
+    print("Done.")
+
+    print("Compiling participants' temporal data...", end='')
     all_usage_dataframes = []  # Initialize
     all_usage_conf_dataframes = []
     for p in participants:
@@ -2409,7 +2415,7 @@ if __name__ == '__main__':
         all_participants_conf_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} All Participants Temporal Data Confidence Values.csv")
 
         all_screenshots_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} All Screenshots.csv")
-        all_screenshots_df_conf.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} All Confidence Values.csv")
+        all_screenshots_df_conf.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} All Screenshots Confidence Values.csv")
 
         all_ios_screenshots_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} iOS Data.csv")
         all_android_screenshots_df.to_csv(f"{dir_name_in_progress}\\{study_to_analyze[NAME]} Android Data.csv")
