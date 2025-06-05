@@ -4,9 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4e170b4d-2af2-47c5-9e6d-e8a288c22989" name="Changes" comment="Screenshot hashes are now created using the image array (pixels) instead of the data extracted from the image. This means all screenshots have a hash, regardless of if any text is extracted from them.&#10;&#10;Moved the creation of the ERR_DUPLICATE_DATA and ERR_DUPLICATE_COUNTS columns to after all screenshots are analyzed. This allows for loaded data to have its ERR_DUPLICATE_DATA and ERR_DUPLICATE_COUNTS columns updated to reflect if they are a duplicate of any new screenshot.">
+    <list default="true" id="4e170b4d-2af2-47c5-9e6d-e8a288c22989" name="Changes" comment="Minor fixes">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/OCRScript_v3.py" beforeDir="false" afterPath="$PROJECT_DIR$/OCRScript_v3.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/RuntimeValues.py" beforeDir="false" afterPath="$PROJECT_DIR$/RuntimeValues.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Studies.py" beforeDir="false" afterPath="$PROJECT_DIR$/Studies.py" afterDir="false" />
     </list>
@@ -211,7 +210,15 @@
       <option name="project" value="LOCAL" />
       <updated>1747949253259</updated>
     </task>
-    <option name="localTasksCounter" value="16" />
+    <task id="LOCAL-00016" summary="Minor fixes">
+      <option name="closed" value="true" />
+      <created>1748046258103</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1748046258103</updated>
+    </task>
+    <option name="localTasksCounter" value="17" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -242,7 +249,8 @@
     <MESSAGE value="Added ability to read in existing data extracted from a previous run of the program.  This seems to work well, but the final 'temporal data' CSV is not sorted properly. A new data row got inserted at the top of its user_id section, when it should have been inserted at the bottom." />
     <MESSAGE value="Fixed issue with all_participants_df not getting sorted by date properly. The issue was that, when the existing dataframe is loaded, the 'date_detected' column gets loaded in string format. Fixed the issue by converting the column to the date format from the datetime module. Sort now works properly." />
     <MESSAGE value="Screenshot hashes are now created using the image array (pixels) instead of the data extracted from the image. This means all screenshots have a hash, regardless of if any text is extracted from them.&#10;&#10;Moved the creation of the ERR_DUPLICATE_DATA and ERR_DUPLICATE_COUNTS columns to after all screenshots are analyzed. This allows for loaded data to have its ERR_DUPLICATE_DATA and ERR_DUPLICATE_COUNTS columns updated to reflect if they are a duplicate of any new screenshot." />
-    <option name="LAST_COMMIT_MESSAGE" value="Screenshot hashes are now created using the image array (pixels) instead of the data extracted from the image. This means all screenshots have a hash, regardless of if any text is extracted from them.&#10;&#10;Moved the creation of the ERR_DUPLICATE_DATA and ERR_DUPLICATE_COUNTS columns to after all screenshots are analyzed. This allows for loaded data to have its ERR_DUPLICATE_DATA and ERR_DUPLICATE_COUNTS columns updated to reflect if they are a duplicate of any new screenshot." />
+    <MESSAGE value="Minor fixes" />
+    <option name="LAST_COMMIT_MESSAGE" value="Minor fixes" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
