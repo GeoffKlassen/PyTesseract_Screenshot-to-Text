@@ -4,10 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4e170b4d-2af2-47c5-9e6d-e8a288c22989" name="Changes" comment="Minor fixes">
+    <list default="true" id="4e170b4d-2af2-47c5-9e6d-e8a288c22989" name="Changes" comment="Added triple check for date when the difference between the date submitted and the date detected is inconsistent with the relative day detected (e.g., YESTERDAY, TODAY). To do this, the code now adjusts the b/w threshold of the image in small increments, up to three times, until the date detected is consistent with the date submitted &amp; relative day detected, or no different date is detected.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/RuntimeValues.py" beforeDir="false" afterPath="$PROJECT_DIR$/RuntimeValues.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Studies.py" beforeDir="false" afterPath="$PROJECT_DIR$/Studies.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -218,7 +216,31 @@
       <option name="project" value="LOCAL" />
       <updated>1748046258103</updated>
     </task>
-    <option name="localTasksCounter" value="17" />
+    <task id="LOCAL-00017" summary="Edited RuntimeValues.py and Studies.py to use CSV files from May 29, 2025">
+      <option name="closed" value="true" />
+      <created>1749145761445</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1749145761445</updated>
+    </task>
+    <task id="LOCAL-00018" summary="Edited RuntimeValues.py and Studies.py to use CSV files from May 29, 2025">
+      <option name="closed" value="true" />
+      <created>1749145777769</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1749145777769</updated>
+    </task>
+    <task id="LOCAL-00019" summary="Added triple check for date when the difference between the date submitted and the date detected is inconsistent with the relative day detected (e.g., YESTERDAY, TODAY). To do this, the code now adjusts the b/w threshold of the image in small increments, up to three times, until the date detected is consistent with the date submitted &amp; relative day detected, or no different date is detected.">
+      <option name="closed" value="true" />
+      <created>1750359237375</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1750359237375</updated>
+    </task>
+    <option name="localTasksCounter" value="20" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -250,7 +272,9 @@
     <MESSAGE value="Fixed issue with all_participants_df not getting sorted by date properly. The issue was that, when the existing dataframe is loaded, the 'date_detected' column gets loaded in string format. Fixed the issue by converting the column to the date format from the datetime module. Sort now works properly." />
     <MESSAGE value="Screenshot hashes are now created using the image array (pixels) instead of the data extracted from the image. This means all screenshots have a hash, regardless of if any text is extracted from them.&#10;&#10;Moved the creation of the ERR_DUPLICATE_DATA and ERR_DUPLICATE_COUNTS columns to after all screenshots are analyzed. This allows for loaded data to have its ERR_DUPLICATE_DATA and ERR_DUPLICATE_COUNTS columns updated to reflect if they are a duplicate of any new screenshot." />
     <MESSAGE value="Minor fixes" />
-    <option name="LAST_COMMIT_MESSAGE" value="Minor fixes" />
+    <MESSAGE value="Edited RuntimeValues.py and Studies.py to use CSV files from May 29, 2025" />
+    <MESSAGE value="Added triple check for date when the difference between the date submitted and the date detected is inconsistent with the relative day detected (e.g., YESTERDAY, TODAY). To do this, the code now adjusts the b/w threshold of the image in small increments, up to three times, until the date detected is consistent with the date submitted &amp; relative day detected, or no different date is detected." />
+    <option name="LAST_COMMIT_MESSAGE" value="Added triple check for date when the difference between the date submitted and the date detected is inconsistent with the relative day detected (e.g., YESTERDAY, TODAY). To do this, the code now adjusts the b/w threshold of the image in small increments, up to three times, until the date detected is consistent with the date submitted &amp; relative day detected, or no different date is detected." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

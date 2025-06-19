@@ -12,10 +12,10 @@ from LanguageDictionaries import *
     As of Feb 10, 2025, there are 2 preset studies available: HappyB2.0 and BCH.
 """
 
-study_to_analyze = studies[2]
+study_to_analyze = studies[1]
 # Use studies[0] for the HappyB2.0 study (pre-launch prep)
-# Use studies[1] for the HappyB2.0 study (2024 Aug-Dec)
-# Use studies[2] for the HappyB2.0 study (2025 Mar-)
+# Use studies[1] for the HappyB2.0 study (2024 Aug - 2025 May)
+# Use studies[2] for the HappyB2.0 study (2025 Mar - May)
 # Use studies[3] for the BCH study
 
 if study_to_analyze in studies:
@@ -48,7 +48,7 @@ else:
 dir_for_downloaded_images = "Saved Images"  # Where to store downloaded images (a sub-folder within the CWD)
 use_downloaded_images = True  # If False, local copies of images are not used (all images are downloaded at runtime).
 save_downloaded_images = True  # If True, images downloaded at runtime are saved to a local folder for quicker access.
-use_last_full_analysis = True # If True, the results from the previous full analysis will be loaded and used as a starting point.
+use_last_full_analysis = False # If True, the results from the previous full analysis will be loaded and used as a starting point.
 #  This drastically reduces runtime, but it should be disabled if changes have been made to the code that affect how data
 #  is extracted, or what ERR columns are created.
 

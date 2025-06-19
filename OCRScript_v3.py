@@ -619,6 +619,7 @@ def get_date_in_screenshot(screenshot, alt_text=pd.DataFrame):
 
     if bool(re.search(week_pattern, date_row_text)):
         print("Screenshot contains week info.")
+        screenshot.set_relative_day(WEEK)
         return None, empty_df
 
     # Extract the date, month, and day from that row of text, as strings
@@ -1559,7 +1560,7 @@ if __name__ == '__main__':
             all_screenshots_df = all_screenshots_csv
 
             all_screenshots_conf_csv = pd.read_csv(os.path.join(last_full_folder,
-                                                           ' '.join([study_to_analyze[NAME], "All Confidence Values.csv"])
+                                                           ' '.join([study_to_analyze[NAME], "All Screenshots Confidence Values.csv"])
                                                            ),
                                               index_col=0)
             all_screenshots_df_conf = all_screenshots_conf_csv
@@ -1797,7 +1798,7 @@ if __name__ == '__main__':
             current_screenshot.set_device_os_detected(IOS)
             if not current_participant.device_os in [IOS, ANDROID]:
                 current_participant.set_device_os(IOS)
-            if current_screenshot.device_os_submitted == ANDROID or current_screenshot.device_os_submitted is None:
+            if current_screenshot.device_os_submitted != IOS: #or current_screenshot.device_os_submitted is None:
                 print("Screenshot contains iOS-specific headings. "
                       f"Setting device OS to '{IOS}'.")
                 current_screenshot.add_error(ERR_DEVICE_OS)
@@ -1806,7 +1807,7 @@ if __name__ == '__main__':
             current_screenshot.set_device_os_detected(ANDROID)
             if not current_participant.device_os in [IOS, ANDROID]:
                 current_participant.set_device_os(ANDROID)
-            if current_screenshot.device_os_submitted == IOS or current_screenshot.device_os_submitted is None:
+            if current_screenshot.device_os_submitted != ANDROID:  # or current_screenshot.device_os_submitted is None:
                 print("Screenshot contains Android-specific headings. "
                       f"Setting device OS to '{ANDROID}'.")
                 current_screenshot.add_error(ERR_DEVICE_OS)
@@ -1861,24 +1862,42 @@ if __name__ == '__main__':
 
             # Sometimes the date in Google dashboard images is not read. Since it always appears below the Days axis,
             # we can search for it again with that location as a reference.
-            if (current_screenshot.date_detected is None
-                    and current_screenshot.android_version == GOOGLE):
-                    # and not headings_df[headings_df[HEADING_COLUMN].eq(DAYS_AXIS_HEADING)].empty):
+            loop_number = 0
+            threshold_black = 70
+            threshold_white = 200
+            while ((current_screenshot.date_detected is None) or (
+                (current_screenshot.date_submitted - current_screenshot.date_detected).days != 0
+                    and current_screenshot.relative_day == TODAY) or (
+                (current_screenshot.date_submitted - current_screenshot.date_detected).days != 1
+                    and current_screenshot.relative_day == YESTERDAY)) and (
+                    loop_number < 3 and current_screenshot.relative_day != WEEK):
+                # and not headings_df[headings_df[HEADING_COLUMN].eq(DAYS_AXIS_HEADING)].empty):
 
-                print("\nAdjusting image and searching for date again.")
+                loop_number += 1
+                if current_screenshot.date_detected is not None:
+                    print(f"\nDifference between date submitted ({current_screenshot.date_submitted}) "
+                          f"and date detected ({current_screenshot.date_detected}) "
+                          f"is inconsistent with relative day detected ({current_screenshot.relative_day}).")
                 # row_with_days_axis = headings_df[headings_df[HEADING_COLUMN].eq(DAYS_AXIS_HEADING)].iloc[0]
                 #
                 # crop_left, crop_right = int(0.3*current_screenshot.width), int(0.7*current_screenshot.width)
                 # crop_top, crop_bottom = int(row_with_days_axis['top'] + row_with_days_axis['height']), current_screenshot.height
                 # image_cropped_to_find_date = bw_image_scaled_smoothed[crop_top:crop_bottom, crop_left:crop_right]
-                threshold = 90 if current_screenshot.bg_colour == BLACK else 220
-                _, bw_image_new = cv2.threshold(grey_image, threshold, 255, cv2.THRESH_BINARY)
+                threshold_black -= 10
+                threshold_white += 10
 
+                threshold = threshold_black if current_screenshot.bg_colour == BLACK else threshold_white
+                print(f"Adjusting image b/w threshold to {threshold} and searching for date again.")
+
+                _, bw_image_new = cv2.threshold(grey_image, threshold, 255, cv2.THRESH_BINARY)
+                bw_image_new = cv2.GaussianBlur(bw_image_new, ksize, sigmaX=0)
                 _, date_text_df = extract_text_from_image(bw_image_new)
                 if show_images_at_runtime:
                     show_image(date_text_df, bw_image_new, window_name="Rescan for date text")
 
-                date_in_screenshot, _ = get_date_in_screenshot(current_screenshot, alt_text=date_text_df)
+                date_in_screenshot_rescan, _ = get_date_in_screenshot(current_screenshot, alt_text=date_text_df)
+                if date_in_screenshot_rescan is not None:
+                    date_in_screenshot = date_in_screenshot_rescan
                 current_screenshot.set_date_detected(date_in_screenshot)
                 # Note: Cannot call set_rows_with_date with the row that is returned from this function call,
                 # because its location in the screenshot would have given it a lower index than it will have in the df from
