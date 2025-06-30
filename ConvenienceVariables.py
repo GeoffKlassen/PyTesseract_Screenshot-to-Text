@@ -145,6 +145,7 @@ USER_ID_COLUMN = 'User ID Column Name'
 DATE_COLUMN = 'Date Column Name'
 DEVICE_ID_COLUMN = 'Device ID Column Name'
 MAX_APPS = 'Maximum Apps per Category'
+LOCAL_FOLDER = 'Local Folder'
 
 """
     Survey attributes

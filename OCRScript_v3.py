@@ -1492,8 +1492,8 @@ if __name__ == '__main__':
 
     # If there are local files to use as well, compile a dataframe of them.
     try:
-        if study_to_analyze['local folder']:
-            local_images_df = get_image_files(study_to_analyze['local folder'])
+        if study_to_analyze[LOCAL_FOLDER]:
+            local_images_df = get_image_files(study_to_analyze[LOCAL_FOLDER])
             url_list = pd.concat([local_images_df, url_list], ignore_index=True)
     except KeyError:
         print("No local folder provided for additional images.")
@@ -1638,7 +1638,7 @@ if __name__ == '__main__':
                                         device_id=device_id,
                                         date=url_list[RESPONSE_DATE][index],
                                         category=url_list[IMG_RESPONSE_TYPE][index])
-        device_os = get_os(device_id, current_screenshot)
+        device_os = None if url_list[LOCAL_FILE][index] else get_os(device_id, current_screenshot)
         current_screenshot.set_device_os(device_os)
         if current_participant.device_os is None:
             current_participant.set_device_os(device_os)
