@@ -54,7 +54,7 @@ use_last_full_analysis = False # If True, the results from the previous full ana
 
 # Login credentials for downloading images from www.avicennaresearch.com
 avicenna_user = "geoff.klassen@usask.ca"  # Replace with your own Avicenna email
-avicenna_password = "Phi1*618ah"  # Replace with your own Avicenna password
+avicenna_password = ""  # Replace with your own Avicenna password
 
 APP_AREA_SCALE_FACTOR = 1
 # In addition to the screenshot_scale_factor, this is how much to scale the cropped image
